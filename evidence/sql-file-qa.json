@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "kind": "sql_file_open_and_drop_qa",
+  "observed_at": "2026-10-21T14:25:17.223634+00:00",
+  "binary_sha256": "62385d53d9b5c393b76131ce349d6e6f13945ba695eedd04745332d8d6d039c9",
+  "profile_store": "tmp/ui-drop-qa/profiles.json",
+  "automated_file_tests": {
+    "passed": 8,
+    "failed": 0,
+    "log": "tmp/sql-files-tests.log"
+  },
+  "native_open_passed": [
+    "External-folder .sql opened exact Unicode text in a new tab.",
+    "Repeated canonical path focused existing tab without duplicating it.",
+    "Uppercase .SQL opened in a separate tab.",
+    "Original dirty console source and dirty marker remained unchanged.",
+    "Non-SQL file rejected with visible reason and Dismiss action.",
+    "No connection configured and Run stayed disabled; file open executed no SQL."
+  ],
+  "drop_implementation": "GPUI ExternalPaths root on_drop uses same bounded regular-file loader as native Open; visual drop border configured.",
+  "physical_cross_app_drag": "NOT VERIFIED: CUA exposed Finder as a Stage Manager thumbnail and could not provide a reliable cross-window drag. No claim of observed native drop success.",
+  "limits": {
+    "max_files_per_operation": 16,
+    "max_tabs": 32,
+    "max_file_bytes": 65536,
+    "encoding": "UTF-8; initial BOM removed, CRLF retained; saves plain UTF-8"
+  },
+  "remaining": [
+    "Physical Finder-to-workbench drag verification.",
+    "Main row editor/recovery/AI UI integration occurs after this binary."
+  ]
+}

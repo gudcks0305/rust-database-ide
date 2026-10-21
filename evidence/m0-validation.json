@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-10-21T09:29:00.127481+00:00",
+  "command": "bash scripts/verify-m0.sh",
+  "exit_code": 0,
+  "unit_tests_passed": 16,
+  "live_integration_tests_passed": 2,
+  "default_ignored_live_tests": 2,
+  "live_tests_explicitly_executed": true,
+  "clippy": "workspace --all-targets -- -D warnings passed",
+  "format": "cargo fmt --all -- --check passed",
+  "shellcheck": "scripts/*.sh passed",
+  "native_qa": "evidence/ui-native-qa.json",
+  "files_sha256": {
+    "crates/dbide-bridge/src/lib.rs": "754f0fa5d271c4b7f547ce85b0361f12070acb4acd992203a4ac44a76f7eb893",
+    "crates/dbide-pg-spike/src/contract.rs": "6d2722ffd86a3cd93a724e16cfb29da50ebfa66ad8d288102b2b44c5a1992d97",
+    "crates/dbide-pg-spike/src/lib.rs": "cc5cb0b4ea100417cf751ce1b9a33e7b7dfc69c886d5bb527905a0c8093072e9",
+    "crates/dbide-pg-spike/src/main.rs": "82172fd1c410b2ba9d91bc2d476ee5532a023893558c8a5bbdfaf81c74f28299",
+    "crates/dbide-sql-spike/src/lib.rs": "547b407ef0f663427c2a8f50328a5e43298208c8b03da962a57b42f20f13fc71",
+    "crates/dbide-sql-spike/src/main.rs": "8eb07ae65f4c2bc9b9edf2c3892938ba519282a873de65f62325e0a29c1410b2",
+    "crates/dbide-sqlite-spike/src/lib.rs": "d28133572bd7ddf01446400bf072be4bd8930d3c22ea4f3f269c51aa26e0f906",
+    "crates/dbide-sqlite-spike/src/main.rs": "cb6f249e079d181aa6c198c0200813f2b857c3ac534e80bba4ecf324eec53c36",
+    "crates/dbide-ui-spike/src/lib.rs": "98ca5973c622e8407d1424daa9a7ab2c275e5e1a2505622a5c933dc79b74fd8f",
+    "crates/dbide-ui-spike/src/main.rs": "997814a41a89269dd991d6b25671715f4d0e834a7c0a2c9780e6e722806d84b7",
+    "crates/dbide-bridge/tests/fixture_contract.rs": "980de2b6d009f790e4373ac95cca939f77d6ac31e474fbab5c3d58b9fd663937",
+    "crates/dbide-pg-spike/tests/postgres_contract.rs": "42baf23b651326930a97eb47be13b80c1cf37098c0274fdc34b06b36f7e10de4",
+    "Cargo.lock": "28a1a37b44b14af9334f7661c886a3a39c57685a7f80468dd366a38caf31c193",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33"
+  },
+  "limitations": [
+    "M0 automated checks only; not product parity or full IME/VoiceOver/DataGrip comparative performance."
+  ]
+}

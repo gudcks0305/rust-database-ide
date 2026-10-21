@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "driver": "tokio-postgres 0.7 (exact version in Cargo.lock)",
+  "server": "PostgreSQL 18.6 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+  "scenarios": [
+    "pinned_temp_table_and_session_isolation",
+    "manual_commit_rollback_visibility_and_raw_begin_policy_distinction",
+    "failed_transaction_and_sql_error_drain_recovery",
+    "ordered_multi_results_counts_notice_partial_error_null_empty_unicode",
+    "retained_byte_event_budget_and_truncated_stream_drain",
+    "completed_execution_cancel_cannot_hit_running_next_query",
+    "out_of_band_server_cancel_confirmed_and_backend_retired",
+    "disconnect_unknown_and_no_automatic_write_replay"
+  ],
+  "limitations": [
+    "transaction state remains Unknown: ReadyForQuery status not public",
+    "every accepted cancel retires connection and loses temp/transaction state",
+    "simple protocol text values, no type roundtrip claim",
+    "retained result budget only; driver/transient/one-value memory not bounded",
+    "notices separate and capped; no cross-channel ordering guarantee",
+    "NoTls isolated local fixture only; no production credentials"
+  ]
+}

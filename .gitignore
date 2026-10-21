@@ -1,0 +1,14 @@
+/target/
+/outputs/
+/tmp/
+/evidence/raw/
+.DS_Store
+__pycache__/
+*.dmg
+*.jar
+*.class
+*.hprof
+*.jfr
+.env
+.env.*
+!.env.example

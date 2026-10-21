@@ -1,0 +1,11 @@
+[package]
+name = "dbide-sqlite-spike"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+rusqlite = { version = "=0.40.2", features = ["bundled", "hooks"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"

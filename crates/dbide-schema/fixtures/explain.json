@@ -1,0 +1,20 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Hash Join",
+      "Join Type": "Inner",
+      "Startup Cost": 12.5,
+      "Total Cost": 28.7,
+      "Plan Rows": 50,
+      "Plan Width": 64,
+      "Hash Cond": "(orders.customer_id = customer.id)",
+      "Plans": [
+        {"Node Type": "Seq Scan", "Schema": "shop", "Relation Name": "orders", "Alias": "orders", "Plan Rows": 100},
+        {"Node Type": "Hash", "Plans": [
+          {"Node Type": "Seq Scan", "Schema": "shop", "Relation Name": "customer", "Alias": "customer", "Plan Rows": 50}
+        ]}
+      ]
+    },
+    "Planning Time": 0.25
+  }
+]

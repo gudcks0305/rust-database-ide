@@ -1,0 +1,12 @@
+[package]
+name = "dbide-mysql"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+dbide-driver-api = { path = "../dbide-driver-api" }
+dbide-profiles = { path = "../dbide-profiles" }
+mysql_async = { version = "=0.37.1", default-features = false, features = ["minimal-rust", "native-tls-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+serde = { version = "1", features = ["derive"] }

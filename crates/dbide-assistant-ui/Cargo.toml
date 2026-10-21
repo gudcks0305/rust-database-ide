@@ -1,0 +1,16 @@
+[package]
+name = "dbide-assistant-ui"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+gpui = { package = "gpui-pre", version = "=0.3.9", default-features = false }
+gpui-component = { version = "=0.8.0", features = ["syntect"] }
+dbide-assistant = { path = "../dbide-assistant" }
+dbide-profiles = { path = "../dbide-profiles" }
+futures-channel = "0.3"
+futures-util = { version = "0.3", features = ["sink"] }
+serde_json = "1"
+sqlparser = "=0.63.0"
+tokio = { version = "1", features = ["rt", "time"] }

@@ -1,0 +1,174 @@
+{
+  "observed_date": "2026-10-21",
+  "rea_cli_version": "6.7.0",
+  "skill_version": "44",
+  "release_expected_skill_version": "42",
+  "target": {
+    "name": "DataGrip",
+    "version": "2026.2.6",
+    "build": "262.10968.148",
+    "platform": "macOS ARM64",
+    "download_url": "https://download.jetbrains.com/datagrip/datagrip-2026.2.6-aarch64.dmg",
+    "dmg_sha256": "cf9f762e3b1bc802c0f096215d30cacfe3878fa48e12233cbdaf699588c7dbb2",
+    "official_checksum_verified": true
+  },
+  "entries": [
+    {
+      "file": "evidence/raw/rea-connectivity.json",
+      "file_sha256": "a1bcfb8a438ac1a7af3ad7e8e35142ef38f4ab5aeb84700fac77a4ac365c91aa",
+      "evidence_id": "ev_095a4b05259004295403ad824434d6c3b07bad95d828eb1682c1a9ff17936127",
+      "operation": "inspect_artifact",
+      "subject": {
+        "name": "intellij.database.connectivity.jar",
+        "digest": {
+          "sha256": "7db382e788fb4245ab236afb0cffa0989aca5f55f6c721c49981aa509fc3d06c"
+        },
+        "local_path": "tmp/datagrip-volume/DataGrip.app/Contents/plugins/DatabaseTools/lib/modules/intellij.database.connectivity.jar",
+        "format": "zip",
+        "architecture": null
+      },
+      "limitations": [
+        "Inspection derives bounded static hypotheses and next probes; it does not execute the artifact or claim format-specific semantics.",
+        "ZIP inventory lists central-directory entries only. Non-entry bytes, including an APK Signing Block before the central directory or a ZIP comment after it, are not occurrences."
+      ],
+      "coverage": {
+        "status": "complete-within-substeps",
+        "substeps_completed": 1,
+        "observations_retained": 1,
+        "observations_omitted": 0,
+        "hypotheses_retained": 0,
+        "hypotheses_omitted": 0,
+        "unexplored_branches_retained": 0,
+        "unexplored_branches_omitted": 0,
+        "next_probes_retained": 0,
+        "next_probes_omitted": 0
+      },
+      "substeps": [
+        {
+          "operation": "inventory_artifact",
+          "evidence_id": "ev_348c9220387eda16f8b6c32c914081f4b9ef77e7a4a2d4ca8e6560c4dcbf8376",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "file": "evidence/raw/rea-database-plugin.json",
+      "file_sha256": "a2941af35d12596b0f6763b8eb5bebf0632e0bce5dc2959a8956657d14bfc41c",
+      "evidence_id": "ev_504e85465b7b4a8fb272f62ee5750730897595135c477477e4c1033a3245efe4",
+      "operation": "inspect_artifact",
+      "subject": {
+        "name": "database-plugin.jar",
+        "digest": {
+          "sha256": "d97896c0be18aebd7e0ac31dfda946192725e4997444bdd5c66d639d1511bd73"
+        },
+        "local_path": "tmp/datagrip-volume/DataGrip.app/Contents/plugins/DatabaseTools/lib/database-plugin.jar",
+        "format": "zip",
+        "architecture": null
+      },
+      "limitations": [
+        "Inspection derives bounded static hypotheses and next probes; it does not execute the artifact or claim format-specific semantics.",
+        "ZIP inventory lists central-directory entries only. Non-entry bytes, including an APK Signing Block before the central directory or a ZIP comment after it, are not occurrences."
+      ],
+      "coverage": {
+        "status": "complete-within-substeps",
+        "substeps_completed": 1,
+        "observations_retained": 1,
+        "observations_omitted": 0,
+        "hypotheses_retained": 0,
+        "hypotheses_omitted": 0,
+        "unexplored_branches_retained": 0,
+        "unexplored_branches_omitted": 0,
+        "next_probes_retained": 0,
+        "next_probes_omitted": 0
+      },
+      "substeps": [
+        {
+          "operation": "inventory_artifact",
+          "evidence_id": "ev_849edff1933ac30078a3bbbb0c09fdf5f72ff0f978a86507f055bc0477adf7c2",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "file": "evidence/raw/rea-launcher.json",
+      "file_sha256": "8496370ee6a002e41246ab9a04bdd7ca0a00327a041fd29a110bd7968f0743c9",
+      "evidence_id": "ev_4315962c7034038d2ab04a5592f52a24bf2ff4175edd86b3bed4ac77d0d61bde",
+      "operation": "inspect_macho",
+      "subject": {
+        "name": "datagrip",
+        "digest": {
+          "sha256": "fd005790e499d7f8a1ebf9cae32f2bfeb850ae4f268a2988a852b0a89ef91995"
+        },
+        "local_path": "tmp/datagrip-volume/DataGrip.app/Contents/MacOS/datagrip",
+        "format": "mach-o",
+        "architecture": "arm64"
+      },
+      "limitations": [
+        "Imports and exports combine dyld_info and nm; stripped or toolchain-hidden symbols may be absent.",
+        "vtool output is retained as provenance but only otool build metadata is normalized."
+      ],
+      "coverage": null,
+      "substeps": []
+    },
+    {
+      "file": "evidence/raw/rea-plist.json",
+      "file_sha256": "71478d42d3202add5f50c864942a674467be6511e868e478045be7bdf6b3ea28",
+      "evidence_id": "ev_8112d8de793151656d7f0bf5d7ab15dac7e2e73b71b590b8289fd57cf34953a8",
+      "operation": "inspect_plist",
+      "subject": {
+        "name": "datagrip",
+        "digest": {
+          "sha256": "fd005790e499d7f8a1ebf9cae32f2bfeb850ae4f268a2988a852b0a89ef91995"
+        },
+        "local_path": "tmp/datagrip-volume/DataGrip.app/Contents/MacOS/datagrip",
+        "format": "mach-o",
+        "architecture": "arm64"
+      },
+      "limitations": [],
+      "coverage": null,
+      "substeps": []
+    },
+    {
+      "file": "evidence/raw/rea-sql-impl.json",
+      "file_sha256": "b3008dcfa1c5509458b7af4e43d88e5f3cedbe242241284cd0e8d5d2a5097dda",
+      "evidence_id": "ev_b2281ce65535603f9372a2035079cc15de233fd8eaa503ef604ce61c998d6464",
+      "operation": "inspect_artifact",
+      "subject": {
+        "name": "intellij.database.sql.impl.jar",
+        "digest": {
+          "sha256": "0374a9a4fb96ebfefb4cc746e6efe452b00a9501e65aa68d54d15c927ee32b13"
+        },
+        "local_path": "tmp/datagrip-volume/DataGrip.app/Contents/plugins/DatabaseTools/lib/modules/intellij.database.sql.impl.jar",
+        "format": "zip",
+        "architecture": null
+      },
+      "limitations": [
+        "Inspection derives bounded static hypotheses and next probes; it does not execute the artifact or claim format-specific semantics.",
+        "ZIP inventory lists central-directory entries only. Non-entry bytes, including an APK Signing Block before the central directory or a ZIP comment after it, are not occurrences."
+      ],
+      "coverage": {
+        "status": "complete-within-substeps",
+        "substeps_completed": 1,
+        "observations_retained": 1,
+        "observations_omitted": 0,
+        "hypotheses_retained": 0,
+        "hypotheses_omitted": 0,
+        "unexplored_branches_retained": 0,
+        "unexplored_branches_omitted": 0,
+        "next_probes_retained": 0,
+        "next_probes_omitted": 0
+      },
+      "substeps": [
+        {
+          "operation": "inventory_artifact",
+          "evidence_id": "ev_d1a5204212da08ccdf2d6eb66c621afe989d913a8b79ce51526e301bb2a86ecc",
+          "status": "completed"
+        }
+      ]
+    }
+  ],
+  "runtime_observed": false,
+  "java_method_decompilation": false,
+  "product_implemented": false,
+  "local_path_note": "Local artifact paths in this public index are project-relative. Original tool records remain local-only and retain their recorded hashes."
+}

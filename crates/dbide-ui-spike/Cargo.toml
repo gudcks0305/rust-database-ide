@@ -1,0 +1,28 @@
+[package]
+name = "dbide-ui-spike"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license = "Apache-2.0"
+
+[dependencies]
+gpui = { package = "gpui-pre", version = "=0.3.9", default-features = false }
+gpui-platform = { package = "gpui-pre-platform", version = "=0.3.9", default-features = false, features = ["font-kit", "runtime_shaders"] }
+gpui-component = { version = "=0.8.0", features = ["syntect"] }
+gpui-kit-assets = "=0.8.0"
+dbide-bridge = { path = "../dbide-bridge" }
+dbide-pg-spike = { path = "../dbide-pg-spike" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dbide-profiles = { path = "../dbide-profiles" }
+dbide-sql = { path = "../dbide-sql" }
+dbide-credentials = { path = "../dbide-credentials" }
+dbide-data = { path = "../dbide-data" }
+tempfile = "3"
+dbide-tools-ui = { path = "../dbide-tools-ui" }
+dbide-schema = { path = "../dbide-schema" }
+dbide-workflows = { path = "../dbide-workflows" }
+tokio = { version = "1", features = ["rt", "time"] }
+libc = "0.2"
+
+dbide-workspace = { path = "../dbide-workspace" }

@@ -1,0 +1,18 @@
+[package]
+name = "dbide-workflows"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+dbide-schema = { path = "../dbide-schema" }
+dbide-pg-spike = { path = "../dbide-pg-spike" }
+dbide-profiles = { path = "../dbide-profiles" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+sqlparser = "=0.63.0"
+tokio = { version = "1", features = ["rt", "time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

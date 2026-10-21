@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-21T15:25:36.737678+00:00",
+  "scope": "Initial public source baseline, before per-console database context and i18n implementation.",
+  "runs": [
+    {
+      "kind": "tests",
+      "command": "cargo test --workspace",
+      "passed": 281,
+      "failed": 0,
+      "ignored": 53,
+      "local_log": "tmp/public-baseline-tests.log",
+      "log_sha256": "d63223c276998652212bda4cd34aa768fccfd675a110890c9400486837776d36"
+    },
+    {
+      "kind": "live",
+      "command": "owned fixture opt-in: cargo test (7 database packages) --tests -- --ignored --test-threads=1",
+      "passed": 52,
+      "failed": 0,
+      "ignored": 0,
+      "local_log": "tmp/public-baseline-live.log",
+      "log_sha256": "0e2dc7dde7ce92716ee2d5854812c5a6def80f90373111aa2228f2e10b60cea0"
+    }
+  ],
+  "other_checks": [
+    "cargo fmt --all -- --check",
+    "cargo clippy --workspace --all-targets -- -D warnings",
+    "scripts/verify_project.py",
+    "git diff --cached --check"
+  ],
+  "limits": [
+    "M0/M1 gates remain incomplete; see docs/M0-M1-ACCEPTANCE.md.",
+    "Known namespace-rebinding issue blocks GUI row Apply; passing batch tests do not override it.",
+    "Physical IME, full VoiceOver, cross-app drag and matched comparative performance remain unverified.",
+    "Local-only logs and reference binaries are not included in the public repository."
+  ]
+}

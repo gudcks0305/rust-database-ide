@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-21",
+  "method": "native CUA accessibility actions/state and screenshot inspection",
+  "tested_binary_sha256": "510679537b356484287dbcb001718daac86e3995d9ef67e1916ac3bab60637d1",
+  "gpui": "0.3.9-pre",
+  "component": "0.8.0",
+  "cases": [
+    {
+      "name": "accessibility_exposure",
+      "observed": "After Raise, native AX contains toolbar buttons, settable SQL query editor, table, header/row/cell labels and values",
+      "passed": true
+    },
+    {
+      "name": "postgres_1000_rows",
+      "observed": "Connect then Run default fixture query: Completed, one result,1000rows,260515 retained bytes",
+      "passed": true
+    },
+    {
+      "name": "multiple_results_null_empty_unicode",
+      "observed": "Two SELECTs yielded two results; first exposes NULL separately from empty text, Next exposes 한글 실행 😊 and42",
+      "passed": true
+    },
+    {
+      "name": "run_then_cancel",
+      "observed": "SELECT pg_sleep(30), immediately click Run then Cancel: SQLSTATE57014,Cancelled,connection retired/reconnect required",
+      "passed": true
+    },
+    {
+      "name": "reconnect_partial_error",
+      "observed": "Reconnect then SELECT1;SELECT1/0;SELECT3 returns retained_result1 and SQLSTATE22012,Failed,one retained row; no third result",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "AX presence does not prove complete VoiceOver usability or native IME composition.",
+    "No typed production driver or arbitrary connection profile is implemented.",
+    "No comparative performance inference from UI status durations.",
+    "Final patch after this observation changes only footer/range instrumentation and malformed-range test spelling; final executable is separately rebuilt."
+  ],
+  "final_binary_sha256": "b10b12b6370d29698d6506820e77e0c8b634d213f5ceea73c488c8fdabb42df7",
+  "final_binary_rechecked": "Final packaged app: Connect+Run1000 rows verified by native AX after footer patch.",
+  "ime_control_observation": "Same pressKey(g,k,s) gave separated Jamo in GPUI and native NSTextView; automation path cannot establish physical IME composition."
+}

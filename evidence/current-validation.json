@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-21T14:26:30.577923+00:00",
+  "runs": [
+    {
+      "kind": "workspace-default",
+      "command": "cargo test --workspace",
+      "log": "tmp/workspace-tests-current.log",
+      "log_sha256": "40292fed533730d58b2e55b591d10717ea2a8859d0800e593733af7d2c8cee79",
+      "passed": 247,
+      "failed": 0,
+      "ignored": 37,
+      "observed_log_modified_at": "2026-10-21T14:19:51.212770+00:00"
+    },
+    {
+      "kind": "owned-live",
+      "command": "cargo test -p dbide-pg-spike -p dbide-bridge -p dbide-mysql -p dbide-workflows -p dbide-mcp -p dbide-cli -p dbide-data --tests -- --ignored --test-threads=1",
+      "log": "tmp/live-suite-current.log",
+      "log_sha256": "9f5e66d79c0df94bd30957db420defdb872dc63e2afc86c5b8710572a498d977",
+      "passed": 37,
+      "failed": 0,
+      "ignored": 0,
+      "observed_log_modified_at": "2026-10-21T14:26:05.662644+00:00"
+    },
+    {
+      "kind": "vendor-wire",
+      "command": "CARGO_TARGET_DIR=target/tokio-postgres-vendor cargo test --manifest-path vendor/tokio-postgres/Cargo.toml --test transaction_status_wire",
+      "log": "tmp/vendor-wire-current.log",
+      "log_sha256": "c5fb9ba5553bc49ff407a616360e72abd66dd01b70165d34ea272de5ea7f6ae8",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "observed_log_modified_at": "2026-10-21T14:26:14.312731+00:00"
+    }
+  ],
+  "scope": "Integrated backend and pre-row-editor UI checkpoint. Ongoing main UI edits require rerun before final acceptance.",
+  "limitations": [
+    "Default ignored tests were run separately against owned loopback fixtures; native Keychain is separate.",
+    "GUI/drop/physical IME/performance are separate evidence, not implied by cargo tests.",
+    "Concurrent source changes mean this is a checkpoint, not immutable release certification."
+  ]
+}

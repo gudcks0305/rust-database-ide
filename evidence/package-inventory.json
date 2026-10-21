@@ -1,0 +1,4297 @@
+{
+  "evidence_type": "ordinary-shell-python-static-inventory; not REA Evidence",
+  "version": "2026.2.6",
+  "build": "262.10968.148",
+  "product_info_sha256": "ed59b5f2344e00ca2028045090d5b6281392049bc8ae040a68a374d2f49ea4fc",
+  "all_jar_count": 973,
+  "all_jar_bytes": 2033497118,
+  "selection": "database|datagrip|datagrid|^intellij\\.sql",
+  "selected_layout_entries": 118,
+  "selected_jar_count": 118,
+  "selected_class_entries": 28999,
+  "modules": [
+    {
+      "name": "com.intellij.database",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/DatabaseTools/lib/database-plugin.jar",
+        "plugins/DatabaseTools/lib/tips-database-plugin.jar",
+        "plugins/DatabaseTools/lib/intellij.platform.commercial.verifier.jar"
+      ]
+    },
+    {
+      "name": "com.intellij.database.ide",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/datagrip-impl/lib/datagrip-impl.jar",
+        "plugins/datagrip-impl/lib/tips-datagrip.jar",
+        "plugins/datagrip-impl/lib/intellij.platform.commercial.verifier.jar"
+      ]
+    },
+    {
+      "name": "com.intellij.modules.database",
+      "kind": "pluginAlias"
+    },
+    {
+      "name": "com.intellij.modules.database-capable",
+      "kind": "pluginAlias"
+    },
+    {
+      "name": "com.intellij.modules.database.connectivity",
+      "kind": "pluginAlias"
+    },
+    {
+      "name": "com.intellij.modules.database.core",
+      "kind": "pluginAlias"
+    },
+    {
+      "name": "com.intellij.modules.datagrip",
+      "kind": "pluginAlias"
+    },
+    {
+      "name": "com.intellij.plugins.datagrip.solarized.colorscheme",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/color-scheme-solarized-datagrip/lib/color-scheme-solarized-datagrip.jar"
+      ]
+    },
+    {
+      "name": "intellij.database",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.ai",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.ai.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.artifactsBundle",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/database-artifactsBundle/lib/database-artifactsBundle.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.backend.split",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.backend.split.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.cliCommands",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.cliCommands.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.cloudExplorer.aws",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/database-cloudExplorer-aws/lib/database-cloudExplorer-aws.jar",
+        "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.rds.jar",
+        "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.docdb.jar",
+        "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.redshift.jar",
+        "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.dynamodb.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.cloudExplorer.gcloud",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/database-cloudExplorer-gcloud/lib/database-cloudExplorer-gcloud.jar",
+        "plugins/database-cloudExplorer-gcloud/lib/google.cloud.bigquery.jar",
+        "plugins/database-cloudExplorer-gcloud/lib/google.apis.api.services.sqladmin.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.cloudExplorer.jba",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.cloudExplorer.jba.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.completionMlRanking",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.completionMlRanking.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.connectivity",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.connectivity.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.connectivity.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.connectivity.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.core.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.core.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.diagrams",
+      "kind": "moduleV2"
+    },
+    {
+      "name": "intellij.database.dialects.base",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.base.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.base.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.base.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.bigquery",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.bigquery.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.bigquery.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.bigquery.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.cassandra",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cassandra.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.cassandra.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cassandra.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.clickhouse",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.clickhouse.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.clickhouse.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.clickhouse.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.cockroach",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cockroach.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.cockroach.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cockroach.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.couchbase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.couchbase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.couchbase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.couchbase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.db2",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.db2.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.db2.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.db2.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.derby",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.derby.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.derby.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.derby.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.dynamo",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.dynamo.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.exasol",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.exasol.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.generic",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.generic.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.generic.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.generic.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.greenplum",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.greenplum.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.greenplum.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.greenplum.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.h2",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.h2.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.h2.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.h2.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.hive",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hive.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.hivebase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hivebase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.hsql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hsql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.maria",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.maria.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mongo",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mongo.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mongo.js.external",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.js.external.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mongo.sql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.sql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mssql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mssql.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mssql.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mysql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mysqlbase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mysqlbase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mysqlbase.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.oracle",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.oracle.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.oracle.ex.coverage",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.ex.coverage.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgres",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgres.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgres.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgres.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgresbase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresbase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgresbase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresbase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgresgreenplumbase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresgreenplumbase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgresgreenplumbase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresgreenplumbase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.redis",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redis.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.redis.backend",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redis.backend.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.redshift",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redshift.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.redshift.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redshift.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.snowflake",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.snowflake.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.snowflake.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.snowflake.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.spark",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.spark.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sql92",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sql92.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sqlite",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sqlite.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sqlite.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sqlite.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sybase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sybase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sybase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sybase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.vertica",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.vertica.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.vertica.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.vertica.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.docker",
+      "kind": "moduleV2"
+    },
+    {
+      "name": "intellij.database.flameGraphs",
+      "kind": "moduleV2"
+    },
+    {
+      "name": "intellij.database.frontend.split",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.frontend.split.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.grazie",
+      "kind": "moduleV2"
+    },
+    {
+      "name": "intellij.database.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.bookmarks",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.bookmarks.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.common",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.common.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.frontend",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.frontend.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.jcef",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.jcef.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.navbar",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.navbar.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.java",
+      "kind": "moduleV2"
+    },
+    {
+      "name": "intellij.database.jdbcConsole",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.jdbcConsole.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.jdbcConsole.shim",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.jdbcConsole.shim.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.mcp",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.mcp.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.plugin.frameworks",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.plugin.frameworks.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.pro",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.pro.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.backend.core",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.backend.core.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.common.core",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.common.core.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.common.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.common.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.copyright",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.copyright.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.core.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.core.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.frontend.core",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.frontend.core.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.frontend.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.frontend.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.intelliLang",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.intelliLang.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.ssh",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.ssh.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.ssh.ui",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.ssh.ui.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.trialPromotion.idesWithFreeTier",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.trialPromotion.idesWithFreeTier.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.util",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.util.jar"
+      ]
+    },
+    {
+      "name": "intellij.datagrip.common",
+      "kind": "productModuleV2",
+      "classPath": [
+        "lib/intellij.datagrip.common.jar"
+      ]
+    },
+    {
+      "name": "intellij.datagrip.featuresTrainer",
+      "kind": "productModuleV2",
+      "classPath": [
+        "lib/intellij.datagrip.featuresTrainer.jar"
+      ]
+    },
+    {
+      "name": "intellij.datagrip.frontend.customization",
+      "kind": "productModuleV2",
+      "classPath": [
+        "lib/intellij.datagrip.frontend.customization.jar"
+      ]
+    },
+    {
+      "name": "intellij.datagrip.frontend.welcomeScreen.featuresTrainer",
+      "kind": "productModuleV2",
+      "classPath": [
+        "lib/intellij.datagrip.frontend.welcomeScreen.featuresTrainer.jar"
+      ]
+    },
+    {
+      "name": "intellij.datagrip.llmInstaller",
+      "kind": "productModuleV2",
+      "classPath": [
+        "lib/intellij.datagrip.llmInstaller.jar"
+      ]
+    }
+  ],
+  "archives": [
+    {
+      "path": "lib/intellij.datagrip.common.jar",
+      "bytes": 2573,
+      "sha256": "be640db0c595b59d97a1b1d695f7dffd6d589043272d19bbabe8b2dbd8e85494",
+      "entries": 5,
+      "classes": 1,
+      "class_packages": {
+        "com/intellij/datagrip/common/welcomeScreen": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "lib/intellij.datagrip.featuresTrainer.jar",
+      "bytes": 277775,
+      "sha256": "bbe913f61fbcabf7b8f03a031ac83aa17b92a6d3fbb1715a2f63b35de47820f8",
+      "entries": 44,
+      "classes": 40,
+      "class_packages": {
+        "com/intellij/datagrip/featuresTrainer/lesson/essential": 29,
+        "com/intellij/datagrip/featuresTrainer": 11
+      },
+      "concept_candidates": {
+        "editing_grid": {
+          "count": 1,
+          "sample": [
+            "com/intellij/datagrip/featuresTrainer/lesson/essential/OnboardingGridMutation.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "lib/intellij.datagrip.frontend.customization.jar",
+      "bytes": 132406,
+      "sha256": "c6a030167e628bc00dd675c113434e89242fd3feb05edba81d271b22d91a058d",
+      "entries": 36,
+      "classes": 22,
+      "class_packages": {
+        "com/intellij/datagrip/frontend/customization": 9,
+        "com/intellij/datagrip/frontend/customization/welcomeScreen": 8,
+        "com/intellij/datagrip/frontend/customization/actions": 4,
+        "com/intellij/datagrip/frontend/customization/searchEverywhere": 1
+      },
+      "concept_candidates": {},
+      "descriptors": [
+        {
+          "path": "META-INF/DGFrontendMainMenuActions.xml",
+          "root": "idea-plugin",
+          "id": null,
+          "name": null,
+          "depends": [],
+          "extensions": 1,
+          "actions": 3,
+          "module_names": []
+        }
+      ]
+    },
+    {
+      "path": "lib/intellij.datagrip.frontend.welcomeScreen.featuresTrainer.jar",
+      "bytes": 1962182,
+      "sha256": "9f5cdb270b2202daf74ea239ec81ba33e3c719eb555b1287eee3e449a11b6754",
+      "entries": 14,
+      "classes": 7,
+      "class_packages": {
+        "com/intellij/datagrip/frontend/welcomeScreen/featuresTrainer": 7
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "lib/intellij.datagrip.llmInstaller.jar",
+      "bytes": 2927,
+      "sha256": "e5b63714142a46e84aa5681b5ea77fb7455932891f62b1591923af3751b49a98",
+      "entries": 4,
+      "classes": 1,
+      "class_packages": {
+        "com/intellij/datagrip/llmInstaller/welcomeScreen": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/database-plugin.jar",
+      "bytes": 7167638,
+      "sha256": "d97896c0be18aebd7e0ac31dfda946192725e4997444bdd5c66d639d1511bd73",
+      "entries": 96,
+      "classes": 57,
+      "class_packages": {
+        "com/intellij/database/diagram": 15,
+        "com/intellij/database/diagram/plan": 14,
+        "com/intellij/database/docker/cli": 9,
+        "com/intellij/database/diagram/actions": 7,
+        "com/intellij/database/flameGraph/plan": 4,
+        "com/intellij/database/docker/utils": 3,
+        "com/intellij/database/plugin": 2,
+        "com/intellij/database/docker/compose": 1,
+        "com/intellij/database/grazie": 1,
+        "com/intellij/database/java": 1
+      },
+      "concept_candidates": {},
+      "descriptors": [
+        {
+          "path": "META-INF/AllDatabaseDialects.xml",
+          "root": "idea-plugin",
+          "id": null,
+          "name": null,
+          "depends": [],
+          "extensions": 0,
+          "actions": 0,
+          "module_names": [
+            "intellij.database.dialects.mysqlbase.impl",
+            "intellij.database.dialects.mssql.impl"
+          ]
+        },
+        {
+          "path": "META-INF/DatabaseDialectsEx.xml",
+          "root": "idea-plugin",
+          "id": null,
+          "name": null,
+          "depends": [],
+          "extensions": 0,
+          "actions": 0,
+          "module_names": [
+            "intellij.database.dialects.base.ex",
+            "intellij.database.dialects.bigquery.ex",
+            "intellij.database.dialects.cassandra.ex",
+            "intellij.database.dialects.clickhouse.ex",
+            "intellij.database.dialects.cockroach.ex",
+            "intellij.database.dialects.couchbase.ex",
+            "intellij.database.dialects.db2.ex",
+            "intellij.database.dialects.derby.ex",
+            "intellij.database.dialects.dynamo",
+            "intellij.database.dialects.generic.ex",
+            "intellij.database.dialects.greenplum.ex",
+            "intellij.database.dialects.h2.ex",
+            "intellij.database.dialects.postgresbase.ex",
+            "intellij.database.dialects.postgres.ex",
+            "intellij.database.dialects.postgresgreenplumbase.ex",
+            "intellij.database.dialects.mysqlbase.ex",
+            "intellij.database.dialects.mssql.ex",
+            "intellij.database.dialects.sqlite.ex",
+            "intellij.database.dialects.oracle.ex",
+            "intellij.database.dialects.oracle.ex.coverage",
+            "intellij.database.dialects.mongo.ex",
+            "intellij.database.dialects.mongo.js.external",
+            "intellij.database.dialects.redshift.ex",
+            "intellij.database.dialects.snowflake.ex",
+            "intellij.database.dialects.sybase.ex",
+            "intellij.database.dialects.vertica.ex"
+          ]
+        },
+        {
+          "path": "META-INF/AllDatabaseDialectsCore.xml",
+          "root": "idea-plugin",
+          "id": null,
+          "name": null,
+          "depends": [],
+          "extensions": 0,
+          "actions": 0,
+          "module_names": [
+            "intellij.database.dialects.base",
+            "intellij.database.dialects.sql92",
+            "intellij.database.dialects.generic",
+            "intellij.database.dialects.bigquery",
+            "intellij.database.dialects.cassandra",
+            "intellij.database.dialects.clickhouse",
+            "intellij.database.dialects.cockroach",
+            "intellij.database.dialects.couchbase",
+            "intellij.database.dialects.db2",
+            "intellij.database.dialects.derby",
+            "intellij.database.dialects.exasol",
+            "intellij.database.dialects.greenplum",
+            "intellij.database.dialects.h2",
+            "intellij.database.dialects.hivebase",
+            "intellij.database.dialects.hive",
+            "intellij.database.dialects.hsql",
+            "intellij.database.dialects.postgresbase",
+            "intellij.database.dialects.postgres",
+            "intellij.database.dialects.postgresgreenplumbase",
+            "intellij.database.dialects.sqlite",
+            "intellij.database.dialects.mysql",
+            "intellij.database.dialects.mysqlbase",
+            "intellij.database.dialects.maria",
+            "intellij.database.dialects.mssql",
+            "intellij.database.dialects.oracle",
+            "intellij.database.dialects.redis",
+            "intellij.database.dialects.redis.backend",
+            "intellij.database.dialects.redshift",
+            "intellij.database.dialects.mongo",
+            "intellij.database.dialects.mongo.sql",
+            "intellij.database.dialects.snowflake",
+            "intellij.database.dialects.spark",
+            "intellij.database.dialects.sybase",
+            "intellij.database.dialects.vertica"
+          ]
+        },
+        {
+          "path": "META-INF/plugin.xml",
+          "root": "idea-plugin",
+          "id": "com.intellij.database",
+          "name": "Database Tools and SQL",
+          "depends": [],
+          "extensions": 11,
+          "actions": 0,
+          "module_names": [
+            "intellij.database.diagrams",
+            "intellij.database.flameGraphs",
+            "intellij.database.docker",
+            "intellij.database.grazie",
+            "intellij.database.java",
+            "intellij.database.cloudExplorer.jba",
+            "intellij.database.impl.bookmarks",
+            "intellij.database.impl.frontend",
+            "intellij.database.impl.navbar",
+            "intellij.database.ai",
+            "intellij.database.mcp",
+            "intellij.database.ssh",
+            "intellij.database.ssh.ui",
+            "intellij.database.completionMlRanking",
+            "intellij.database.sql.copyright",
+            "intellij.database.sql.intelliLang",
+            "intellij.database.sql.frontend.core",
+            "intellij.database.sql.frontend.impl",
+            "intellij.database.frontend.split",
+            "intellij.database.backend.split",
+            "intellij.database.trialPromotion.idesWithFreeTier",
+            "intellij.database.pro",
+            "intellij.database",
+            "intellij.database.util",
+            "intellij.database.sql",
+            "intellij.database.impl",
+            "intellij.database.impl.jcef",
+            "intellij.database.connectivity",
+            "intellij.database.connectivity.ex",
+            "intellij.database.jdbcConsole",
+            "intellij.database.jdbcConsole.shim",
+            "intellij.database.core.impl",
+            "intellij.database.sql.core.impl",
+            "intellij.database.sql.impl",
+            "intellij.database.sql.backend.core",
+            "intellij.database.sql.common.core",
+            "intellij.database.sql.common.impl",
+            "intellij.database.impl.common",
+            "intellij.database.plugin.frameworks",
+            "intellij.database.cliCommands",
+            "intellij.libraries.jts.io.common",
+            "intellij.platform.commercial.verifier",
+            "intellij.database.dialects.mysqlbase.impl",
+            "intellij.database.dialects.mssql.impl",
+            "intellij.database.dialects.base",
+            "intellij.database.dialects.sql92",
+            "intellij.database.dialects.generic",
+            "intellij.database.dialects.bigquery",
+            "intellij.database.dialects.cassandra",
+            "intellij.database.dialects.clickhouse",
+            "intellij.database.dialects.cockroach",
+            "intellij.database.dialects.couchbase",
+            "intellij.database.dialects.db2",
+            "intellij.database.dialects.derby",
+            "intellij.database.dialects.exasol",
+            "intellij.database.dialects.greenplum",
+            "intellij.database.dialects.h2",
+            "intellij.database.dialects.hivebase",
+            "intellij.database.dialects.hive",
+            "intellij.database.dialects.hsql",
+            "intellij.database.dialects.postgresbase",
+            "intellij.database.dialects.postgres",
+            "intellij.database.dialects.postgresgreenplumbase",
+            "intellij.database.dialects.sqlite",
+            "intellij.database.dialects.mysql",
+            "intellij.database.dialects.mysqlbase",
+            "intellij.database.dialects.maria",
+            "intellij.database.dialects.mssql",
+            "intellij.database.dialects.oracle",
+            "intellij.database.dialects.redis",
+            "intellij.database.dialects.redis.backend",
+            "intellij.database.dialects.redshift",
+            "intellij.database.dialects.mongo",
+            "intellij.database.dialects.mongo.sql",
+            "intellij.database.dialects.snowflake",
+            "intellij.database.dialects.spark",
+            "intellij.database.dialects.sybase",
+            "intellij.database.dialects.vertica",
+            "intellij.database.dialects.base.ex",
+            "intellij.database.dialects.bigquery.ex",
+            "intellij.database.dialects.cassandra.ex",
+            "intellij.database.dialects.clickhouse.ex",
+            "intellij.database.dialects.cockroach.ex",
+            "intellij.database.dialects.couchbase.ex",
+            "intellij.database.dialects.db2.ex",
+            "intellij.database.dialects.derby.ex",
+            "intellij.database.dialects.dynamo",
+            "intellij.database.dialects.generic.ex",
+            "intellij.database.dialects.greenplum.ex",
+            "intellij.database.dialects.h2.ex",
+            "intellij.database.dialects.postgresbase.ex",
+            "intellij.database.dialects.postgres.ex",
+            "intellij.database.dialects.postgresgreenplumbase.ex",
+            "intellij.database.dialects.mysqlbase.ex",
+            "intellij.database.dialects.mssql.ex",
+            "intellij.database.dialects.sqlite.ex",
+            "intellij.database.dialects.oracle.ex",
+            "intellij.database.dialects.oracle.ex.coverage",
+            "intellij.database.dialects.mongo.ex",
+            "intellij.database.dialects.mongo.js.external",
+            "intellij.database.dialects.redshift.ex",
+            "intellij.database.dialects.snowflake.ex",
+            "intellij.database.dialects.sybase.ex",
+            "intellij.database.dialects.vertica.ex"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/intellij.platform.commercial.verifier.jar",
+      "bytes": 6205,
+      "sha256": "da71880cf4b3678eeba113b8280dd66cdd025115569d4e8ef1c09d94b02cca6c",
+      "entries": 3,
+      "classes": 1,
+      "class_packages": {
+        "com/intellij/ultimate": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.ai.jar",
+      "bytes": 361129,
+      "sha256": "c8f6e898f22da8bf3ce440d4b960ac05cd4f3b348024a991fccf8afe4ce95f87",
+      "entries": 90,
+      "classes": 85,
+      "class_packages": {
+        "com/intellij/database/ai/queryProcessing": 34,
+        "com/intellij/database/ai/dataSources": 21,
+        "com/intellij/database/ai": 10,
+        "com/intellij/database/ai/consent": 8,
+        "com/intellij/database/ai/settings": 8,
+        "com/intellij/database/ai/safety": 4
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/ai/IntrospectionHelpersKt$introspectByPath$1.class",
+            "com/intellij/database/ai/IntrospectionHelpersKt$refreshModelQuietly$1.class",
+            "com/intellij/database/ai/IntrospectionHelpersKt.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.backend.split.jar",
+      "bytes": 659,
+      "sha256": "eb3608536f35eb8aa228d8c419c0e8794c9fb36ccc6bd299704dc5e9292db3c0",
+      "entries": 2,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.cliCommands.jar",
+      "bytes": 644434,
+      "sha256": "55464d75e0d00ee4d7dac729d39156b804941458debcf76f7178e6b65a0836c6",
+      "entries": 117,
+      "classes": 112,
+      "class_packages": {
+        "com/intellij/database/cliCommands/dataSources/actions": 73,
+        "com/intellij/database/cliCommands/dataSources/commands": 23,
+        "com/intellij/database/cliCommands/dataSources": 10,
+        "com/intellij/database/cliCommands/dataSources/statistics": 6
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.cloudExplorer.jba.jar",
+      "bytes": 27450,
+      "sha256": "92eb9e7b93e6dbc458daf82de4dbaaaa87ee80b535acfeccff302da21175b66e",
+      "entries": 8,
+      "classes": 5,
+      "class_packages": {
+        "com/intellij/database/cloudExplorer/jba": 5
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.completionMlRanking.jar",
+      "bytes": 518404,
+      "sha256": "1a37d88df91ec89cb422b2265692fde82889a39585d52ad988601265a8a19da3",
+      "entries": 14,
+      "classes": 5,
+      "class_packages": {
+        "com/intellij/sql/completion/ml": 5
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.connectivity.ex.jar",
+      "bytes": 138529,
+      "sha256": "e0715884ce2a982d61fa6a2efec2b5e2945dee20a10e3f6a61b43d0f87a47ff0",
+      "entries": 21,
+      "classes": 18,
+      "class_packages": {
+        "com/intellij/database/connectivity/ex/dataSource/artifacts": 18
+      },
+      "concept_candidates": {
+        "semantic_refactor": {
+          "count": 2,
+          "sample": [
+            "com/intellij/database/connectivity/ex/dataSource/artifacts/MavenItemResolverKt$createProgressConsumer$1.class",
+            "com/intellij/database/connectivity/ex/dataSource/artifacts/MavenItemResolverKt.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.connectivity.jar",
+      "bytes": 4146009,
+      "sha256": "7db382e788fb4245ab236afb0cffa0989aca5f55f6c721c49981aa509fc3d06c",
+      "entries": 844,
+      "classes": 656,
+      "class_packages": {
+        "com/intellij/database/dataSource": 154,
+        "com/intellij/database/console": 93,
+        "com/intellij/database/console/session": 69,
+        "com/intellij/database/util": 42,
+        "com/intellij/database/dataSource/srcStorage": 36,
+        "com/intellij/database/datagrid": 36,
+        "com/intellij/database/dataSource/srcStorage/backend": 26,
+        "com/intellij/database/run": 23,
+        "com/intellij/database/dataSource/history": 22,
+        "com/intellij/database/actions": 18,
+        "com/intellij/database/console/ssh": 18,
+        "com/intellij/database/run/session": 18
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 105,
+          "sample": [
+            "com/intellij/database/console/JdbcEngine$DisposalRollbackRequest.class",
+            "com/intellij/database/console/JdbcEngine$OperationBase$CommitOrRollback.class",
+            "com/intellij/database/console/JdbcEngine$OperationBase$Rollback.class",
+            "com/intellij/database/console/JdbcEngine$OperationBase$RollbackToSavepoint.class",
+            "com/intellij/database/console/JdbcEngine$TransactionOperation.class",
+            "com/intellij/database/console/SessionProgressListener.class",
+            "com/intellij/database/console/client/DatabaseScriptingSessionClient.class",
+            "com/intellij/database/console/client/DatabaseSessionClient$DetachTrigger.class"
+          ]
+        },
+        "execution_cancel": {
+          "count": 9,
+          "sample": [
+            "com/intellij/database/dataSource/CancellingDelegate.class",
+            "com/intellij/database/dataSource/DatabaseConnectionManager$Builder$createBlockingNonCancellable$1$1.class",
+            "com/intellij/database/dataSource/DatabaseConnectionManager$Builder$createBlockingNonCancellable$1.class",
+            "com/intellij/database/run/audit/CancelProgressAuditor$Companion$showTerminationNotification$1$1.class",
+            "com/intellij/database/run/audit/CancelProgressAuditor$Companion.class",
+            "com/intellij/database/run/audit/CancelProgressAuditor.class",
+            "com/intellij/database/run/audit/CancelProgressAuditorKt.class",
+            "com/intellij/database/run/session/MessageBusSessionState$CancelledStatus.class"
+          ]
+        },
+        "introspection": {
+          "count": 25,
+          "sample": [
+            "com/intellij/database/console/session/DatabaseSessionManager$Facade$SeparateIntrospectionSessionRouter.class",
+            "com/intellij/database/console/session/DatabaseSessionManager$SingleWithSeparateIntrospection.class",
+            "com/intellij/database/dataSource/DataSourceSyncManager$DbSyncProcessor$SyncIntrospectionSession.class",
+            "com/intellij/database/dataSource/DatabaseIntrospectionScheduleManager$Companion.class",
+            "com/intellij/database/dataSource/DatabaseIntrospectionScheduleManager$DataSourceListener$App.class",
+            "com/intellij/database/dataSource/DatabaseIntrospectionScheduleManager$DataSourceListener$Proj.class",
+            "com/intellij/database/dataSource/DatabaseIntrospectionScheduleManager$DataSourceListener.class",
+            "com/intellij/database/dataSource/DatabaseIntrospectionScheduleManager$DriverListener.class"
+          ]
+        },
+        "editing_grid": {
+          "count": 40,
+          "sample": [
+            "com/intellij/database/datagrid/ConsoleGridDataHookUp$MyBusAuditor.class",
+            "com/intellij/database/datagrid/ConsoleGridDataHookUp$MyLoader.class",
+            "com/intellij/database/datagrid/ConsoleGridDataHookUp$MyPathAuditor.class",
+            "com/intellij/database/datagrid/ConsoleGridDataHookUp.class",
+            "com/intellij/database/datagrid/DataBusGridDataHookUp$BusAuditor.class",
+            "com/intellij/database/datagrid/DataBusGridDataHookUp$DataBusLoader.class",
+            "com/intellij/database/datagrid/DataBusGridDataHookUp$QueryAttributes.class",
+            "com/intellij/database/datagrid/DataBusGridDataHookUp$ReloadPolicy.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dataSource/srcStorage/DbSrcModificationSession$MyRenameProcessor.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.core.impl.jar",
+      "bytes": 18769375,
+      "sha256": "35fa926f2980a9258c698982b0d6252f2f998d0a2009d320aba307cf5136d8cb",
+      "entries": 2385,
+      "classes": 2360,
+      "class_packages": {
+        "com/intellij/database/model/basic": 207,
+        "com/intellij/database/dataSource": 178,
+        "com/intellij/database/model": 165,
+        "com/intellij/database/util": 152,
+        "com/intellij/database/explorer/structure": 128,
+        "com/intellij/database/dataSource/connection/statements": 107,
+        "org/locationtech/proj4j/proj": 101,
+        "com/intellij/database/datagrid": 82,
+        "com/intellij/database/introspection": 80,
+        "com/intellij/database/dataSource/url/template": 73,
+        "com/intellij/database/script/generator/dml": 60,
+        "com/intellij/database/types": 56
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 13,
+          "sample": [
+            "com/intellij/database/dataSource/DataSourceSessionTemplate.class",
+            "com/intellij/database/datagrid/DataRequest$CrossSessionOwner.class",
+            "com/intellij/database/layoutedQueries/BaseSession.class",
+            "com/intellij/database/layoutedQueries/DBLeasedSession.class",
+            "com/intellij/database/layoutedQueries/DBSession.class",
+            "com/intellij/database/layoutedQueries/DBTransaction.class",
+            "com/intellij/database/layoutedQueries/InSession.class",
+            "com/intellij/database/layoutedQueries/InSessionNoResult.class"
+          ]
+        },
+        "execution_cancel": {
+          "count": 5,
+          "sample": [
+            "com/intellij/database/datagrid/DataRequest$Cancel.class",
+            "com/intellij/database/layoutedQueries/BaseQueryRunner$1.class",
+            "com/intellij/database/layoutedQueries/BaseQueryRunner.class",
+            "com/intellij/database/layoutedQueries/DBQueryRunner.class",
+            "com/intellij/database/util/AsyncTask$Companion$cancelIndicatorOnCancellation$1.class"
+          ]
+        },
+        "introspection": {
+          "count": 79,
+          "sample": [
+            "com/intellij/database/dataSource/JdbcIntrospectorNoEscapingOptionProvider.class",
+            "com/intellij/database/dataSource/JdbcIntrospectorOptionProvider.class",
+            "com/intellij/database/dataSource/srcStorage/DbSrcStorageDsMetadata$MetaData.class",
+            "com/intellij/database/dataSource/srcStorage/DbSrcStorageDsMetadata$MyDataExternalizer.class",
+            "com/intellij/database/dataSource/srcStorage/DbSrcStorageDsMetadata$MyKeyDescriptor.class",
+            "com/intellij/database/dataSource/srcStorage/DbSrcStorageDsMetadata.class",
+            "com/intellij/database/introspection/BriefIntrospectionTask.class",
+            "com/intellij/database/introspection/CheckUptodatenessIntrospectionTask.class"
+          ]
+        },
+        "editing_grid": {
+          "count": 24,
+          "sample": [
+            "org/locationtech/proj4j/datum/Grid$ConversionTable.class",
+            "org/locationtech/proj4j/datum/Grid.class",
+            "org/locationtech/proj4j/proj/NewZealandMapGridProjection.class",
+            "com/intellij/database/console/AbstractJsonGridColumnsManager$getColumns$$inlined$sortedBy$1.class",
+            "com/intellij/database/console/AbstractJsonGridColumnsManager.class",
+            "com/intellij/database/console/GridColumnsManager.class",
+            "com/intellij/database/console/GridColumnsManagerFactory$Companion.class",
+            "com/intellij/database/console/GridColumnsManagerFactory.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 20,
+          "sample": [
+            "com/intellij/database/dataSource/AwsProfileAuthProvider$AwsProfileCompletionProvider$cache$1.class",
+            "com/intellij/database/dataSource/AwsProfileAuthProvider$AwsProfileCompletionProvider.class",
+            "com/intellij/database/dataSource/DatabaseAuthParameterBuilderHelper$CompletionProvider.class",
+            "com/intellij/database/model/MemoryTextStorage$MyRenameProcessor.class",
+            "com/intellij/database/model/MergingRenameQueue$RenameItem.class",
+            "com/intellij/database/model/MergingRenameQueue$RenameProcessor.class",
+            "com/intellij/database/model/MergingRenameQueue$StampedRenameItem.class",
+            "com/intellij/database/model/MergingRenameQueue.class"
+          ]
+        },
+        "schema_diff": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/console/ConsolesMigrationManager.class",
+            "com/intellij/database/model/serialization/converters/Converter_4_25$Migration.class",
+            "com/intellij/database/script/DbSrcMigrationUtils.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.base.ex.jar",
+      "bytes": 117641,
+      "sha256": "b6be058502513df55241c269609ea30bd10958ac65bcdfaad2499ee283e2c194",
+      "entries": 22,
+      "classes": 19,
+      "class_packages": {
+        "com/intellij/database/dialects/base/generator": 12,
+        "com/intellij/database/dialects/base": 7
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.base.jar",
+      "bytes": 4094426,
+      "sha256": "4af89acdf851d72375b39dabd9d2c131e11ee42e59756d996c2950ea23a38795",
+      "entries": 635,
+      "classes": 562,
+      "class_packages": {
+        "com/intellij/database/dialects/base/generator/producers": 144,
+        "com/intellij/database/dialects/base/introspector": 111,
+        "com/intellij/database/dialects/base/generator": 97,
+        "com/intellij/database/dialects/base/introspector/jdbc/wrappers": 67,
+        "com/intellij/database/dialects/base": 53,
+        "com/intellij/sql/dialects/base": 48,
+        "com/intellij/database/dialects/base/generator/dml": 12,
+        "com/intellij/database/dialects/base/introspector/jdbc": 11,
+        "com/intellij/database/dialects/base/plan": 11,
+        "com/intellij/sql/dialects/base/psi": 4,
+        "com/intellij/database/dialects/base/types": 2,
+        "com/intellij/sql/dialects/base/psi/stubs": 2
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/base/introspector/AuditFacade$Session.class"
+          ]
+        },
+        "introspection": {
+          "count": 91,
+          "sample": [
+            "com/intellij/database/dialects/base/introspector/BaseIntrospectionFunctions$modifyFamiliesAndCleanup$1.class",
+            "com/intellij/database/dialects/base/introspector/BaseIntrospectionFunctions$modifyFamiliesAndCleanup$2.class",
+            "com/intellij/database/dialects/base/introspector/BaseIntrospectionFunctions.class",
+            "com/intellij/database/dialects/base/introspector/BaseIntrospector$Companion.class",
+            "com/intellij/database/dialects/base/introspector/BaseIntrospector$ConnectionApplicability.class",
+            "com/intellij/database/dialects/base/introspector/BaseIntrospector$DefaultNature.class",
+            "com/intellij/database/dialects/base/introspector/BaseIntrospector$Nature.class",
+            "com/intellij/database/dialects/base/introspector/BaseIntrospector$WhenMappings.class"
+          ]
+        },
+        "editing_grid": {
+          "count": 4,
+          "sample": [
+            "com/intellij/database/dialects/base/BaseGridColumnsManager.class",
+            "com/intellij/database/dialects/base/BaseGridHelper.class",
+            "com/intellij/database/dialects/base/BaseGridHelperKt$WhenMappings.class",
+            "com/intellij/database/dialects/base/BaseGridHelperKt.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 2,
+          "sample": [
+            "com/intellij/database/dialects/base/generator/RefQualification$Resolved.class",
+            "com/intellij/database/dialects/base/generator/RefQualification$UnResolved.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.bigquery.ex.jar",
+      "bytes": 50640,
+      "sha256": "81010caaa9af37a4324cecf217e90a93242dc57fc35443ea64e1d2a6d41c43c0",
+      "entries": 11,
+      "classes": 8,
+      "class_packages": {
+        "com/intellij/database/dialects/bigquery": 8
+      },
+      "concept_candidates": {
+        "editing_grid": {
+          "count": 4,
+          "sample": [
+            "com/intellij/database/dialects/bigquery/BigQueryGridColumnsManager.class",
+            "com/intellij/database/dialects/bigquery/BigQueryGridColumnsManagerFactory.class",
+            "com/intellij/database/dialects/bigquery/BigQueryGridColumnsManagerKt.class",
+            "com/intellij/database/dialects/bigquery/BigQueryGridHelper.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.bigquery.jar",
+      "bytes": 1581136,
+      "sha256": "cfbe004a3352e9ff54ca02a9626d1ead0b7bf53b81794bbdf04e24eab7ea4422",
+      "entries": 235,
+      "classes": 229,
+      "class_packages": {
+        "com/intellij/database/dialects/bigquery/generator/producers": 52,
+        "com/intellij/database/dialects/bigquery/model": 44,
+        "com/intellij/sql/dialects/bigquery/psi": 38,
+        "com/intellij/database/dialects/bigquery": 28,
+        "com/intellij/database/dialects/bigquery/introspector": 26,
+        "com/intellij/sql/dialects/bigquery": 26,
+        "com/intellij/database/dialects/bigquery/generator": 5,
+        "com/intellij/database/dialects/bigquery/types": 4,
+        "com/intellij/database/dialects/bigquery/model/properties": 2,
+        "com/intellij/database/dialects/bigquery/generator/dml": 1,
+        "com/intellij/database/dialects/bigquery/introspector/jdbc": 1,
+        "com/intellij/sql/dialects/bigquery/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 15,
+          "sample": [
+            "com/intellij/database/dialects/bigquery/introspector/BigQueryIntrospectionException.class",
+            "com/intellij/database/dialects/bigquery/introspector/BigQueryIntrospector$BigQueryDatabaseRetriever.class",
+            "com/intellij/database/dialects/bigquery/introspector/BigQueryIntrospector$BigQuerySchemaRetriever$processMatViewOption$1.class",
+            "com/intellij/database/dialects/bigquery/introspector/BigQueryIntrospector$BigQuerySchemaRetriever$processMatViewOption$3.class",
+            "com/intellij/database/dialects/bigquery/introspector/BigQueryIntrospector$BigQuerySchemaRetriever$processTableOption$1.class",
+            "com/intellij/database/dialects/bigquery/introspector/BigQueryIntrospector$BigQuerySchemaRetriever$processTableOption$3.class",
+            "com/intellij/database/dialects/bigquery/introspector/BigQueryIntrospector$BigQuerySchemaRetriever$retrieveTableAndViewColumns$$inlined$modifyFamiliesAndCleanup$1.class",
+            "com/intellij/database/dialects/bigquery/introspector/BigQueryIntrospector$BigQuerySchemaRetriever$retrieveTableAndViewColumns$$inlined$modifyFamiliesAndCleanup$2.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "com/intellij/sql/dialects/bigquery/psi/BigQueryRenamePipeExpression.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cassandra.ex.jar",
+      "bytes": 43106,
+      "sha256": "411e0f08992a2e276a6ee056c66555dd423d0638f7a5890017390885cf0202da",
+      "entries": 11,
+      "classes": 8,
+      "class_packages": {
+        "com/intellij/database/dialects/cassandra/schemaEditor/ui": 4,
+        "com/intellij/database/dialects/cassandra/model": 2,
+        "com/intellij/database/dialects/cassandra/schemaEditor/model/applier": 2
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cassandra.jar",
+      "bytes": 1854298,
+      "sha256": "b92957b129001674df572ed5ea6fab95eb84458def9671e3929d2cfb24f79dce",
+      "entries": 263,
+      "classes": 257,
+      "class_packages": {
+        "com/intellij/database/dialects/cassandra/generator/producers": 68,
+        "com/intellij/database/dialects/cassandra/model": 61,
+        "com/intellij/database/dialects/cassandra/introspector": 47,
+        "com/intellij/sql/dialects/cassandra": 26,
+        "com/intellij/sql/dialects/cassandra/psi": 14,
+        "com/intellij/database/dialects/cassandra/types": 13,
+        "com/intellij/database/dialects/cassandra": 12,
+        "com/intellij/database/dialects/cassandra/generator": 4,
+        "com/intellij/database/dialects/cassandra/model/properties": 4,
+        "com/intellij/database/dialects/cassandra/model/defaults": 3,
+        "com/intellij/database/dialects/cassandra/generator/dml": 2,
+        "com/intellij/sql/dialects/cassandra/formatter": 2
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 25,
+          "sample": [
+            "com/intellij/database/dialects/cassandra/introspector/CassIntrospector$CassSchemaRetriever$ColumnSorter$WhenMappings.class",
+            "com/intellij/database/dialects/cassandra/introspector/CassIntrospector$CassSchemaRetriever$ColumnSorter.class",
+            "com/intellij/database/dialects/cassandra/introspector/CassIntrospector$CassSchemaRetriever$createKey$$inlined$sortedBy$1.class",
+            "com/intellij/database/dialects/cassandra/introspector/CassIntrospector$CassSchemaRetriever$createKey$$inlined$sortedBy$2.class",
+            "com/intellij/database/dialects/cassandra/introspector/CassIntrospector$CassSchemaRetriever$retrieveAggregates$lambda$0$0$1$$inlined$sortedBy$1.class",
+            "com/intellij/database/dialects/cassandra/introspector/CassIntrospector$CassSchemaRetriever$retrieveColumns$$inlined$modifyFamiliesAndCleanup$1.class",
+            "com/intellij/database/dialects/cassandra/introspector/CassIntrospector$CassSchemaRetriever$retrieveColumns$$inlined$modifyFamiliesAndCleanup$2.class",
+            "com/intellij/database/dialects/cassandra/introspector/CassIntrospector$CassSchemaRetriever$retrieveColumns$2$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 4,
+          "sample": [
+            "com/intellij/database/dialects/cassandra/generator/producers/CassAlterDefTypeAttribute$produceRename$lambda$0$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/cassandra/generator/producers/CassAlterDefTypeAttribute$produceRename$lambda$0$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/cassandra/generator/producers/CassAlterTableColumn$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/cassandra/generator/producers/CassAlterTableColumn$produceRename$lambda$0$$inlined$name$2.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.clickhouse.ex.jar",
+      "bytes": 3597,
+      "sha256": "9a3ecda5a3a698d76767135b8bb8330bc170833e0542cfc92c725afe112e802d",
+      "entries": 4,
+      "classes": 1,
+      "class_packages": {
+        "com/intellij/database/dialects/clickhouse/model": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.clickhouse.jar",
+      "bytes": 2083842,
+      "sha256": "8d68fa21324212a276585ab47e2f4f34e63eff0ffaad4b80edf5af167388e2db",
+      "entries": 252,
+      "classes": 243,
+      "class_packages": {
+        "com/intellij/database/dialects/clickhouse/model": 52,
+        "com/intellij/database/dialects/clickhouse/generator/producers": 51,
+        "com/intellij/sql/dialects/clickhouse": 40,
+        "com/intellij/database/dialects/clickhouse/types": 25,
+        "com/intellij/sql/dialects/clickhouse/psi": 24,
+        "com/intellij/database/dialects/clickhouse/introspector": 23,
+        "com/intellij/database/dialects/clickhouse": 13,
+        "com/intellij/database/dialects/clickhouse/plan": 5,
+        "com/intellij/database/dialects/clickhouse/generator": 4,
+        "com/intellij/sql/dialects/clickhouse/formatter": 2,
+        "com/intellij/database/dialects/clickhouse/generator/dml": 1,
+        "com/intellij/database/dialects/clickhouse/introspector/jdbc": 1
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/clickhouse/CHouseAutoSessionOption.class"
+          ]
+        },
+        "introspection": {
+          "count": 17,
+          "sample": [
+            "com/intellij/database/dialects/clickhouse/introspector/CHouseIntrospector$CHouseDatabaseRetriever.class",
+            "com/intellij/database/dialects/clickhouse/introspector/CHouseIntrospector$CHouseNativeRetriever.class",
+            "com/intellij/database/dialects/clickhouse/introspector/CHouseIntrospector$CHouseSchemaRetriever$process$lambda$2$$inlined$writeSources$1.class",
+            "com/intellij/database/dialects/clickhouse/introspector/CHouseIntrospector$CHouseSchemaRetriever$retrieveColumns$$inlined$modifyFamiliesAndCleanup$1.class",
+            "com/intellij/database/dialects/clickhouse/introspector/CHouseIntrospector$CHouseSchemaRetriever$retrieveColumns$$inlined$modifyFamiliesAndCleanup$2.class",
+            "com/intellij/database/dialects/clickhouse/introspector/CHouseIntrospector$CHouseSchemaRetriever$retrieveTableSources$$inlined$modifyFamiliesAndCleanup$1.class",
+            "com/intellij/database/dialects/clickhouse/introspector/CHouseIntrospector$CHouseSchemaRetriever$retrieveTableSources$$inlined$modifyFamiliesAndCleanup$2.class",
+            "com/intellij/database/dialects/clickhouse/introspector/CHouseIntrospector$CHouseSchemaRetriever.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 4,
+          "sample": [
+            "com/intellij/database/dialects/clickhouse/generator/producers/CHouseAlterRole$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/clickhouse/generator/producers/CHouseAlterTable$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/clickhouse/generator/producers/CHouseAlterUser$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/clickhouse/generator/producers/CHouseAlterView$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cockroach.ex.jar",
+      "bytes": 1086,
+      "sha256": "c4968bd363178db45ed70445a5c5dc789f4f88ee2b0554fff236f7f4699ed449",
+      "entries": 2,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cockroach.jar",
+      "bytes": 2271949,
+      "sha256": "66d9d44590fd36d1fa369e9a8abc5dbd4f42ce3e60692e2458c8c7e29444823e",
+      "entries": 160,
+      "classes": 150,
+      "class_packages": {
+        "com/intellij/database/dialects/cockroach/model": 58,
+        "com/intellij/database/dialects/cockroach/generator/producers": 34,
+        "com/intellij/sql/dialects/cockroach": 26,
+        "com/intellij/sql/dialects/cockroach/psi": 13,
+        "com/intellij/database/dialects/cockroach/introspector": 7,
+        "com/intellij/database/dialects/cockroach": 4,
+        "com/intellij/database/dialects/cockroach/generator": 3,
+        "com/intellij/sql/dialects/cockroach/psi/resolve": 2,
+        "com/intellij/database/dialects/cockroach/model/properties": 1,
+        "com/intellij/sql/dialects/cockroach/formatter": 1,
+        "com/intellij/sql/dialects/cockroach/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 6,
+          "sample": [
+            "com/intellij/database/dialects/cockroach/introspector/CRoachIntrospector$Companion.class",
+            "com/intellij/database/dialects/cockroach/introspector/CRoachIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/cockroach/introspector/CRoachIntrospector$Factory.class",
+            "com/intellij/database/dialects/cockroach/introspector/CRoachIntrospector$MyDatabaseRetriever.class",
+            "com/intellij/database/dialects/cockroach/introspector/CRoachIntrospector$MySchemaRetriever.class",
+            "com/intellij/database/dialects/cockroach/introspector/CRoachIntrospector.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.couchbase.ex.jar",
+      "bytes": 4169,
+      "sha256": "4631a582c36e68c13ae34bbdfbdb2a56a43ad367d699bd4f450692716381ec85",
+      "entries": 4,
+      "classes": 1,
+      "class_packages": {
+        "com/intellij/database/dialects/couchbase": 1
+      },
+      "concept_candidates": {
+        "editing_grid": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/couchbase/CouchbaseGridHelper.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.couchbase.jar",
+      "bytes": 863769,
+      "sha256": "a2b96453aee91e61205debe65615f16886df624d6efad21066be650ac0ddbb42",
+      "entries": 130,
+      "classes": 125,
+      "class_packages": {
+        "com/intellij/database/dialects/couchbase/model": 35,
+        "com/intellij/sql/dialects/couchbase": 25,
+        "com/intellij/database/dialects/couchbase/introspector": 22,
+        "com/intellij/database/dialects/couchbase": 15,
+        "com/intellij/sql/dialects/couchbase/psi": 10,
+        "com/intellij/database/dialects/couchbase/generator": 5,
+        "com/intellij/database/dialects/couchbase/generator/producers": 5,
+        "com/intellij/database/dialects/couchbase/types": 4,
+        "com/intellij/database/dialects/couchbase/generator/dml": 2,
+        "com/intellij/database/dialects/couchbase/model/defaults": 1,
+        "com/intellij/sql/dialects/couchbase/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 13,
+          "sample": [
+            "com/intellij/database/dialects/couchbase/introspector/CouchbaseIntrospector$Companion.class",
+            "com/intellij/database/dialects/couchbase/introspector/CouchbaseIntrospector$CouchbaseSchemaRetriever$cleanupFamiliesWithoutSort$1.class",
+            "com/intellij/database/dialects/couchbase/introspector/CouchbaseIntrospector$CouchbaseSchemaRetriever$cleanupFamiliesWithoutSort$2.class",
+            "com/intellij/database/dialects/couchbase/introspector/CouchbaseIntrospector$CouchbaseSchemaRetriever$retrieveColumnsWithInfer$lambda$1$0$$inlined$sortedBy$1.class",
+            "com/intellij/database/dialects/couchbase/introspector/CouchbaseIntrospector$CouchbaseSchemaRetriever$retrieveColumnsWithSampling$lambda$1$0$$inlined$sortedBy$1.class",
+            "com/intellij/database/dialects/couchbase/introspector/CouchbaseIntrospector$CouchbaseSchemaRetriever.class",
+            "com/intellij/database/dialects/couchbase/introspector/CouchbaseIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/couchbase/introspector/CouchbaseIntrospector$Factory.class"
+          ]
+        },
+        "editing_grid": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/couchbase/CouchbaseGridColumnsManager$Companion.class",
+            "com/intellij/database/dialects/couchbase/CouchbaseGridColumnsManager.class",
+            "com/intellij/database/dialects/couchbase/CouchbaseGridColumnsManagerFactory.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.db2.ex.jar",
+      "bytes": 8364,
+      "sha256": "e9e77076582620da13e64f3044b9f38827d8e2ad5ac0a6a09a93be5c97d85e84",
+      "entries": 4,
+      "classes": 1,
+      "class_packages": {
+        "com/intellij/database/dialects/db2/model": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.db2.jar",
+      "bytes": 4427743,
+      "sha256": "54205c13014cdcd98aabd6b964e967c324a937c6614079013a18fabdea109dc3",
+      "entries": 428,
+      "classes": 415,
+      "class_packages": {
+        "com/intellij/database/dialects/db2/model": 120,
+        "com/intellij/database/dialects/db2/generator/producers": 95,
+        "com/intellij/database/dialects/db2/introspector": 90,
+        "com/intellij/sql/dialects/db2": 34,
+        "com/intellij/database/dialects/db2/model/properties": 16,
+        "com/intellij/database/dialects/db2/generator": 14,
+        "com/intellij/database/dialects/db2": 13,
+        "com/intellij/database/dialects/db2/plan": 11,
+        "com/intellij/sql/dialects/db2/psi": 7,
+        "com/intellij/sql/dialects/db2/iseries": 4,
+        "com/intellij/sql/dialects/db2/zos": 4,
+        "com/intellij/sql/dialects/db2/refactoring": 3
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/db2/model/properties/Db2CommitOnReturnPolicy.class"
+          ]
+        },
+        "introspection": {
+          "count": 50,
+          "sample": [
+            "com/intellij/database/dialects/db2/introspector/Db2Introspector$Companion.class",
+            "com/intellij/database/dialects/db2/introspector/Db2Introspector$Db2SchemaRetriever$WhenMappings.class",
+            "com/intellij/database/dialects/db2/introspector/Db2Introspector$Db2SchemaRetriever$retrieveCheckDetails$lambda$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/db2/introspector/Db2Introspector$Db2SchemaRetriever$retrieveColumns$lambda$0$3$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/db2/introspector/Db2Introspector$Db2SchemaRetriever$retrieveConditions$1.class",
+            "com/intellij/database/dialects/db2/introspector/Db2Introspector$Db2SchemaRetriever$retrieveConstraintColumns$lambda$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/db2/introspector/Db2Introspector$Db2SchemaRetriever$retrieveConstraintColumns$lambda$0$0$$inlined$get$2.class",
+            "com/intellij/database/dialects/db2/introspector/Db2Introspector$Db2SchemaRetriever$retrieveConstraints$lambda$0$$inlined$modifyFamiliesAndCleanup$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/db2/generator/Db2ScriptGeneratorHelperKt$simpleRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.derby.ex.jar",
+      "bytes": 13927,
+      "sha256": "4cb96ed91b9c933989a51d03ad884351489b855cb10ff20aa874030ee3415402",
+      "entries": 6,
+      "classes": 3,
+      "class_packages": {
+        "com/intellij/database/dialects/derby/model": 3
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.derby.jar",
+      "bytes": 1349970,
+      "sha256": "e5b117b0de83300c03d710ff3c728fb50f3568d3fc7a0e01316a3561291b9652",
+      "entries": 165,
+      "classes": 158,
+      "class_packages": {
+        "com/intellij/database/dialects/derby/model": 62,
+        "com/intellij/database/dialects/derby/generator/producers": 46,
+        "com/intellij/sql/dialects/derby": 26,
+        "com/intellij/database/dialects/derby": 11,
+        "com/intellij/database/dialects/derby/generator": 4,
+        "com/intellij/database/dialects/derby/plan": 3,
+        "com/intellij/database/dialects/derby/types": 2,
+        "com/intellij/database/dialects/derby/generator/dml": 1,
+        "com/intellij/database/dialects/derby/introspector/jdbc": 1,
+        "com/intellij/sql/dialects/derby/psi": 1,
+        "com/intellij/sql/dialects/derby/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "semantic_refactor": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/derby/generator/producers/DerbyAlterIndex$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/derby/generator/producers/DerbyAlterTable$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/derby/generator/producers/DerbyAlterTableColumn$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.dynamo.jar",
+      "bytes": 535797,
+      "sha256": "a2b0fcd35117c0b884cbac202642168befc71fb422b3db8784abd3631e6da9ef",
+      "entries": 85,
+      "classes": 80,
+      "class_packages": {
+        "com/intellij/database/dialects/dynamo/model": 25,
+        "com/intellij/sql/dialects/dynamo": 20,
+        "com/intellij/database/dialects/dynamo": 12,
+        "com/intellij/database/dialects/dynamo/introspector": 10,
+        "com/intellij/database/dialects/dynamo/generator/dml": 4,
+        "com/intellij/database/dialects/dynamo/generator/producers": 3,
+        "com/intellij/database/dialects/dynamo/model/properties": 3,
+        "com/intellij/database/dialects/dynamo/generator": 2,
+        "com/intellij/sql/dialects/dynamo/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 10,
+          "sample": [
+            "com/intellij/database/dialects/dynamo/introspector/DynamoIntrospectionException.class",
+            "com/intellij/database/dialects/dynamo/introspector/DynamoIntrospector$DynamoDatabaseRetriever.class",
+            "com/intellij/database/dialects/dynamo/introspector/DynamoIntrospector$DynamoSchemaRetriever.class",
+            "com/intellij/database/dialects/dynamo/introspector/DynamoIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/dynamo/introspector/DynamoIntrospector$Factory.class",
+            "com/intellij/database/dialects/dynamo/introspector/DynamoIntrospector$applySchemas$lambda$0$$inlined$applySchemasNamed$1.class",
+            "com/intellij/database/dialects/dynamo/introspector/DynamoIntrospector$applySchemas$lambda$0$$inlined$applySchemasNamed$2.class",
+            "com/intellij/database/dialects/dynamo/introspector/DynamoIntrospector$applySchemas$lambda$0$$inlined$applySchemasNamed$3.class"
+          ]
+        },
+        "editing_grid": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/dynamo/DynamoGridColumnsManager.class",
+            "com/intellij/database/dialects/dynamo/DynamoGridColumnsManagerFactory.class",
+            "com/intellij/database/dialects/dynamo/DynamoGridHelper.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.exasol.jar",
+      "bytes": 2208199,
+      "sha256": "8fbd6dd9c6f27fbbfaaa7abffbba4249993b96ac5e30b3ee80fb2d6092e3607a",
+      "entries": 246,
+      "classes": 239,
+      "class_packages": {
+        "com/intellij/database/dialects/exasol/model": 77,
+        "com/intellij/database/dialects/exasol/generator/producers": 68,
+        "com/intellij/database/dialects/exasol/introspector": 37,
+        "com/intellij/sql/dialects/exasol": 26,
+        "com/intellij/database/dialects/exasol": 12,
+        "com/intellij/database/dialects/exasol/generator": 8,
+        "com/intellij/sql/dialects/exasol/psi": 3,
+        "com/intellij/database/dialects/exasol/model/properties": 2,
+        "com/intellij/database/dialects/exasol/types": 2,
+        "com/intellij/sql/dialects/exasol/refactoring": 2,
+        "com/intellij/database/dialects/exasol/introspector/jdbc": 1,
+        "com/intellij/sql/dialects/exasol/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 23,
+          "sample": [
+            "com/intellij/database/dialects/exasol/introspector/ExaIntrospector$Companion.class",
+            "com/intellij/database/dialects/exasol/introspector/ExaIntrospector$ExaSchemaRetriever$retrieveConstraints$$inlined$modifyFamiliesAndCleanup$1.class",
+            "com/intellij/database/dialects/exasol/introspector/ExaIntrospector$ExaSchemaRetriever$retrieveConstraints$$inlined$modifyFamiliesAndCleanup$2.class",
+            "com/intellij/database/dialects/exasol/introspector/ExaIntrospector$ExaSchemaRetriever$retrieveConstraints$lambda$1$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/exasol/introspector/ExaIntrospector$ExaSchemaRetriever$retrieveConstraints$lambda$1$0$$inlined$get$2.class",
+            "com/intellij/database/dialects/exasol/introspector/ExaIntrospector$ExaSchemaRetriever$retrieveFunctionSources$2$1$1.class",
+            "com/intellij/database/dialects/exasol/introspector/ExaIntrospector$ExaSchemaRetriever$retrieveFunctionSources$lambda$1$$inlined$writeSources$1.class",
+            "com/intellij/database/dialects/exasol/introspector/ExaIntrospector$ExaSchemaRetriever$retrieveIndices$lambda$1$0$$inlined$get$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/exasol/generator/ExaScriptGeneratorHelperKt$alterTableRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/exasol/generator/ExaScriptGeneratorHelperKt$alterTableRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/exasol/generator/ExaScriptGeneratorHelperKt$simpleRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.generic.ex.jar",
+      "bytes": 875,
+      "sha256": "8f179af2d0ad37f0c335dcd39c3f66656d74b48b9c5fce60dd7c213b398213f1",
+      "entries": 2,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.generic.jar",
+      "bytes": 1136630,
+      "sha256": "9d1c637bfcf37d3eb40f54fc70f26de884dd561e23ef421523eb13587cab0192",
+      "entries": 200,
+      "classes": 176,
+      "class_packages": {
+        "com/intellij/database/dialects/generic/model": 64,
+        "com/intellij/database/dialects/generic/generator/producers": 46,
+        "com/intellij/database/dialects/generic/naming": 32,
+        "com/intellij/database/dialects/generic": 15,
+        "com/intellij/sql/dialects/generic": 6,
+        "com/intellij/database/dialects/generic/generator": 5,
+        "com/intellij/database/dialects/generic/introspector/jdbc": 4,
+        "com/intellij/database/dialects/generic/execution": 2,
+        "com/intellij/database/dialects/generic/types": 1,
+        "com/intellij/sql/dialects/generic/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/generic/introspector/jdbc/GenericMetadataWrapper$1.class",
+            "com/intellij/database/dialects/generic/introspector/jdbc/GenericMetadataWrapper$Factory.class",
+            "com/intellij/database/dialects/generic/introspector/jdbc/GenericMetadataWrapper.class"
+          ]
+        },
+        "editing_grid": {
+          "count": 2,
+          "sample": [
+            "com/intellij/database/dialects/generic/GenericGridColumnsManagerFactory.class",
+            "com/intellij/database/dialects/generic/GenericGridHelper.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/generic/generator/GenericScriptGeneratorHelperKt$alterRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/generic/generator/producers/GenericAlterTableColumn$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/generic/generator/producers/GenericAlterTableColumn$produceRename$lambda$0$$inlined$name$2.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.greenplum.ex.jar",
+      "bytes": 1086,
+      "sha256": "b883bfb748a201cd3a183bf0ec393d80150c63028d2c1eaf7fe300f3ddd156c9",
+      "entries": 2,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.greenplum.jar",
+      "bytes": 3679288,
+      "sha256": "0a7338fbf7f5d1571e8dd4eb6c4c0b98a6c1e9bfc25d06be2818846e19d1724e",
+      "entries": 261,
+      "classes": 252,
+      "class_packages": {
+        "com/intellij/database/dialects/greenplum/model": 150,
+        "com/intellij/database/dialects/greenplum/generator/producers": 31,
+        "com/intellij/sql/dialects/greenplum": 29,
+        "com/intellij/database/dialects/greenplum/introspector": 13,
+        "com/intellij/database/dialects/greenplum": 11,
+        "com/intellij/database/dialects/greenplum/model/properties": 5,
+        "com/intellij/database/dialects/greenplum/generator": 3,
+        "com/intellij/sql/dialects/greenplum/formatter": 3,
+        "com/intellij/sql/dialects/greenplum/psi": 3,
+        "com/intellij/database/dialects/greenplum/plan": 2,
+        "com/intellij/database/dialects/greenplum/introspector/jdbc": 1,
+        "com/intellij/sql/dialects/greenplum/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 9,
+          "sample": [
+            "com/intellij/database/dialects/greenplum/introspector/GPlumIntrospector$Companion.class",
+            "com/intellij/database/dialects/greenplum/introspector/GPlumIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/greenplum/introspector/GPlumIntrospector$Factory.class",
+            "com/intellij/database/dialects/greenplum/introspector/GPlumIntrospector$MyDatabaseRetriever.class",
+            "com/intellij/database/dialects/greenplum/introspector/GPlumIntrospector$MyNativeRetriever.class",
+            "com/intellij/database/dialects/greenplum/introspector/GPlumIntrospector$MySchemaRetriever$retrieveDistributedColumns$lambda$0$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/greenplum/introspector/GPlumIntrospector$MySchemaRetriever.class",
+            "com/intellij/database/dialects/greenplum/introspector/GPlumIntrospector.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.h2.ex.jar",
+      "bytes": 17215,
+      "sha256": "fe8bcf10376ab4e2ac8a602a96fc5046406762c8822c0250cda503b3da18172f",
+      "entries": 7,
+      "classes": 4,
+      "class_packages": {
+        "com/intellij/database/dialects/h2/ui": 3,
+        "com/intellij/database/dialects/h2/model": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.h2.jar",
+      "bytes": 2302814,
+      "sha256": "55e8d19e8be84ada302b53da420c1153ea87c05f12f5acd58531ba4819b99ce0",
+      "entries": 269,
+      "classes": 261,
+      "class_packages": {
+        "com/intellij/database/dialects/h2/model": 85,
+        "com/intellij/database/dialects/h2/generator/producers": 75,
+        "com/intellij/database/dialects/h2/introspector": 44,
+        "com/intellij/sql/dialects/h2": 28,
+        "com/intellij/database/dialects/h2": 10,
+        "com/intellij/database/dialects/h2/generator": 9,
+        "com/intellij/database/dialects/h2/types": 3,
+        "com/intellij/database/dialects/h2/plan": 2,
+        "com/intellij/sql/dialects/h2/psi": 2,
+        "com/intellij/database/dialects/h2/introspector/jdbc": 1,
+        "com/intellij/database/dialects/h2/model/properties": 1,
+        "com/intellij/sql/dialects/h2/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 15,
+          "sample": [
+            "com/intellij/database/dialects/h2/introspector/H2Introspector$Factory$VERSION.class",
+            "com/intellij/database/dialects/h2/introspector/H2Introspector$Factory.class",
+            "com/intellij/database/dialects/h2/introspector/H2Introspector$H2DatabaseBaseDatabaseRetriever.class",
+            "com/intellij/database/dialects/h2/introspector/H2Introspector$H2SchemaAbstractSchemaRetriever$retrieveColumns$lambda$2$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/h2/introspector/H2Introspector$H2SchemaAbstractSchemaRetriever$retrieveConstraints$lambda$1$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/h2/introspector/H2Introspector$H2SchemaAbstractSchemaRetriever$retrieveDomainChecks$lambda$1$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/h2/introspector/H2Introspector$H2SchemaAbstractSchemaRetriever$retrieveIndexes$lambda$1$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/h2/introspector/H2Introspector$H2SchemaAbstractSchemaRetriever$retrieveIndexes$lambda$1$0$1$$inlined$get$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/h2/generator/H2ScriptGeneratorHelperKt$alterRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/h2/generator/producers/H2AlterTableColumn$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/h2/generator/producers/H2AlterUser$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hive.jar",
+      "bytes": 1172223,
+      "sha256": "e5972bee96134067fb043e6a06cd116234b6706e8cfe771acbbc16ed9821c226",
+      "entries": 125,
+      "classes": 121,
+      "class_packages": {
+        "com/intellij/database/dialects/hive/model": 67,
+        "com/intellij/database/dialects/hive/generator/producers": 29,
+        "com/intellij/database/dialects/hive/introspector": 10,
+        "com/intellij/database/dialects/hive": 9,
+        "com/intellij/database/dialects/hive/generator": 4,
+        "com/intellij/database/dialects/hive/plan": 2
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 10,
+          "sample": [
+            "com/intellij/database/dialects/hive/introspector/HiveIntrospector$Companion$tableProcessors$15$invoke$lambda$0$0$$inlined$sortBy$1.class",
+            "com/intellij/database/dialects/hive/introspector/HiveIntrospector$Companion$tableProcessors$15$invoke$lambda$0$1$$inlined$sortBy$1.class",
+            "com/intellij/database/dialects/hive/introspector/HiveIntrospector$Companion$tableProcessors$15.class",
+            "com/intellij/database/dialects/hive/introspector/HiveIntrospector$Companion.class",
+            "com/intellij/database/dialects/hive/introspector/HiveIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/hive/introspector/HiveIntrospector$Factory.class",
+            "com/intellij/database/dialects/hive/introspector/HiveIntrospector$HiveSchemaRetriever.class",
+            "com/intellij/database/dialects/hive/introspector/HiveIntrospector$retrieveFunctions$lambda$0$0$$inlined$modifyFamiliesAndCleanup$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hivebase.jar",
+      "bytes": 852699,
+      "sha256": "911116130f8aa1b553a93d6f2d8dd12a9c48f21aa603203821e85afc62af5012",
+      "entries": 115,
+      "classes": 111,
+      "class_packages": {
+        "com/intellij/database/dialects/hivebase/generator/producers": 34,
+        "com/intellij/sql/dialects/hive": 31,
+        "com/intellij/database/dialects/hivebase/model": 16,
+        "com/intellij/database/dialects/hivebase/types": 15,
+        "com/intellij/sql/dialects/hive/psi": 8,
+        "com/intellij/database/dialects/hivebase/model/properties": 3,
+        "com/intellij/database/dialects/hivebase": 1,
+        "com/intellij/database/dialects/hivebase/generator": 1,
+        "com/intellij/database/dialects/hivebase/introspector/jdbc": 1,
+        "com/intellij/sql/dialects/hive/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "semantic_refactor": {
+          "count": 4,
+          "sample": [
+            "com/intellij/database/dialects/hivebase/generator/producers/HiveBaseAlterTable$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/hivebase/generator/producers/HiveBaseAlterTable$produceRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/hivebase/generator/producers/HiveBaseAlterView$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/hivebase/generator/producers/HiveBaseAlterView$produceRename$lambda$0$$inlined$name$2.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hsql.jar",
+      "bytes": 1543857,
+      "sha256": "8791248224cfc2f9221f598040150c3e679faa84294ab7b6d06613098aae5248",
+      "entries": 176,
+      "classes": 169,
+      "class_packages": {
+        "com/intellij/database/dialects/hsql/model": 60,
+        "com/intellij/database/dialects/hsql/generator/producers": 56,
+        "com/intellij/sql/dialects/hsql": 25,
+        "com/intellij/database/dialects/hsql": 11,
+        "com/intellij/database/dialects/hsql/generator": 6,
+        "com/intellij/database/dialects/hsql/types": 4,
+        "com/intellij/database/dialects/hsql/plan": 2,
+        "com/intellij/sql/dialects/hsql/refactoring": 2,
+        "com/intellij/database/dialects/hsql/introspector/jdbc": 1,
+        "com/intellij/sql/dialects/hsql/psi": 1,
+        "com/intellij/sql/dialects/hsql/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "semantic_refactor": {
+          "count": 2,
+          "sample": [
+            "com/intellij/database/dialects/hsql/generator/HsqlScriptGeneratorHelperKt$alterRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/hsql/generator/producers/HsqlAlterTableColumn$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.maria.jar",
+      "bytes": 1187776,
+      "sha256": "d3547fded8a1f323e8099e78f103d92d028d22cd7387cb17b429261d14b21076",
+      "entries": 114,
+      "classes": 109,
+      "class_packages": {
+        "com/intellij/database/dialects/maria/model": 63,
+        "com/intellij/database/dialects/maria/generator/producers": 14,
+        "com/intellij/sql/dialects/maria": 10,
+        "com/intellij/database/dialects/maria": 9,
+        "com/intellij/database/dialects/maria/introspector": 5,
+        "com/intellij/database/dialects/maria/plan": 5,
+        "com/intellij/database/dialects/maria/generator": 2,
+        "com/intellij/sql/dialects/maria/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 5,
+          "sample": [
+            "com/intellij/database/dialects/maria/introspector/MariaIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/maria/introspector/MariaIntrospector$Factory.class",
+            "com/intellij/database/dialects/maria/introspector/MariaIntrospector$MariaSchemaRetriever.class",
+            "com/intellij/database/dialects/maria/introspector/MariaIntrospector.class",
+            "com/intellij/database/dialects/maria/introspector/MariaIntrospectorKt.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.ex.jar",
+      "bytes": 80965,
+      "sha256": "deeb7405a1020a42723a247c711efd7b9830370b49a3e58f1de2af2fe3e584ef",
+      "entries": 21,
+      "classes": 18,
+      "class_packages": {
+        "com/intellij/sql/dialects/mongo/js": 9,
+        "com/intellij/sql/dialects/mongo/js/inspections": 8,
+        "com/intellij/sql/dialects/mongo/js/editing": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.jar",
+      "bytes": 2302672,
+      "sha256": "47f8a89069418e560e267f1b23b8f9d14d071fe9f1bb45aad924a099fd35a7eb",
+      "entries": 432,
+      "classes": 412,
+      "class_packages": {
+        "com/intellij/sql/dialects/mongo/js": 65,
+        "com/intellij/database/dialects/mongo/translator/tree_creator/builder": 54,
+        "com/intellij/database/dialects/mongo": 39,
+        "com/intellij/sql/dialects/mongo/js/psi/impl": 28,
+        "com/intellij/database/dialects/mongo/model": 24,
+        "com/intellij/sql/dialects/mongo/js/psi": 18,
+        "com/intellij/database/dialects/mongo/translator/tree/expression": 16,
+        "com/intellij/sql/dialects/mongo/js/psi/resolve/symbols": 14,
+        "com/intellij/sql/dialects/mongo/js/psi/resolve/context": 13,
+        "com/intellij/sql/dialects/mongo/js/psi/resolve": 12,
+        "com/intellij/database/dialects/mongo/generator/dml": 11,
+        "com/intellij/sql/dialects/mongo/js/inspections": 11
+      },
+      "concept_candidates": {
+        "editing_grid": {
+          "count": 4,
+          "sample": [
+            "com/intellij/database/dialects/mongo/MongoGridColumnsManager$Companion.class",
+            "com/intellij/database/dialects/mongo/MongoGridColumnsManager.class",
+            "com/intellij/database/dialects/mongo/MongoGridColumnsManagerFactory.class",
+            "com/intellij/database/dialects/mongo/MongoGridHelper.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 26,
+          "sample": [
+            "com/intellij/sql/dialects/mongo/MongoEvaluationHelperDelegate$parseQueryTableType$lambda$2$$inlined$mongoSymbolResolve$1.class",
+            "com/intellij/sql/dialects/mongo/js/MongoJSPsiUtilKt$isTypedCallee$$inlined$mongoSymbolResolve$1.class",
+            "com/intellij/sql/dialects/mongo/js/completion/MongoJSCompletionContributor.class",
+            "com/intellij/sql/dialects/mongo/js/completion/MongoJSLiteralCompletionProvider$WhenMappings.class",
+            "com/intellij/sql/dialects/mongo/js/completion/MongoJSLiteralCompletionProvider.class",
+            "com/intellij/sql/dialects/mongo/js/completion/MongoJSReferenceCompletionProvider$WhenMappings.class",
+            "com/intellij/sql/dialects/mongo/js/completion/MongoJSReferenceCompletionProvider.class",
+            "com/intellij/sql/dialects/mongo/js/completion/MongoJSSqlKeywordCompletionProvider.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.js.external.jar",
+      "bytes": 132809,
+      "sha256": "a68ed35e45651e5baf2b22eb9a0a8680cec837d5a186fcbaa690a11d72bd9b11",
+      "entries": 39,
+      "classes": 36,
+      "class_packages": {
+        "com/intellij/sql/dialects/mongo/js": 19,
+        "com/intellij/sql/dialects/mongo/js/parser": 7,
+        "com/intellij/sql/dialects/mongo/js/psi/resolve": 4,
+        "com/intellij/sql/dialects/mongo/js/inspections": 3,
+        "com/intellij/sql/dialects/mongo": 1,
+        "com/intellij/sql/dialects/mongo/js/completion": 1,
+        "com/intellij/sql/dialects/mongo/js/psi": 1
+      },
+      "concept_candidates": {
+        "semantic_refactor": {
+          "count": 5,
+          "sample": [
+            "com/intellij/sql/dialects/mongo/js/completion/MongoJSExternalCompletionContributor.class",
+            "com/intellij/sql/dialects/mongo/js/inspections/MongoJSExtResolveInspection.class",
+            "com/intellij/sql/dialects/mongo/js/psi/resolve/MongoJSExternalResolveHelper$Companion.class",
+            "com/intellij/sql/dialects/mongo/js/psi/resolve/MongoJSExternalResolveHelper$SeparatingElementTypesImpl.class",
+            "com/intellij/sql/dialects/mongo/js/psi/resolve/MongoJSExternalResolveHelper.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.sql.jar",
+      "bytes": 123682,
+      "sha256": "395ae84b0026ef550382fe1a880848f685caf2b7b902fb97e045562d8dc9650c",
+      "entries": 29,
+      "classes": 26,
+      "class_packages": {
+        "com/intellij/sql/dialects/mongo": 22,
+        "com/intellij/sql/dialects/mongo/psi": 3,
+        "com/intellij/sql/dialects/mongo/psi/stubs": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.ex.jar",
+      "bytes": 496822,
+      "sha256": "01ccb6ab5744cfe4d3935c07854a2a57c4449190ef8948fb232dcb8066b401d3",
+      "entries": 104,
+      "classes": 101,
+      "class_packages": {
+        "com/intellij/database/dialects/mssql/ui": 26,
+        "com/intellij/database/dialects/mssql/testing/tsqlt": 20,
+        "com/intellij/database/dialects/mssql/inspections": 16,
+        "com/intellij/database/dialects/mssql/ssrp": 14,
+        "com/intellij/database/dialects/mssql/localdb": 9,
+        "com/intellij/database/dialects/mssql/plan": 8,
+        "com/intellij/sql/dialects/mssql/inspections": 5,
+        "com/intellij/database/dialects/mssql/model": 2,
+        "com/intellij/sql/dialects/mssql/formatter": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.impl.jar",
+      "bytes": 799,
+      "sha256": "47f3c5507c5e210082702e0ab7fd1f73d217041ba2f3252ff50dc4b5ce307aad",
+      "entries": 2,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.jar",
+      "bytes": 5768459,
+      "sha256": "e60dce8b6ad711e81fd950550423074a6bcd591c604c400d359e8ecac69f4941",
+      "entries": 635,
+      "classes": 623,
+      "class_packages": {
+        "com/intellij/database/dialects/mssql/generator/producers": 159,
+        "com/intellij/database/dialects/mssql/model": 158,
+        "com/intellij/database/dialects/mssql/introspector": 109,
+        "com/intellij/database/dialects/mssql": 66,
+        "com/intellij/sql/dialects/mssql": 39,
+        "com/intellij/database/dialects/mssql/generator": 29,
+        "com/intellij/database/dialects/mssql/model/properties": 28,
+        "com/intellij/sql/dialects/mssql/psi": 14,
+        "com/intellij/sql/dialects/mssql/formatter": 7,
+        "com/intellij/database/dialects/mssql/introspector/jdbc": 4,
+        "com/intellij/sql/dialects/mssql/refactoring": 4,
+        "com/intellij/database/dialects/mssql/types": 3
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 4,
+          "sample": [
+            "com/intellij/database/dialects/mssql/introspector/MsIntroQueries$CurrentSessionInfo.class",
+            "com/intellij/sql/dialects/mssql/psi/MssqlSaveTransactionStatement.class",
+            "com/intellij/sql/dialects/mssql/psi/MssqlStartTransactionStatement.class",
+            "com/intellij/sql/dialects/mssql/psi/MssqlTransactionDefinition.class"
+          ]
+        },
+        "execution_cancel": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/mssql/generator/MsExecuteGenerator$VariableDataProducer$Cursors.class",
+            "com/intellij/database/dialects/mssql/generator/MsExecuteGenerator$VariableDataProducer$Primitives.class",
+            "com/intellij/database/dialects/mssql/generator/MsExecuteGenerator$VariableDataProducer.class"
+          ]
+        },
+        "introspection": {
+          "count": 52,
+          "sample": [
+            "com/intellij/database/dialects/mssql/introspector/MsIntrospector$Companion.class",
+            "com/intellij/database/dialects/mssql/introspector/MsIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/mssql/introspector/MsIntrospector$Factory.class",
+            "com/intellij/database/dialects/mssql/introspector/MsIntrospector$MsDatabaseRetriever.class",
+            "com/intellij/database/dialects/mssql/introspector/MsIntrospector$MsIndexType.class",
+            "com/intellij/database/dialects/mssql/introspector/MsIntrospector$MsLevelOneRetriever$WhenMappings.class",
+            "com/intellij/database/dialects/mssql/introspector/MsIntrospector$MsLevelOneRetriever$traceEffects$1$tt$1.class",
+            "com/intellij/database/dialects/mssql/introspector/MsIntrospector$MsLevelOneRetriever$traceEffects$1$tt$2.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 4,
+          "sample": [
+            "com/intellij/database/dialects/mssql/generator/MsScriptGeneratorHelperKt$spRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/mssql/generator/producers/MsAlterFileGroup$produceRename$lambda$0$$inlined$scr$1.class",
+            "com/intellij/database/dialects/mssql/generator/producers/MsAlterLogin$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/mssql/generator/producers/MsAlterRole$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysql.jar",
+      "bytes": 974392,
+      "sha256": "b6d1c7279cd5c9b6f6846ee6153181fe4932b570affefc16e54415d218cd1c9a",
+      "entries": 87,
+      "classes": 79,
+      "class_packages": {
+        "com/intellij/database/dialects/mysql/model": 60,
+        "com/intellij/database/dialects/mysql": 14,
+        "com/intellij/database/dialects/mysql/plan": 5
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.ex.jar",
+      "bytes": 107596,
+      "sha256": "81cf6d87ba268d89e74b215a05c6e232938323feb29c1c85c99846c9ae47919b",
+      "entries": 22,
+      "classes": 19,
+      "class_packages": {
+        "com/intellij/sql/dialects/mysql/inspections": 8,
+        "com/intellij/database/dialects/mysqlbase": 5,
+        "com/intellij/database/dialects/mysqlbase/model": 4,
+        "com/intellij/database/dialects/mysqlbase/schemaEditor/model/applier": 2
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.impl.jar",
+      "bytes": 681,
+      "sha256": "b4d827bfe968d7c88e326bf2f5068f91af65637c77e0fa8b21b9b8bcbddc9e6e",
+      "entries": 2,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.jar",
+      "bytes": 2785793,
+      "sha256": "c00a483b2e50d48dbfcbe50cab9e490aa7cdf2705b8f744d243f3074e6ab3814",
+      "entries": 291,
+      "classes": 285,
+      "class_packages": {
+        "com/intellij/database/dialects/mysqlbase/generator/producers": 83,
+        "com/intellij/database/dialects/mysqlbase/introspector": 53,
+        "com/intellij/sql/dialects/mysql": 39,
+        "com/intellij/database/dialects/mysqlbase/model": 33,
+        "com/intellij/database/dialects/mysqlbase": 27,
+        "com/intellij/database/dialects/mysqlbase/model/properties": 10,
+        "com/intellij/database/dialects/mysqlbase/generator": 9,
+        "com/intellij/database/dialects/mysqlbase/plan": 9,
+        "com/intellij/sql/dialects/mysql/psi": 9,
+        "com/intellij/database/dialects/mysqlbase/types": 4,
+        "com/intellij/database/dialects/mysqlbase/introspector/jdbc": 3,
+        "com/intellij/database/dialects/mysqlbase/model/properties/references": 2
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 30,
+          "sample": [
+            "com/intellij/database/dialects/mysqlbase/introspector/MysqlBaseIntrospector$Companion.class",
+            "com/intellij/database/dialects/mysqlbase/introspector/MysqlBaseIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/mysqlbase/introspector/MysqlBaseIntrospector$Factory.class",
+            "com/intellij/database/dialects/mysqlbase/introspector/MysqlBaseIntrospector$MysqlDatabaseRetriever.class",
+            "com/intellij/database/dialects/mysqlbase/introspector/MysqlBaseIntrospector$MysqlDatabaseSchemasRetriever$process$1.class",
+            "com/intellij/database/dialects/mysqlbase/introspector/MysqlBaseIntrospector$MysqlDatabaseSchemasRetriever.class",
+            "com/intellij/database/dialects/mysqlbase/introspector/MysqlBaseIntrospector$MysqlNativeRetriever.class",
+            "com/intellij/database/dialects/mysqlbase/introspector/MysqlBaseIntrospector$MysqlSchemaRetriever$parseCreateOptions$lambda$2$$inlined$sortBy$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 3,
+          "sample": [
+            "com/intellij/database/dialects/mysqlbase/generator/producers/MysqlBaseAlterUser$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/mysqlbase/generator/producers/MysqlBaseAlterUser$produceRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/sql/dialects/mysql/psi/MysqlRenameTableStatement.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.ex.coverage.jar",
+      "bytes": 70026,
+      "sha256": "f6149d85a64a4ed1cff67a3ee8ce8c7d164c91dd2ab421eb9833d34b3d7dcc8d",
+      "entries": 13,
+      "classes": 10,
+      "class_packages": {
+        "com/intellij/database/dialects/oracle/ex/coverage": 10
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.ex.jar",
+      "bytes": 975688,
+      "sha256": "d60f3e93949c13f8307344ac8b945982015b03efaff11a6ee921d0a06513c219",
+      "entries": 193,
+      "classes": 189,
+      "class_packages": {
+        "com/intellij/database/dialects/oracle/debugger": 128,
+        "com/intellij/database/dialects/oracle/testing/utplsql": 33,
+        "com/intellij/database/dialects/oracle/tns/ui": 11,
+        "com/intellij/database/dialects/oracle": 7,
+        "com/intellij/sql/dialects/oracle/inspections": 7,
+        "com/intellij/database/dialects/oracle/model": 1,
+        "com/intellij/sql/dialects/oracle": 1,
+        "com/intellij/sql/dialects/oraplus": 1
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 25,
+          "sample": [
+            "com/intellij/database/dialects/oracle/debugger/OraBaseSession$traceConsumer$1.class",
+            "com/intellij/database/dialects/oracle/debugger/OraBaseSession.class",
+            "com/intellij/database/dialects/oracle/debugger/OraDebuggingSession$Companion.class",
+            "com/intellij/database/dialects/oracle/debugger/OraDebuggingSession$WhenMappings.class",
+            "com/intellij/database/dialects/oracle/debugger/OraDebuggingSession$dbmsOutputConsumer$1.class",
+            "com/intellij/database/dialects/oracle/debugger/OraDebuggingSession$doRegisterLineBreakpoint$2.class",
+            "com/intellij/database/dialects/oracle/debugger/OraDebuggingSession$doRetrieveVariables$cmd$1.class",
+            "com/intellij/database/dialects/oracle/debugger/OraDebuggingSession.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/oracle/tns/ui/TnsNamesParamEditor$TnsCompletionProvider.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.jar",
+      "bytes": 7006691,
+      "sha256": "d4319f3fe6511a26569d059afe594eb1b1cc631cbd5dcd71e90dd1be386308e7",
+      "entries": 748,
+      "classes": 736,
+      "class_packages": {
+        "com/intellij/database/dialects/oracle/model": 186,
+        "com/intellij/database/dialects/oracle/introspector": 137,
+        "com/intellij/database/dialects/oracle/generator/producers": 120,
+        "com/intellij/sql/dialects/oracle": 40,
+        "com/intellij/database/dialects/oracle": 39,
+        "com/intellij/sql/dialects/oracle/psi": 37,
+        "com/intellij/sql/dialects/oracle/formatter/model": 29,
+        "com/intellij/database/dialects/oracle/types": 28,
+        "com/intellij/database/dialects/oracle/generator": 24,
+        "com/intellij/sql/dialects/oraplus": 24,
+        "com/intellij/database/dialects/oracle/model/properties": 19,
+        "com/intellij/sql/dialects/oracle/formatter": 12
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/oracle/introspector/OraIntroQueries$OneSessionInfo.class"
+          ]
+        },
+        "introspection": {
+          "count": 63,
+          "sample": [
+            "com/intellij/database/dialects/oracle/introspector/OraIntrospector$Companion.class",
+            "com/intellij/database/dialects/oracle/introspector/OraIntrospector$OraBaseDatabaseRetriever.class",
+            "com/intellij/database/dialects/oracle/introspector/OraIntrospector$OraDatabaseFirstRetriever$process$1.class",
+            "com/intellij/database/dialects/oracle/introspector/OraIntrospector$OraDatabaseFirstRetriever$retrieveAllColumnNames$tableSchemaNames$1.class",
+            "com/intellij/database/dialects/oracle/introspector/OraIntrospector$OraDatabaseFirstRetriever.class",
+            "com/intellij/database/dialects/oracle/introspector/OraIntrospector$OraDatabaseIncRetriever$process$1.class",
+            "com/intellij/database/dialects/oracle/introspector/OraIntrospector$OraDatabaseIncRetriever$processInner$1$1.class",
+            "com/intellij/database/dialects/oracle/introspector/OraIntrospector$OraDatabaseIncRetriever$retrieveIncColumnNames$tableSchemaNames$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 6,
+          "sample": [
+            "com/intellij/database/dialects/oracle/generator/OraScriptGeneratorHelperKt$alterRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/oracle/generator/OraScriptGeneratorHelperKt$alterRenameConstraint$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/oracle/generator/OraScriptGeneratorHelperKt$alterRenameConstraint$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/oracle/generator/OraScriptGeneratorHelperKt$simpleRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/oracle/generator/producers/OraAlterTableColumn$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/oracle/generator/producers/OraAlterTableColumn$produceRename$lambda$0$$inlined$name$2.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgres.ex.jar",
+      "bytes": 11506,
+      "sha256": "9a34cff650c0354fd097b1067ab44356f59fad3f67cdf646c549263c2434953a",
+      "entries": 6,
+      "classes": 3,
+      "class_packages": {
+        "com/intellij/database/dialects/postgres/model": 2,
+        "com/intellij/database/dialects/postgres/ex/schemaEditor/ui": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgres.jar",
+      "bytes": 3231781,
+      "sha256": "663be90cc7c992826b2e51afeb24c2eb8ca3ba882d288fe4a30f247fd456ce52",
+      "entries": 281,
+      "classes": 277,
+      "class_packages": {
+        "com/intellij/database/dialects/postgres/model": 147,
+        "com/intellij/database/dialects/postgres/generator/producers": 55,
+        "com/intellij/database/dialects/postgres/introspector": 37,
+        "com/intellij/database/dialects/postgres": 13,
+        "com/intellij/database/dialects/postgres/generator": 12,
+        "com/intellij/database/dialects/postgres/model/properties": 8,
+        "com/intellij/database/dialects/postgres/plan": 4,
+        "com/intellij/sql/dialects/postgres/formatter": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 28,
+          "sample": [
+            "com/intellij/database/dialects/postgres/introspector/PgIntrospector$ArgumentNameHolderWrapper.class",
+            "com/intellij/database/dialects/postgres/introspector/PgIntrospector$Companion$MY_NATURE$1.class",
+            "com/intellij/database/dialects/postgres/introspector/PgIntrospector$Companion.class",
+            "com/intellij/database/dialects/postgres/introspector/PgIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/postgres/introspector/PgIntrospector$Factory.class",
+            "com/intellij/database/dialects/postgres/introspector/PgIntrospector$MyDatabaseRetriever.class",
+            "com/intellij/database/dialects/postgres/introspector/PgIntrospector$MyL1Retriever$clearOutdatedSchemas$1$1.class",
+            "com/intellij/database/dialects/postgres/introspector/PgIntrospector$MyL1Retriever$clearOutdatedSchemas$1$2.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresbase.ex.jar",
+      "bytes": 50499,
+      "sha256": "8f7f45af1e7d423665fce1b0cfa95bdb1c595a02cd68c866a80eae023b991cde",
+      "entries": 12,
+      "classes": 9,
+      "class_packages": {
+        "com/intellij/database/dialects/postgresbase/model": 5,
+        "com/intellij/sql/dialects/postgres/inspections": 4
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresbase.jar",
+      "bytes": 2994977,
+      "sha256": "4ff803e816b25124a3180b00aa542ac2310455128b47cbf390898c8967277b70",
+      "entries": 328,
+      "classes": 317,
+      "class_packages": {
+        "com/intellij/database/dialects/postgresbase/introspector": 52,
+        "com/intellij/database/dialects/postgresbase/generator/producers": 50,
+        "com/intellij/sql/dialects/postgres": 47,
+        "com/intellij/database/dialects/postgresbase/model": 42,
+        "com/intellij/sql/dialects/postgres/psi": 28,
+        "com/intellij/database/dialects/postgresbase": 23,
+        "com/intellij/database/dialects/postgresbase/model/properties": 16,
+        "com/intellij/sql/dialects/postgres/psi/stubs": 13,
+        "com/intellij/database/dialects/postgresbase/generator": 11,
+        "com/intellij/database/dialects/postgresbase/introspector/jdbc": 7,
+        "com/intellij/database/dialects/postgresbase/types": 6,
+        "com/intellij/sql/dialects/postgres/formatter": 6
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntroQueries$SessionInfo.class"
+          ]
+        },
+        "introspection": {
+          "count": 22,
+          "sample": [
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$Companion.class",
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$DatabaseRetriever.class",
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$NativeRetriever.class",
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$RenameInfo.class",
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$SchemaRetriever$findObjectById$$inlined$findById$1.class",
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$SchemaRetriever$inlined$sam$i$com_intellij_openapi_util_Condition$0.class",
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$SchemaRetriever$retrieveFunSources$1$1$1$1.class",
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$SchemaRetriever$retrieveFunSources$1$1$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 7,
+          "sample": [
+            "com/intellij/database/dialects/postgresbase/generator/PgBaseScriptGeneratorHelperKt$alterRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/postgresbase/generator/producers/GeneratorUtilKt$alterParentRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/postgresbase/generator/producers/GeneratorUtilKt$alterParentRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/postgresbase/generator/producers/GeneratorUtilKt$alterParentRename$lambda$0$$inlined$orError$1.class",
+            "com/intellij/database/dialects/postgresbase/generator/producers/PgBaseAlterTableColumn$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/postgresbase/generator/producers/PgBaseAlterTableColumn$produceRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/postgresbase/introspector/PgBaseIntrospector$RenameInfo.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresgreenplumbase.ex.jar",
+      "bytes": 75017,
+      "sha256": "8d177b28205741cd3fad20ad6ba3f0a3f46feee12db0177fedcf6893bfc1ffec",
+      "entries": 13,
+      "classes": 10,
+      "class_packages": {
+        "com/intellij/database/dialects/postgresgreenplumbase/schemaEditor/model/applier": 4,
+        "com/intellij/database/dialects/postgresgreenplumbase/schemaEditor/ui": 4,
+        "com/intellij/database/dialects/postgresgreenplumbase/model": 2
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresgreenplumbase.jar",
+      "bytes": 1935910,
+      "sha256": "1feca2a30f1e0931237a26991d1852fba4e4916a5f809a697224315cb906d350",
+      "entries": 300,
+      "classes": 297,
+      "class_packages": {
+        "com/intellij/database/dialects/postgresgreenplumbase/generator/producers": 161,
+        "com/intellij/database/dialects/postgresgreenplumbase/model": 59,
+        "com/intellij/database/dialects/postgresgreenplumbase/introspector": 46,
+        "com/intellij/database/dialects/postgresgreenplumbase": 11,
+        "com/intellij/database/dialects/postgresgreenplumbase/generator": 10,
+        "com/intellij/database/dialects/postgresgreenplumbase/model/properties": 9,
+        "com/intellij/database/dialects/postgresgreenplumbase/generator/dml": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 20,
+          "sample": [
+            "com/intellij/database/dialects/postgresgreenplumbase/introspector/PgGPlumBaseIntrospector$Companion.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/introspector/PgGPlumBaseIntrospector$PgGPlumBaseDatabaseRetriever$introspectUserMappings$lambda$0$1$0$1$$inlined$get$1.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/introspector/PgGPlumBaseIntrospector$PgGPlumBaseDatabaseRetriever$retrieveExtensionMembers$lambda$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/introspector/PgGPlumBaseIntrospector$PgGPlumBaseDatabaseRetriever$setExtensionMembers$$inlined$sortBy$1.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/introspector/PgGPlumBaseIntrospector$PgGPlumBaseDatabaseRetriever.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/introspector/PgGPlumBaseIntrospector$PgGPlumBaseNativeRetriever.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/introspector/PgGPlumBaseIntrospector$PgGPlumBaseSchemaRetriever$inlined$sam$i$com_intellij_openapi_util_Condition$0.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/introspector/PgGPlumBaseIntrospector$PgGPlumBaseSchemaRetriever$retrieveAccessMethodOperators$lambda$0$0$2$$inlined$get$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 9,
+          "sample": [
+            "com/intellij/database/dialects/postgresgreenplumbase/generator/PgGPlumBaseScriptGeneratorHelperKt$alterRenameOnParent$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/generator/PgGPlumBaseScriptGeneratorHelperKt$alterRenameOnParent$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/generator/PgGPlumBaseScriptGeneratorHelperKt$alterRenameOnParent$lambda$0$$inlined$orError$1.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/generator/producers/PgGPlumBaseAlterAggregate$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/generator/producers/PgGPlumBaseAlterMatViewColumn$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/generator/producers/PgGPlumBaseAlterMatViewColumn$produceRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/generator/producers/PgGPlumBaseAlterRoutine$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/postgresgreenplumbase/generator/producers/PgGPlumBaseAlterViewColumn$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redis.backend.jar",
+      "bytes": 10985,
+      "sha256": "1d83795f9d2126f59ce9d4c6e20064a693404ee4c8e05e4bcf8a9972aac36d01",
+      "entries": 4,
+      "classes": 2,
+      "class_packages": {
+        "com/intellij/database/dialects/redis/backend": 1,
+        "com/intellij/database/dialects/redis/backend/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/redis/backend/RedisResolveExtension.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redis.jar",
+      "bytes": 1112450,
+      "sha256": "a9cbe73d131e80b7c9dd92d221b98d850febddf02d8ff14efb55b2f34a5cb102",
+      "entries": 181,
+      "classes": 177,
+      "class_packages": {
+        "com/intellij/database/dialects/redis": 45,
+        "com/intellij/sql/dialects/redis": 24,
+        "com/intellij/database/dialects/redis/introspector": 21,
+        "com/intellij/database/dialects/redis/model": 18,
+        "com/intellij/sql/dialects/redis/psi/stubs": 5,
+        "com/intellij/database/dialects/redis/delegates": 4,
+        "com/intellij/database/dialects/redis/generator": 4,
+        "com/intellij/database/dialects/redis/model/properties": 4,
+        "com/intellij/sql/dialects/redis/formatter": 4,
+        "com/intellij/sql/dialects/redis/formatter/model": 4,
+        "com/intellij/database/dialects/redis/generator/dml": 3,
+        "com/intellij/database/dialects/redis/generator/producers": 3
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 14,
+          "sample": [
+            "com/intellij/database/dialects/redis/introspector/RedisIntrospector$DefaultNature.class",
+            "com/intellij/database/dialects/redis/introspector/RedisIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/redis/introspector/RedisIntrospector$Factory.class",
+            "com/intellij/database/dialects/redis/introspector/RedisIntrospector$Mode.class",
+            "com/intellij/database/dialects/redis/introspector/RedisIntrospector$RedisSchemaRetriever.class",
+            "com/intellij/database/dialects/redis/introspector/RedisIntrospector$WhenMappings.class",
+            "com/intellij/database/dialects/redis/introspector/RedisIntrospector$applyClusterSchema$1.class",
+            "com/intellij/database/dialects/redis/introspector/RedisIntrospector$applySchemas$1.class"
+          ]
+        },
+        "editing_grid": {
+          "count": 5,
+          "sample": [
+            "com/intellij/database/dialects/redis/RedisGridColumnsManager$Companion.class",
+            "com/intellij/database/dialects/redis/RedisGridColumnsManager.class",
+            "com/intellij/database/dialects/redis/RedisGridColumnsManagerFactory$Companion.class",
+            "com/intellij/database/dialects/redis/RedisGridColumnsManagerFactory.class",
+            "com/intellij/database/dialects/redis/RedisGridHelper.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/redis/generator/producers/RedisAlterKey$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redshift.ex.jar",
+      "bytes": 1043,
+      "sha256": "6d9a159478664e6fec8a43ce6a12d7c26711bebc7f32a3123b1b205793b93047",
+      "entries": 2,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redshift.jar",
+      "bytes": 3461565,
+      "sha256": "5b843bec63bef234d336df1010c55d1d2a1a8e09539231e8862f677d82f133a0",
+      "entries": 312,
+      "classes": 303,
+      "class_packages": {
+        "com/intellij/database/dialects/redshift/model": 112,
+        "com/intellij/database/dialects/redshift/introspector": 73,
+        "com/intellij/database/dialects/redshift/generator/producers": 52,
+        "com/intellij/sql/dialects/redshift": 29,
+        "com/intellij/database/dialects/redshift": 11,
+        "com/intellij/sql/dialects/redshift/psi": 9,
+        "com/intellij/database/dialects/redshift/model/properties": 5,
+        "com/intellij/database/dialects/redshift/generator": 4,
+        "com/intellij/database/dialects/redshift/plan": 3,
+        "com/intellij/database/dialects/redshift/types": 3,
+        "com/intellij/sql/dialects/redshift/formatter": 1,
+        "com/intellij/sql/dialects/redshift/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 41,
+          "sample": [
+            "com/intellij/database/dialects/redshift/introspector/RsIntrospector$ArgumentNameHolderWrapper.class",
+            "com/intellij/database/dialects/redshift/introspector/RsIntrospector$Companion$MY_NATURE$1.class",
+            "com/intellij/database/dialects/redshift/introspector/RsIntrospector$Companion.class",
+            "com/intellij/database/dialects/redshift/introspector/RsIntrospector$ExternalSchemaL1Retriever$process$1.class",
+            "com/intellij/database/dialects/redshift/introspector/RsIntrospector$ExternalSchemaL1Retriever$traceEffects$1$tt$1.class",
+            "com/intellij/database/dialects/redshift/introspector/RsIntrospector$ExternalSchemaL1Retriever$traceEffects$1$tt$2.class",
+            "com/intellij/database/dialects/redshift/introspector/RsIntrospector$ExternalSchemaL1Retriever.class",
+            "com/intellij/database/dialects/redshift/introspector/RsIntrospector$ExternalSchemaRetriever$retrieveExternalTables$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 2,
+          "sample": [
+            "com/intellij/database/dialects/redshift/generator/producers/RsAlterMatViewColumn$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/redshift/generator/producers/RsAlterMatViewColumn$produceRename$lambda$0$$inlined$name$2.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.snowflake.ex.jar",
+      "bytes": 64724,
+      "sha256": "f64b29a0ff8178be0ee927eb58b66ba715af7f52943e45d13267137d5e6e76db",
+      "entries": 13,
+      "classes": 9,
+      "class_packages": {
+        "com/intellij/database/dialects/snowflake/ex/extensions": 4,
+        "com/intellij/database/dialects/snowflake/ex/actions": 3,
+        "com/intellij/database/dialects/snowflake/model": 2
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.snowflake.jar",
+      "bytes": 4494932,
+      "sha256": "036e4d3587a2a80beecb07d9cef7494e17950b0234c9c9fc4e37e1d7424a2c4c",
+      "entries": 474,
+      "classes": 467,
+      "class_packages": {
+        "com/intellij/database/dialects/snowflake/generator/producers": 206,
+        "com/intellij/database/dialects/snowflake/model": 100,
+        "com/intellij/database/dialects/snowflake/introspector": 82,
+        "com/intellij/sql/dialects/snowflake": 29,
+        "com/intellij/database/dialects/snowflake": 14,
+        "com/intellij/database/dialects/snowflake/plan": 11,
+        "com/intellij/sql/dialects/snowflake/psi": 7,
+        "com/intellij/database/dialects/snowflake/generator": 4,
+        "com/intellij/database/dialects/snowflake/types": 4,
+        "com/intellij/database/dialects/snowflake/model/properties": 3,
+        "com/intellij/sql/dialects/snowflake/formatter": 2,
+        "com/intellij/database/dialects/snowflake/introspector/jdbc": 1
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 42,
+          "sample": [
+            "com/intellij/database/dialects/snowflake/introspector/SFlakeIntrospector$ArgInfo.class",
+            "com/intellij/database/dialects/snowflake/introspector/SFlakeIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/snowflake/introspector/SFlakeIntrospector$Factory.class",
+            "com/intellij/database/dialects/snowflake/introspector/SFlakeIntrospector$SchemaRetriever$retrieveColumns$$inlined$modifyFamiliesAndCleanup$1.class",
+            "com/intellij/database/dialects/snowflake/introspector/SFlakeIntrospector$SchemaRetriever$retrieveColumns$$inlined$modifyFamiliesAndCleanup$2.class",
+            "com/intellij/database/dialects/snowflake/introspector/SFlakeIntrospector$SchemaRetriever$retrieveForeignKeys$lambda$1$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/snowflake/introspector/SFlakeIntrospector$SchemaRetriever$retrieveForeignKeys$lambda$1$0$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/snowflake/introspector/SFlakeIntrospector$SchemaRetriever$retrieveFormatProperties$lambda$0$$inlined$sortBy$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 33,
+          "sample": [
+            "com/intellij/database/dialects/snowflake/generator/producers/SFlakeAlterClassInstance$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/snowflake/generator/producers/SFlakeAlterClassInstance$produceRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/snowflake/generator/producers/SFlakeAlterClassInstance$produceRename$lambda$0$$inlined$name$3.class",
+            "com/intellij/database/dialects/snowflake/generator/producers/SFlakeAlterDatabase$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/snowflake/generator/producers/SFlakeAlterDatabase$produceRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/snowflake/generator/producers/SFlakeAlterDynamicTable$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/snowflake/generator/producers/SFlakeAlterDynamicTable$produceRename$lambda$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/snowflake/generator/producers/SFlakeAlterForeignKey$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.spark.jar",
+      "bytes": 1199415,
+      "sha256": "244df0dcce77e45c41239ef9217d31f9f8c14e6a40582888bb836ca62d742b5f",
+      "entries": 138,
+      "classes": 132,
+      "class_packages": {
+        "com/intellij/database/dialects/spark/model": 87,
+        "com/intellij/sql/dialects/spark": 17,
+        "com/intellij/database/dialects/spark": 9,
+        "com/intellij/database/dialects/spark/generator/producers": 8,
+        "com/intellij/database/dialects/spark/generator": 6,
+        "com/intellij/database/dialects/spark/plan": 4,
+        "com/intellij/sql/dialects/spark/psi/stubs": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sql92.jar",
+      "bytes": 466233,
+      "sha256": "68bccd4d33c26e38ce9ca49fef50e8c5f97019d3b012b71eaedd0441c8f86c8e",
+      "entries": 35,
+      "classes": 30,
+      "class_packages": {
+        "com/intellij/sql/dialects/sql92": 28,
+        "com/intellij/database/dialects/sql92": 1,
+        "com/intellij/sql/dialects/sql92/psi/stubs": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sqlite.ex.jar",
+      "bytes": 78487,
+      "sha256": "db3a26406b6cb8fdf0c42677029c22965326977521c2956668763462d1722382",
+      "entries": 16,
+      "classes": 13,
+      "class_packages": {
+        "com/intellij/database/dialects/sqlite/ex/model": 8,
+        "com/intellij/database/dialects/sqlite/ex/ui": 3,
+        "com/intellij/database/dialects/sqlite/ex": 2
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sqlite.jar",
+      "bytes": 1781421,
+      "sha256": "6a94ceb51c5bd3e4b85b2edb876207c429ad1f31943edeeb3e67a6824848f545",
+      "entries": 217,
+      "classes": 203,
+      "class_packages": {
+        "com/intellij/database/dialects/sqlite/model": 66,
+        "com/intellij/database/dialects/sqlite/generator/producers": 48,
+        "com/intellij/database/dialects/sqlite/sql": 25,
+        "com/intellij/database/dialects/sqlite/introspector": 22,
+        "com/intellij/database/dialects/sqlite": 12,
+        "com/intellij/database/dialects/sqlite/plan": 8,
+        "com/intellij/database/dialects/sqlite/generator": 6,
+        "com/intellij/database/dialects/sqlite/introspector/jdbc": 4,
+        "com/intellij/database/dialects/sqlite/types": 4,
+        "com/intellij/database/dialects/sqlite/model/properties": 3,
+        "com/intellij/database/dialects/sqlite/sql/formatter": 2,
+        "com/intellij/database/dialects/sqlite/sql/psi": 2
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 14,
+          "sample": [
+            "com/intellij/database/dialects/sqlite/introspector/SqliteIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/sqlite/introspector/SqliteIntrospector$Factory.class",
+            "com/intellij/database/dialects/sqlite/introspector/SqliteIntrospector$SqliteSchemaRetriever$WhenMappings.class",
+            "com/intellij/database/dialects/sqlite/introspector/SqliteIntrospector$SqliteSchemaRetriever$retrieveForeignKeys$lambda$0$1$$inlined$sortBy$1.class",
+            "com/intellij/database/dialects/sqlite/introspector/SqliteIntrospector$SqliteSchemaRetriever$retrieveIndexColumns$$inlined$sortBy$1.class",
+            "com/intellij/database/dialects/sqlite/introspector/SqliteIntrospector$SqliteSchemaRetriever.class",
+            "com/intellij/database/dialects/sqlite/introspector/SqliteIntrospector$applySchemas$lambda$0$$inlined$applySchemasNamed$1.class",
+            "com/intellij/database/dialects/sqlite/introspector/SqliteIntrospector$applySchemas$lambda$0$$inlined$applySchemasNamed$2.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/sqlite/generator/producers/SqliteAlterTable$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sybase.ex.jar",
+      "bytes": 9444,
+      "sha256": "5bad2fff70377a631878950116b4ed8057b8167afe3cf2ccfbdabeb1be609b73",
+      "entries": 4,
+      "classes": 1,
+      "class_packages": {
+        "com/intellij/database/dialects/sybase/model": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sybase.jar",
+      "bytes": 2408155,
+      "sha256": "acac0711040370a146f16f05596456372353dcfc6f16fcd389d56dce1d755ac1",
+      "entries": 254,
+      "classes": 244,
+      "class_packages": {
+        "com/intellij/database/dialects/sybase/model": 81,
+        "com/intellij/database/dialects/sybase/generator/producers": 64,
+        "com/intellij/sql/dialects/sybase": 29,
+        "com/intellij/database/dialects/sybase/introspector": 28,
+        "com/intellij/database/dialects/sybase/generator": 9,
+        "com/intellij/database/dialects/sybase/plan": 8,
+        "com/intellij/database/dialects/sybase": 6,
+        "com/intellij/database/dialects/sybase/model/properties": 6,
+        "com/intellij/database/dialects/sybase/introspector/jdbc": 5,
+        "com/intellij/sql/dialects/sybase/psi": 3,
+        "com/intellij/database/dialects/sybase/types": 2,
+        "com/intellij/sql/dialects/sybase/refactoring": 2
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/sybase/introspector/AseIntroQueries$CurrentSessionInfo.class"
+          ]
+        },
+        "introspection": {
+          "count": 12,
+          "sample": [
+            "com/intellij/database/dialects/sybase/introspector/AseIntrospector$AseDatabaseRetriever.class",
+            "com/intellij/database/dialects/sybase/introspector/AseIntrospector$AseSchemaRetriever$retrieveSources$$inlined$writeSources$1.class",
+            "com/intellij/database/dialects/sybase/introspector/AseIntrospector$AseSchemaRetriever$retrieveSources$1$1.class",
+            "com/intellij/database/dialects/sybase/introspector/AseIntrospector$AseSchemaRetriever$retrieveSources$ts$2.class",
+            "com/intellij/database/dialects/sybase/introspector/AseIntrospector$AseSchemaRetriever.class",
+            "com/intellij/database/dialects/sybase/introspector/AseIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/sybase/introspector/AseIntrospector$Factory.class",
+            "com/intellij/database/dialects/sybase/introspector/AseIntrospector$createDatabaseLister$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 7,
+          "sample": [
+            "com/intellij/database/dialects/sybase/generator/AseScriptGeneratorHelperKt$spRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/sybase/generator/producers/AseAlterDatabase$produceRename$lambda$0$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/sybase/generator/producers/AseAlterDatabase$produceRename$lambda$0$0$$inlined$name$2.class",
+            "com/intellij/database/dialects/sybase/generator/producers/AseAlterDatabase$produceRename$lambda$0$0$$inlined$name$3.class",
+            "com/intellij/database/dialects/sybase/generator/producers/AseAlterDatabase$produceRename$lambda$0$0$$inlined$name$4.class",
+            "com/intellij/database/dialects/sybase/generator/producers/AseAlterDatabase$produceRename$lambda$0$0$$inlined$name$5.class",
+            "com/intellij/database/dialects/sybase/generator/producers/AseAlterDatabase$produceRename$lambda$0$0$$inlined$name$6.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.vertica.ex.jar",
+      "bytes": 18805,
+      "sha256": "95feddbb9bbab9d574ecaa9050345534c0d9c97aab452b447462271e7ac34006",
+      "entries": 7,
+      "classes": 4,
+      "class_packages": {
+        "com/intellij/database/dialects/vertica/model": 4
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.dialects.vertica.jar",
+      "bytes": 2452488,
+      "sha256": "fa9c0fbfe4152862a1baaf5d6f911e728c6d3c4ede200e1702b7d161d7901b07",
+      "entries": 276,
+      "classes": 270,
+      "class_packages": {
+        "com/intellij/database/dialects/vertica/generator/producers": 83,
+        "com/intellij/database/dialects/vertica/model": 77,
+        "com/intellij/database/dialects/vertica/introspector": 48,
+        "com/intellij/sql/dialects/vertica": 26,
+        "com/intellij/database/dialects/vertica": 16,
+        "com/intellij/database/dialects/vertica/plan": 5,
+        "com/intellij/database/dialects/vertica/types": 5,
+        "com/intellij/database/dialects/vertica/generator": 4,
+        "com/intellij/database/dialects/vertica/model/properties": 2,
+        "com/intellij/database/dialects/vertica/introspector/jdbc": 1,
+        "com/intellij/sql/dialects/vertica/psi": 1,
+        "com/intellij/sql/dialects/vertica/psi/stubs": 1
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/dialects/vertica/introspector/VertIntroQueries$SessionInfo.class"
+          ]
+        },
+        "introspection": {
+          "count": 25,
+          "sample": [
+            "com/intellij/database/dialects/vertica/introspector/VertIntrospector$BaseSchemaRetriever$retrieveTableColumns$lambda$1$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/vertica/introspector/VertIntrospector$BaseSchemaRetriever$retrieveViewColumns$lambda$1$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/vertica/introspector/VertIntrospector$BaseSchemaRetriever.class",
+            "com/intellij/database/dialects/vertica/introspector/VertIntrospector$Factory$VERSION.class",
+            "com/intellij/database/dialects/vertica/introspector/VertIntrospector$Factory.class",
+            "com/intellij/database/dialects/vertica/introspector/VertIntrospector$SchemaRetriever$retrieveConstraintColumns$lambda$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/vertica/introspector/VertIntrospector$SchemaRetriever$retrieveConstraintColumns$lambda$0$0$$inlined$get$1.class",
+            "com/intellij/database/dialects/vertica/introspector/VertIntrospector$SchemaRetriever$retrieveConstraintObjects$lambda$0$$inlined$get$1.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 9,
+          "sample": [
+            "com/intellij/database/dialects/vertica/generator/producers/VertAlterProjection$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/vertica/generator/producers/VertAlterRole$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/vertica/generator/producers/VertAlterRoutine$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/vertica/generator/producers/VertAlterSchema$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/vertica/generator/producers/VertAlterSequence$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/vertica/generator/producers/VertAlterTable$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/vertica/generator/producers/VertAlterTextIndex$produceRename$lambda$0$$inlined$name$1.class",
+            "com/intellij/database/dialects/vertica/generator/producers/VertAlterUser$produceRename$lambda$0$$inlined$name$1.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.frontend.split.jar",
+      "bytes": 23544,
+      "sha256": "1837125bba3e22ee25bdc0a9a5af76dd526ab33ab34cda01ee78dce3670bbe16",
+      "entries": 11,
+      "classes": 8,
+      "class_packages": {
+        "com/intellij/database/frontend/split/editor": 5,
+        "com/intellij/database/frontend/split/sql/psi": 2,
+        "com/intellij/database/frontend/split/database/console": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.impl.bookmarks.jar",
+      "bytes": 27296,
+      "sha256": "50ddff432bd32bb1b1389c7e744ff2c91b89bc6ca5d9786250b19bfbb31923fb",
+      "entries": 6,
+      "classes": 3,
+      "class_packages": {
+        "com/intellij/database/impl/bookmarks": 3
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.impl.common.jar",
+      "bytes": 1061,
+      "sha256": "3733ad7faf85960ae0932c939dea3aa28f277ba5c458ff5e978ca10b74bbb14b",
+      "entries": 3,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.impl.frontend.jar",
+      "bytes": 14336,
+      "sha256": "a6bc6c73346afcce3b82266adf0440395fad83de6d3abdd669359847f7af97b1",
+      "entries": 8,
+      "classes": 4,
+      "class_packages": {
+        "com/intellij/database/impl/frontend/actions/util": 4
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.impl.jar",
+      "bytes": 22171210,
+      "sha256": "6a326c331f451b2e912e70d77cef5b5cb63df28a62eb9a9c8f7092df6f9d6b51",
+      "entries": 3994,
+      "classes": 3751,
+      "class_packages": {
+        "com/intellij/database/actions": 242,
+        "com/intellij/database/view/ui": 186,
+        "com/intellij/database/view": 175,
+        "com/intellij/database/run/actions": 166,
+        "com/intellij/database/dataSource": 161,
+        "com/intellij/database/schemaEditor/ui": 147,
+        "com/intellij/database/settings": 129,
+        "com/intellij/database/dbimport/editor": 126,
+        "com/intellij/database/schemaEditor": 126,
+        "com/intellij/database/editor": 114,
+        "com/intellij/database/dataSource/url/ui": 101,
+        "com/intellij/database/console": 89
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 111,
+          "sample": [
+            "com/intellij/database/actions/DatabaseSessionActionBase.class",
+            "com/intellij/database/actions/DumpToDdlDataSourceFileManager$Session.class",
+            "com/intellij/database/console/DatabaseServiceViewContributor$SessionContributor.class",
+            "com/intellij/database/console/DatabaseServiceViewContributor$SessionStateListener.class",
+            "com/intellij/database/console/DatabaseServiceViewContributor$SessionViewDescriptor.class",
+            "com/intellij/database/console/DatabaseServiceViewContributor$SessionsListener.class",
+            "com/intellij/database/console/DatabaseServiceViewContributor$TransactionControlAction.class",
+            "com/intellij/database/console/GlobalSessionStateListener$Companion.class"
+          ]
+        },
+        "execution_cancel": {
+          "count": 8,
+          "sample": [
+            "com/intellij/database/actions/CancelRunningStatementsAction.class",
+            "com/intellij/database/console/InlineProgressHelper$RequestStatusGutterRenderer$CancelRequestAction.class",
+            "com/intellij/database/dataSource/ui/DataSourceTestConnectionManager$Companion$computeDetachedAndCancel$1.class",
+            "com/intellij/database/dataSource/ui/DataSourceTestConnectionManager$Companion$computeDetachedAndCancel$2.class",
+            "com/intellij/database/dataSource/ui/DataSourceTestConnectionManager$Companion$computeDetachedAndCancel$3.class",
+            "com/intellij/database/datagrid/DbIdentityDataProducer$1.class",
+            "com/intellij/database/datagrid/DbIdentityDataProducer.class",
+            "com/intellij/database/schemaEditor/DbEditorDialogBase$Companion$userCancelledCancel$1.class"
+          ]
+        },
+        "introspection": {
+          "count": 34,
+          "sample": [
+            "com/intellij/database/actions/ddl/DbModifyObjectDialogPanel$postIntrospectionHook$2.class",
+            "com/intellij/database/actions/diagnostic/PrepareIntrospectionDiagnostic$1.class",
+            "com/intellij/database/actions/diagnostic/PrepareIntrospectionDiagnostic.class",
+            "com/intellij/database/dataSource/DesktopRegularIntrospectionContext.class",
+            "com/intellij/database/statistic/DbFusIntrospectionCollector.class",
+            "com/intellij/database/statistic/DbFusIntrospectionLogger$ObjectCounts$Companion.class",
+            "com/intellij/database/statistic/DbFusIntrospectionLogger$ObjectCounts.class",
+            "com/intellij/database/statistic/DbFusIntrospectionLogger.class"
+          ]
+        },
+        "editing_grid": {
+          "count": 123,
+          "sample": [
+            "com/intellij/database/actions/OpenEditorAction$OpenDDLGridAction.class",
+            "com/intellij/database/console/session/DatabaseInEditorResults$DatabaseInEditorGridPatcher.class",
+            "com/intellij/database/console/session/DatabaseInEditorResults$GridMeasurements.class",
+            "com/intellij/database/datagrid/DataGridSessionClient.class",
+            "com/intellij/database/datagrid/DataGridUtil$1.class",
+            "com/intellij/database/datagrid/DataGridUtil.class",
+            "com/intellij/database/datagrid/DatabaseTableGridDataHookUp$DatabaseTableLoader$1.class",
+            "com/intellij/database/datagrid/DatabaseTableGridDataHookUp$DatabaseTableLoader$2.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 68,
+          "sample": [
+            "com/intellij/database/actions/DatabaseViewActions$RefactorActionGroup.class",
+            "com/intellij/database/cli/CliModel$MyCompletionProvider.class",
+            "com/intellij/database/console/runConfiguration/DatabaseScriptFilesRunProfileState$CompletionAsProcessHandler$Companion.class",
+            "com/intellij/database/console/runConfiguration/DatabaseScriptFilesRunProfileState$CompletionAsProcessHandler.class",
+            "com/intellij/database/dataSource/DataSourceSchemasPanel$MyCompletion.class",
+            "com/intellij/database/dataSource/url/ui/CompletionParamEditor$1.class",
+            "com/intellij/database/dataSource/url/ui/CompletionParamEditor$2.class",
+            "com/intellij/database/dataSource/url/ui/CompletionParamEditor$3.class"
+          ]
+        },
+        "schema_diff": {
+          "count": 151,
+          "sample": [
+            "com/intellij/database/console/migration/ConsolesMigrationManagerImpl$ConsolesMigrationProjectActivity.class",
+            "com/intellij/database/console/migration/ConsolesMigrationManagerImpl$MigrationInfo.class",
+            "com/intellij/database/console/migration/ConsolesMigrationManagerImpl$attachConsolesToDataSources$1.class",
+            "com/intellij/database/console/migration/ConsolesMigrationManagerImpl$migrateIfNeeded$1$1$1.class",
+            "com/intellij/database/console/migration/ConsolesMigrationManagerImpl$migrateIfNeeded$1$1.class",
+            "com/intellij/database/console/migration/ConsolesMigrationManagerImpl$migrateIfNeeded$1.class",
+            "com/intellij/database/console/migration/ConsolesMigrationManagerImpl$migrateSqlFileTypeIfNeeded$1.class",
+            "com/intellij/database/console/migration/ConsolesMigrationManagerImpl.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.impl.jcef.jar",
+      "bytes": 69965,
+      "sha256": "cc5413683cc4ef3beab0213cf47497bc184b7906a3bc35e2fe7dfc3f1e0dbc5b",
+      "entries": 14,
+      "classes": 9,
+      "class_packages": {
+        "com/intellij/database/impl/jcef/datagrid": 7,
+        "com/intellij/database/impl/jcef/actions": 2
+      },
+      "concept_candidates": {
+        "editing_grid": {
+          "count": 2,
+          "sample": [
+            "com/intellij/database/impl/jcef/actions/GridGeoViewAction$GridGeoViewCloseAction.class",
+            "com/intellij/database/impl/jcef/actions/GridGeoViewAction.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.impl.navbar.jar",
+      "bytes": 38491,
+      "sha256": "bf8c7b19f9ee0677fe572add581ef8d7109a2fbbbd7336581d98622131f62a2d",
+      "entries": 8,
+      "classes": 5,
+      "class_packages": {
+        "com/intellij/database/impl/navbar": 5
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.jar",
+      "bytes": 1660375,
+      "sha256": "b1c56c37515894c154104b9c03aa3d2b798ba6956c9343d42ad3a99b0b40b26b",
+      "entries": 805,
+      "classes": 194,
+      "class_packages": {
+        "com/intellij/database/model": 57,
+        "com/intellij/database/util": 41,
+        "com/intellij/database/psi": 22,
+        "com/intellij/database/types": 22,
+        "com/intellij/database": 15,
+        "com/intellij/database/script": 13,
+        "com/intellij/database/symbols": 7,
+        "com/intellij/database/autoconfig": 4,
+        "com/intellij/database/extensions": 4,
+        "com/intellij/database/settings": 4,
+        "icons": 2,
+        "com/intellij/database/dataSource": 1
+      },
+      "concept_candidates": {
+        "editing_grid": {
+          "count": 2,
+          "sample": [
+            "com/intellij/database/util/GridColumnAlias.class",
+            "com/intellij/database/util/GridTablesModel.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.jdbcConsole.jar",
+      "bytes": 1685900,
+      "sha256": "c9837d40cd73aa4711914f2a582f89f3af2f483ee621e82567c5105f48a240d0",
+      "entries": 417,
+      "classes": 414,
+      "class_packages": {
+        "com/intellij/database/remote/jdbc/helpers": 101,
+        "com/intellij/database/remote/jdba/jdbc": 73,
+        "com/intellij/database/remote/jdbc/impl": 42,
+        "com/intellij/database/remote/jdba/jdbc/dialects": 36,
+        "com/intellij/database/remote/jdbc": 36,
+        "com/intellij/database/remote/jdba/exceptions": 29,
+        "com/intellij/database/remote/jdba/sql": 17,
+        "com/intellij/database/remote/dbimport": 13,
+        "com/intellij/database/remote/jdba/util": 13,
+        "com/intellij/database/remote/jdba/core": 12,
+        "com/intellij/database/remote/toolkit": 8,
+        "com/intellij/desktop": 7
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 15,
+          "sample": [
+            "com/intellij/database/remote/dbimport/CommitOnExecuteStatement.class",
+            "com/intellij/database/remote/jdba/RemoteSession.class",
+            "com/intellij/database/remote/jdba/exceptions/DBSessionIsClosedException.class",
+            "com/intellij/database/remote/jdba/exceptions/DBTransactionIsAlreadyStartedException.class",
+            "com/intellij/database/remote/jdba/impl/RemoteSessionImpl.class",
+            "com/intellij/database/remote/jdba/intermediate/PrimeIntermediateSession.class",
+            "com/intellij/database/remote/jdba/jdbc/JdbcIntermediateSession.class",
+            "com/intellij/database/remote/jdba/jdbc/dialects/CassandraIntermediateSession.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.jdbcConsole.shim.jar",
+      "bytes": 10152,
+      "sha256": "2ec8e73166d70d1bc2d9f2f56b7b349f5c81b339ab33e32571a7c182d1ce7adc",
+      "entries": 6,
+      "classes": 4,
+      "class_packages": {
+        "com/intellij/database/remote/jdbc": 4
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.mcp.jar",
+      "bytes": 383120,
+      "sha256": "4e7ba63848b52e1f9e38882ebbd11eafa66d4ff59c16fc50ea1c846fe5d2d7d6",
+      "entries": 72,
+      "classes": 69,
+      "class_packages": {
+        "com/intellij/database/mcp/toolsets": 69
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.plugin.frameworks.jar",
+      "bytes": 15958,
+      "sha256": "2f04e915f8d6fe4e19f9c9ebf317396f412789fea7510ce65cb167464ec6e719",
+      "entries": 6,
+      "classes": 3,
+      "class_packages": {
+        "com/intellij/database/plugin/frameworks": 3
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.pro.jar",
+      "bytes": 104370,
+      "sha256": "db9a76a90b545fe640acb81bf517e93d8043d5ea586ea2f94cc1499989c8a152",
+      "entries": 29,
+      "classes": 25,
+      "class_packages": {
+        "com/intellij/database/pro/settings": 23,
+        "com/intellij/database/pro/dataSource/srcStorage": 2
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.backend.core.jar",
+      "bytes": 171027,
+      "sha256": "e990d39504f41eb8f8b1ba6a527d321fb67b109082c8e0420cf78420f0307d89",
+      "entries": 37,
+      "classes": 34,
+      "class_packages": {
+        "com/intellij/database/sql/backend/core": 23,
+        "com/intellij/database/sql/backend/core/psi/impl/support": 7,
+        "com/intellij/database/sql/backend/core/editor": 2,
+        "com/intellij/database/sql/backend/core/psi": 1,
+        "com/intellij/database/sql/backend/core/psi/stubs": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.common.core.jar",
+      "bytes": 36988,
+      "sha256": "fc14c65d51a03b0cc5a34c6c123d0eeca94e30c72c1117197226e117a6b14899",
+      "entries": 7,
+      "classes": 4,
+      "class_packages": {
+        "com/intellij/database/sql/common/core/psi/impl/support": 2,
+        "com/intellij/database/sql/common/core/editor": 1,
+        "com/intellij/database/sql/common/core/searchEverywhere": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.common.impl.jar",
+      "bytes": 594987,
+      "sha256": "7bb98e5bb996c61af6adc9927eaab31e371c7960d32db24c423811a2673d849d",
+      "entries": 66,
+      "classes": 62,
+      "class_packages": {
+        "com/intellij/database/sql/common/impl/formatter/settings": 44,
+        "com/intellij/database/sql/common/impl/editor": 13,
+        "com/intellij/database/sql/common/impl/formatter": 2,
+        "com/intellij/database/sql/common/impl/psi/impl/support": 2,
+        "com/intellij/database/sql/common/impl": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.copyright.jar",
+      "bytes": 7141,
+      "sha256": "5bc2f2d39d09538574375200d32d2651dda25671a013a12c43960dbed47445c6",
+      "entries": 5,
+      "classes": 2,
+      "class_packages": {
+        "com/intellij/database/sql/copyright": 2
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.core.impl.jar",
+      "bytes": 7324492,
+      "sha256": "48d6ed5b464802c7aca6227519737a33cc50f78f551d4df81ac525537d1de5e9",
+      "entries": 1556,
+      "classes": 1544,
+      "class_packages": {
+        "com/intellij/sql/formatter/model": 548,
+        "com/intellij/sql/psi/impl": 369,
+        "com/intellij/sql/dataFlow": 48,
+        "com/intellij/sql/inspections/dataflow/sql/inst": 37,
+        "com/intellij/sql/inspections/dataflow/types": 37,
+        "com/intellij/sql/dataFlow/instructions": 35,
+        "com/intellij/sql/psi/patterns": 35,
+        "com/intellij/sql/completion": 28,
+        "com/intellij/sql/completion/providers": 25,
+        "com/intellij/sql/psi": 22,
+        "com/intellij/sql/psi/stubs/elementTypes": 22,
+        "com/intellij/sql/psi/stubs/serializers": 22
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 2,
+          "sample": [
+            "com/intellij/sql/psi/impl/SqlCommitStatementImpl.class",
+            "com/intellij/sql/psi/impl/SqlRollbackStatementImpl.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 49,
+          "sample": [
+            "com/intellij/sql/completion/SqlCompletionContributor.class",
+            "com/intellij/sql/completion/SqlCompletionScopeProcessor$1.class",
+            "com/intellij/sql/completion/SqlCompletionScopeProcessor.class",
+            "com/intellij/sql/completion/SqlCompletionUtil$1.class",
+            "com/intellij/sql/completion/SqlCompletionUtil$2.class",
+            "com/intellij/sql/completion/SqlCompletionUtil$3.class",
+            "com/intellij/sql/completion/SqlCompletionUtil$IconHolder.class",
+            "com/intellij/sql/completion/SqlCompletionUtil.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.frontend.core.jar",
+      "bytes": 583,
+      "sha256": "f07dfc9730a13063224a5698077c65ccab335790c5e1375b1912c44cfdb5dac7",
+      "entries": 2,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.frontend.impl.jar",
+      "bytes": 49655,
+      "sha256": "d0a2952dec5696f3b1600114be495fa4dde4b8a7812ffdf54fd0871b72903f5f",
+      "entries": 12,
+      "classes": 9,
+      "class_packages": {
+        "com/intellij/database/sql/frontend/impl": 9
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.impl.jar",
+      "bytes": 3269501,
+      "sha256": "0374a9a4fb96ebfefb4cc746e6efe452b00a9501e65aa68d54d15c927ee32b13",
+      "entries": 746,
+      "classes": 550,
+      "class_packages": {
+        "com/intellij/sql/inspections": 156,
+        "com/intellij/sql": 57,
+        "com/intellij/sql/database": 51,
+        "com/intellij/sql/intentions": 43,
+        "com/intellij/sql/completion/options": 37,
+        "com/intellij/sql/editor": 32,
+        "com/intellij/sql/slicer": 20,
+        "com/intellij/sql/inspections/configuration": 19,
+        "com/intellij/sql/postfixTemplates": 15,
+        "com/intellij/sql/dialects": 14,
+        "com/intellij/sql/refactoring/extractFunction": 13,
+        "com/intellij/sql/inlays": 8
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 5,
+          "sample": [
+            "com/intellij/sql/inspections/SqlSingleSessionModeInspection$ApplySingleSessionModeFix.class",
+            "com/intellij/sql/inspections/SqlSingleSessionModeInspection$createAnnotationVisitor$1.class",
+            "com/intellij/sql/inspections/SqlSingleSessionModeInspection.class",
+            "com/intellij/sql/inspections/SqlTransactionStatementInTriggerInspection$createAnnotationVisitor$1.class",
+            "com/intellij/sql/inspections/SqlTransactionStatementInTriggerInspection.class"
+          ]
+        },
+        "execution_cancel": {
+          "count": 1,
+          "sample": [
+            "com/intellij/sql/inspections/configuration/SqlDialectInspection$CancelQuickFix.class"
+          ]
+        },
+        "introspection": {
+          "count": 3,
+          "sample": [
+            "com/intellij/sql/database/SqlDataSourceIntrospector.class",
+            "com/intellij/sql/inspections/SqlResolveInspection$IntrospectSchemaFix$1.class",
+            "com/intellij/sql/inspections/SqlResolveInspection$IntrospectSchemaFix.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 75,
+          "sample": [
+            "com/intellij/sql/SqlRefactoringSupportProvider.class",
+            "com/intellij/sql/SqlRenameInputValidator.class",
+            "com/intellij/sql/completion/SqlWordCompletionFilter.class",
+            "com/intellij/sql/completion/options/SqlCodeCompletionConfigurable$EntriesMappings.class",
+            "com/intellij/sql/completion/options/SqlCodeCompletionConfigurable$createContent$1$1$1$1.class",
+            "com/intellij/sql/completion/options/SqlCodeCompletionConfigurable$createContent$1$1$1$2.class",
+            "com/intellij/sql/completion/options/SqlCodeCompletionConfigurable$createContent$1$1$3$1.class",
+            "com/intellij/sql/completion/options/SqlCodeCompletionConfigurable$createContent$1$1$3$2.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.intelliLang.jar",
+      "bytes": 124901,
+      "sha256": "234f0ebc79e89c0937cd951c6e8ce5f5d510dd1fe592eaf23dd755e83db223c4",
+      "entries": 16,
+      "classes": 13,
+      "class_packages": {
+        "com/intellij/database/sql/intelliLang/injection": 11,
+        "com/intellij/database/sql/intelliLang": 1,
+        "com/intellij/database/sql/intelliLang/intentions": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.sql.jar",
+      "bytes": 614692,
+      "sha256": "5e5f1b659b2ad7ad19319cdc7c9fc8f28c9b9a0e0d37fe83698fe179c59d8d43",
+      "entries": 297,
+      "classes": 293,
+      "class_packages": {
+        "com/intellij/sql/psi": 229,
+        "com/intellij/sql/formatter/settings": 19,
+        "com/intellij/sql/dialects": 17,
+        "com/intellij/sql/editor": 8,
+        "com/intellij/sql/util": 8,
+        "com/intellij/sql": 3,
+        "com/intellij/sql/cardinality": 3,
+        "com/intellij/sql/database": 3,
+        "com/intellij/sql/formatter": 2,
+        "com/intellij/sql/script": 1
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 3,
+          "sample": [
+            "com/intellij/sql/psi/SqlCommitStatement.class",
+            "com/intellij/sql/psi/SqlResolveSession.class",
+            "com/intellij/sql/psi/SqlRollbackStatement.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 4,
+          "sample": [
+            "com/intellij/sql/psi/SqlFileResolveMode.class",
+            "com/intellij/sql/psi/SqlRenameToClause.class",
+            "com/intellij/sql/psi/SqlResolveResult.class",
+            "com/intellij/sql/psi/SqlResolveSession.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.ssh.jar",
+      "bytes": 127864,
+      "sha256": "1eb7787d67f34e12ac06b094550dfe5503571ca66962e11d8cf29d518be28b4a",
+      "entries": 25,
+      "classes": 22,
+      "class_packages": {
+        "com/intellij/database/ssh": 22
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/ssh/DatabaseSshTunnelEstablisher$createSshSessionWithRetries$2.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.ssh.ui.jar",
+      "bytes": 41513,
+      "sha256": "367f36416fa85d6674737bd47b1a5d80c916093286d75b301b8aa8c7f039486b",
+      "entries": 10,
+      "classes": 7,
+      "class_packages": {
+        "com/intellij/database/ssh/ui": 7
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.trialPromotion.idesWithFreeTier.jar",
+      "bytes": 12040,
+      "sha256": "7f9b7a5cde337673096ca663d6faab846f8b800c9e29db87a782dfe6d2c8d040",
+      "entries": 6,
+      "classes": 3,
+      "class_packages": {
+        "com/intellij/database/trialPromotion/idesWithFreeTier": 3
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/modules/intellij.database.util.jar",
+      "bytes": 240972,
+      "sha256": "0b658654987166a4e4e90e2870a6a0c618a254fdf0d1eca958ecaf0ba0896d63",
+      "entries": 59,
+      "classes": 56,
+      "class_packages": {
+        "com/intellij/database/util/common": 46,
+        "com/intellij/database/util/sequences": 6,
+        "com/intellij/database/util/tree": 4
+      },
+      "concept_candidates": {
+        "editing_grid": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/util/common/TextTable$Grid.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/DatabaseTools/lib/tips-database-plugin.jar",
+      "bytes": 608294,
+      "sha256": "7b2b064e6ee56a00d1655a259412a30500bea22102057b4daa9297784f141806",
+      "entries": 63,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": [
+        {
+          "path": "META-INF/tips-database-plugin.xml",
+          "root": "idea-plugin",
+          "id": null,
+          "name": null,
+          "depends": [],
+          "extensions": 10,
+          "actions": 0,
+          "module_names": []
+        }
+      ]
+    },
+    {
+      "path": "plugins/color-scheme-solarized-datagrip/lib/color-scheme-solarized-datagrip.jar",
+      "bytes": 197648,
+      "sha256": "99d519a49e1a77984c225b87d1e9aaddfca8987ac5e5bb2a560cef17fb3cdfe6",
+      "entries": 4,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": [
+        {
+          "path": "META-INF/plugin.xml",
+          "root": "idea-plugin",
+          "id": "com.intellij.plugins.datagrip.solarized.colorscheme",
+          "name": "DataGrip Solarized Color Scheme",
+          "depends": [
+            "com.intellij.modules.lang"
+          ],
+          "extensions": 2,
+          "actions": 0,
+          "module_names": []
+        }
+      ]
+    },
+    {
+      "path": "plugins/database-artifactsBundle/lib/database-artifactsBundle.jar",
+      "bytes": 50861204,
+      "sha256": "b9965154137c2002eb0ca6b5510a03d040f2593adba8a53495d6de69870276fd",
+      "entries": 12,
+      "classes": 4,
+      "class_packages": {
+        "com/intellij/database/artifactsBundle": 4
+      },
+      "concept_candidates": {},
+      "descriptors": [
+        {
+          "path": "META-INF/plugin.xml",
+          "root": "idea-plugin",
+          "id": "intellij.database.artifactsBundle",
+          "name": "Database Bundled Drivers",
+          "depends": [],
+          "extensions": 3,
+          "actions": 0,
+          "module_names": []
+        }
+      ]
+    },
+    {
+      "path": "plugins/database-cloudExplorer-aws/lib/database-cloudExplorer-aws.jar",
+      "bytes": 179548,
+      "sha256": "acc282becbe0d94f7052aab3fde4e3c69ffb6203b6ebf59026ddb709743d2442",
+      "entries": 28,
+      "classes": 23,
+      "class_packages": {
+        "com/intellij/database/cloudExplorer/aws": 23
+      },
+      "concept_candidates": {},
+      "descriptors": [
+        {
+          "path": "META-INF/plugin.xml",
+          "root": "idea-plugin",
+          "id": "intellij.database.cloudExplorer.aws",
+          "name": "AWS Cloud Explorer",
+          "depends": [],
+          "extensions": 1,
+          "actions": 0,
+          "module_names": []
+        }
+      ]
+    },
+    {
+      "path": "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.docdb.jar",
+      "bytes": 6302149,
+      "sha256": "12c9784fdee6cda331a9e126295161a6f51131021ff46b7beb381acb39148fc1",
+      "entries": 1127,
+      "classes": 1123,
+      "class_packages": {
+        "software/amazon/awssdk/services/docdb/model": 829,
+        "software/amazon/awssdk/services/docdb/endpoints/internal": 121,
+        "software/amazon/awssdk/services/docdb/paginators": 78,
+        "software/amazon/awssdk/services/docdb/transform": 53,
+        "software/amazon/awssdk/services/docdb": 14,
+        "software/amazon/awssdk/services/docdb/waiters": 10,
+        "software/amazon/awssdk/services/docdb/internal": 8,
+        "software/amazon/awssdk/services/docdb/endpoints": 5,
+        "software/amazon/awssdk/services/docdb/waiters/internal": 5
+      },
+      "concept_candidates": {
+        "introspection": {
+          "count": 1,
+          "sample": [
+            "software/amazon/awssdk/services/docdb/model/DocDbResponseMetadata.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "software/amazon/awssdk/services/docdb/endpoints/internal/DocDbResolveEndpointInterceptor.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.dynamodb.jar",
+      "bytes": 8879037,
+      "sha256": "e4f1e3b9a8b0f39aa1b6d3d6f2b5ea002847be904b9888420cacb6be80ee3ae8",
+      "entries": 1564,
+      "classes": 1560,
+      "class_packages": {
+        "software/amazon/awssdk/services/dynamodb/model": 1159,
+        "software/amazon/awssdk/services/dynamodb/streams/endpoints/internal": 121,
+        "software/amazon/awssdk/services/dynamodb/endpoints/internal": 121,
+        "software/amazon/awssdk/services/dynamodb/transform": 53,
+        "software/amazon/awssdk/services/dynamodb/paginators": 42,
+        "software/amazon/awssdk/services/dynamodb": 17,
+        "software/amazon/awssdk/services/dynamodb/streams": 14,
+        "software/amazon/awssdk/services/dynamodb/waiters": 10,
+        "software/amazon/awssdk/services/dynamodb/streams/endpoints": 5,
+        "software/amazon/awssdk/services/dynamodb/endpoints": 5,
+        "software/amazon/awssdk/services/dynamodb/waiters/internal": 5,
+        "software/amazon/awssdk/services/dynamodb/streams/transform": 4
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 21,
+          "sample": [
+            "software/amazon/awssdk/services/dynamodb/model/ExecuteTransactionRequest$Builder.class",
+            "software/amazon/awssdk/services/dynamodb/model/ExecuteTransactionRequest$BuilderImpl.class",
+            "software/amazon/awssdk/services/dynamodb/model/ExecuteTransactionRequest$1.class",
+            "software/amazon/awssdk/services/dynamodb/model/ExecuteTransactionRequest.class",
+            "software/amazon/awssdk/services/dynamodb/model/TransactionConflictException$Builder.class",
+            "software/amazon/awssdk/services/dynamodb/model/TransactionConflictException$BuilderImpl.class",
+            "software/amazon/awssdk/services/dynamodb/model/TransactionConflictException$1.class",
+            "software/amazon/awssdk/services/dynamodb/model/TransactionConflictException.class"
+          ]
+        },
+        "execution_cancel": {
+          "count": 9,
+          "sample": [
+            "software/amazon/awssdk/services/dynamodb/model/CancellationReason$Builder.class",
+            "software/amazon/awssdk/services/dynamodb/model/CancellationReason$BuilderImpl.class",
+            "software/amazon/awssdk/services/dynamodb/model/CancellationReason$1.class",
+            "software/amazon/awssdk/services/dynamodb/model/CancellationReason.class",
+            "software/amazon/awssdk/services/dynamodb/model/TransactionCanceledException$Builder.class",
+            "software/amazon/awssdk/services/dynamodb/model/TransactionCanceledException$BuilderImpl.class",
+            "software/amazon/awssdk/services/dynamodb/model/TransactionCanceledException$1.class",
+            "software/amazon/awssdk/services/dynamodb/model/TransactionCanceledException.class"
+          ]
+        },
+        "introspection": {
+          "count": 2,
+          "sample": [
+            "software/amazon/awssdk/services/dynamodb/model/DynamoDbStreamsResponseMetadata.class",
+            "software/amazon/awssdk/services/dynamodb/model/DynamoDbResponseMetadata.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 2,
+          "sample": [
+            "software/amazon/awssdk/services/dynamodb/streams/endpoints/internal/DynamoDbStreamsResolveEndpointInterceptor.class",
+            "software/amazon/awssdk/services/dynamodb/endpoints/internal/DynamoDbResolveEndpointInterceptor.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.rds.jar",
+      "bytes": 16431512,
+      "sha256": "3b99c5ebdd252ee6f95a939550df70e412bc18b3d7122bfe65c754bf047c4c33",
+      "entries": 2715,
+      "classes": 2711,
+      "class_packages": {
+        "software/amazon/awssdk/services/rds/model": 2184,
+        "software/amazon/awssdk/services/rds/paginators": 210,
+        "software/amazon/awssdk/services/rds/transform": 144,
+        "software/amazon/awssdk/services/rds/endpoints/internal": 121,
+        "software/amazon/awssdk/services/rds": 18,
+        "software/amazon/awssdk/services/rds/internal": 14,
+        "software/amazon/awssdk/services/rds/waiters": 10,
+        "software/amazon/awssdk/services/rds/waiters/internal": 5,
+        "software/amazon/awssdk/services/rds/endpoints": 5
+      },
+      "concept_candidates": {
+        "execution_cancel": {
+          "count": 9,
+          "sample": [
+            "software/amazon/awssdk/services/rds/model/CancelExportTaskRequest$Builder.class",
+            "software/amazon/awssdk/services/rds/model/CancelExportTaskRequest$BuilderImpl.class",
+            "software/amazon/awssdk/services/rds/model/CancelExportTaskRequest$1.class",
+            "software/amazon/awssdk/services/rds/model/CancelExportTaskRequest.class",
+            "software/amazon/awssdk/services/rds/model/CancelExportTaskResponse$Builder.class",
+            "software/amazon/awssdk/services/rds/model/CancelExportTaskResponse$BuilderImpl.class",
+            "software/amazon/awssdk/services/rds/model/CancelExportTaskResponse$1.class",
+            "software/amazon/awssdk/services/rds/model/CancelExportTaskResponse.class"
+          ]
+        },
+        "introspection": {
+          "count": 1,
+          "sample": [
+            "software/amazon/awssdk/services/rds/model/RdsResponseMetadata.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "software/amazon/awssdk/services/rds/endpoints/internal/RdsResolveEndpointInterceptor.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.redshift.jar",
+      "bytes": 13922763,
+      "sha256": "258495125cd86a0798bbe545fb070a430936e86134cbaf33f0c482edf2bbc4f7",
+      "entries": 2410,
+      "classes": 2406,
+      "class_packages": {
+        "software/amazon/awssdk/services/redshift/model": 1928,
+        "software/amazon/awssdk/services/redshift/paginators": 198,
+        "software/amazon/awssdk/services/redshift/transform": 123,
+        "software/amazon/awssdk/services/redshift/endpoints/internal": 121,
+        "software/amazon/awssdk/services/redshift": 14,
+        "software/amazon/awssdk/services/redshift/waiters": 10,
+        "software/amazon/awssdk/services/redshift/waiters/internal": 5,
+        "software/amazon/awssdk/services/redshift/endpoints": 5,
+        "software/amazon/awssdk/services/redshift/internal": 2
+      },
+      "concept_candidates": {
+        "execution_cancel": {
+          "count": 9,
+          "sample": [
+            "software/amazon/awssdk/services/redshift/model/CancelResizeRequest$1.class",
+            "software/amazon/awssdk/services/redshift/model/CancelResizeRequest$Builder.class",
+            "software/amazon/awssdk/services/redshift/model/CancelResizeRequest$BuilderImpl.class",
+            "software/amazon/awssdk/services/redshift/model/CancelResizeRequest.class",
+            "software/amazon/awssdk/services/redshift/model/CancelResizeResponse$Builder.class",
+            "software/amazon/awssdk/services/redshift/model/CancelResizeResponse$BuilderImpl.class",
+            "software/amazon/awssdk/services/redshift/model/CancelResizeResponse$1.class",
+            "software/amazon/awssdk/services/redshift/model/CancelResizeResponse.class"
+          ]
+        },
+        "introspection": {
+          "count": 1,
+          "sample": [
+            "software/amazon/awssdk/services/redshift/model/RedshiftResponseMetadata.class"
+          ]
+        },
+        "semantic_refactor": {
+          "count": 1,
+          "sample": [
+            "software/amazon/awssdk/services/redshift/endpoints/internal/RedshiftResolveEndpointInterceptor.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/database-cloudExplorer-gcloud/lib/database-cloudExplorer-gcloud.jar",
+      "bytes": 173511,
+      "sha256": "18af190f083fb2f21d47dd28b9d04e7becc5775e2a50ba182cb1c04d56cb3d73",
+      "entries": 27,
+      "classes": 22,
+      "class_packages": {
+        "com/intellij/database/cloudExplorer/gcloud": 22
+      },
+      "concept_candidates": {},
+      "descriptors": [
+        {
+          "path": "META-INF/plugin.xml",
+          "root": "idea-plugin",
+          "id": "intellij.database.cloudExplorer.gcloud",
+          "name": "Google Cloud Explorer",
+          "depends": [],
+          "extensions": 1,
+          "actions": 0,
+          "module_names": []
+        }
+      ]
+    },
+    {
+      "path": "plugins/database-cloudExplorer-gcloud/lib/google.apis.api.services.sqladmin.jar",
+      "bytes": 932663,
+      "sha256": "bc248f79ca10190c3e84cb173bfdeda0ddfbbe6d7251fa917e4fa8e547c1f5d9",
+      "entries": 220,
+      "classes": 216,
+      "class_packages": {
+        "com/google/api/services/sqladmin/model": 130,
+        "com/google/api/services/sqladmin": 86
+      },
+      "concept_candidates": {
+        "execution_cancel": {
+          "count": 1,
+          "sample": [
+            "com/google/api/services/sqladmin/SQLAdmin$Operations$Cancel.class"
+          ]
+        },
+        "introspection": {
+          "count": 1,
+          "sample": [
+            "com/google/api/services/sqladmin/model/OperationMetadata.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/database-cloudExplorer-gcloud/lib/google.cloud.bigquery.jar",
+      "bytes": 7970870,
+      "sha256": "25504cc8beb02484ebb3fea98f3c5eacc76a86954d69a63ee76ff45d8fb8ed6d",
+      "entries": 1455,
+      "classes": 1414,
+      "class_packages": {
+        "com/google/cloud/bigquery": 474,
+        "com/google/cloud/bigquery/storage/v1": 289,
+        "com/google/cloud/bigquery/storage/v1beta2": 234,
+        "com/google/api/services/bigquery/model": 168,
+        "com/google/cloud/bigquery/storage/v1beta1": 123,
+        "com/google/api/services/bigquery": 52,
+        "com/google/cloud/bigquery/storage/v1/stub": 14,
+        "com/google/cloud/bigquery/storage/v1beta2/stub": 14,
+        "com/google/cloud/bigquery/storage/v1beta1/stub": 9,
+        "com/google/cloud/bigquery/storage/v1/stub/readrows": 8,
+        "com/google/cloud/bigquery/storage/v1beta1/stub/readrows": 8,
+        "com/google/cloud/bigquery/storage/v1beta2/stub/readrows": 8
+      },
+      "concept_candidates": {
+        "session_transaction": {
+          "count": 76,
+          "sample": [
+            "com/google/cloud/bigquery/JobStatistics$TransactionInfo.class",
+            "com/google/cloud/bigquery/JobStatistics$SessionInfo.class",
+            "com/google/cloud/bigquery/JobStatistics$TransactionInfo$Builder.class",
+            "com/google/cloud/bigquery/JobStatistics$SessionInfo$Builder.class",
+            "com/google/api/services/bigquery/model/SessionInfo.class",
+            "com/google/api/services/bigquery/model/TransactionInfo.class",
+            "com/google/cloud/bigquery/storage/v1beta1/Storage$ReadSessionOrBuilder.class",
+            "com/google/cloud/bigquery/storage/v1beta1/Storage$ReadSession$1.class"
+          ]
+        },
+        "execution_cancel": {
+          "count": 2,
+          "sample": [
+            "com/google/api/services/bigquery/Bigquery$Jobs$Cancel.class",
+            "com/google/api/services/bigquery/model/JobCancelResponse.class"
+          ]
+        },
+        "introspection": {
+          "count": 1,
+          "sample": [
+            "com/google/api/services/bigquery/model/LocationMetadata.class"
+          ]
+        }
+      },
+      "descriptors": []
+    },
+    {
+      "path": "plugins/datagrip-impl/lib/datagrip-impl.jar",
+      "bytes": 210587,
+      "sha256": "23bd293230ad7a41cba751132e648fa2d01fed564b1f5306a7864677828f33ac",
+      "entries": 62,
+      "classes": 57,
+      "class_packages": {
+        "com/intellij/database/ide": 26,
+        "com/intellij/database/ide/actions": 18,
+        "com/intellij/database/ide/welcomeScreen": 8,
+        "com/intellij/database/ide/hierarchy": 5
+      },
+      "concept_candidates": {
+        "schema_diff": {
+          "count": 1,
+          "sample": [
+            "com/intellij/database/ide/DataGripProjectMigration.class"
+          ]
+        }
+      },
+      "descriptors": [
+        {
+          "path": "META-INF/plugin.xml",
+          "root": "idea-plugin",
+          "id": "com.intellij.database.ide",
+          "name": "DataGrip Customization",
+          "depends": [],
+          "extensions": 129,
+          "actions": 18,
+          "module_names": [
+            "intellij.platform.commercial.verifier"
+          ]
+        },
+        {
+          "path": "META-INF/DGMainMenuActions.xml",
+          "root": "idea-plugin",
+          "id": null,
+          "name": null,
+          "depends": [],
+          "extensions": 0,
+          "actions": 9,
+          "module_names": []
+        }
+      ]
+    },
+    {
+      "path": "plugins/datagrip-impl/lib/intellij.platform.commercial.verifier.jar",
+      "bytes": 6205,
+      "sha256": "da71880cf4b3678eeba113b8280dd66cdd025115569d4e8ef1c09d94b02cca6c",
+      "entries": 3,
+      "classes": 1,
+      "class_packages": {
+        "com/intellij/ultimate": 1
+      },
+      "concept_candidates": {},
+      "descriptors": []
+    },
+    {
+      "path": "plugins/datagrip-impl/lib/tips-datagrip.jar",
+      "bytes": 5466513,
+      "sha256": "eb2bf3781afc568ae8198dfeee5a0c5e86dc7d8c816a1230e808e864ed1dd9f9",
+      "entries": 580,
+      "classes": 0,
+      "class_packages": {},
+      "concept_candidates": {},
+      "descriptors": [
+        {
+          "path": "META-INF/tips-datagrip.xml",
+          "root": "idea-plugin",
+          "id": null,
+          "name": null,
+          "depends": [],
+          "extensions": 103,
+          "actions": 0,
+          "module_names": []
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Class names and descriptor declarations are candidate boundaries, not executed behavior.",
+    "No Java bytecode bodies were decompiled; no runtime or performance measurements.",
+    "Selection is name-based, not complete transitive dependency analysis.",
+    "Class count counts archive entries, not unique logical classes or features."
+  ]
+}

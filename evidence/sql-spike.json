@@ -1,0 +1,200 @@
+{
+  "contract_passed": true,
+  "fixtures": [
+    {
+      "contract_passed": true,
+      "expected_statements": 2,
+      "input_bytes": 30,
+      "name": "literal_semicolon",
+      "sqlparser_error": null,
+      "sqlparser_statements": 2,
+      "tree_sitter_bytes_covered": 30,
+      "tree_sitter_has_error": false,
+      "tree_sitter_named_children": 2,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": true,
+      "expected_statements": 2,
+      "input_bytes": 47,
+      "name": "comments",
+      "sqlparser_error": null,
+      "sqlparser_statements": 2,
+      "tree_sitter_bytes_covered": 47,
+      "tree_sitter_has_error": true,
+      "tree_sitter_named_children": 5,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": true,
+      "expected_statements": 2,
+      "input_bytes": 45,
+      "name": "dollar_quote",
+      "sqlparser_error": null,
+      "sqlparser_statements": 2,
+      "tree_sitter_bytes_covered": 45,
+      "tree_sitter_has_error": false,
+      "tree_sitter_named_children": 2,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": true,
+      "expected_statements": 1,
+      "input_bytes": 71,
+      "name": "cte_alias",
+      "sqlparser_error": null,
+      "sqlparser_statements": 1,
+      "tree_sitter_bytes_covered": 71,
+      "tree_sitter_has_error": false,
+      "tree_sitter_named_children": 1,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": true,
+      "expected_statements": 1,
+      "input_bytes": 62,
+      "name": "korean_identifiers",
+      "sqlparser_error": null,
+      "sqlparser_statements": 1,
+      "tree_sitter_bytes_covered": 62,
+      "tree_sitter_has_error": false,
+      "tree_sitter_named_children": 1,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": true,
+      "expected_statements": 4,
+      "input_bytes": 75,
+      "name": "transaction_script",
+      "sqlparser_error": null,
+      "sqlparser_statements": 4,
+      "tree_sitter_bytes_covered": 75,
+      "tree_sitter_has_error": false,
+      "tree_sitter_named_children": 1,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": null,
+      "expected_statements": null,
+      "input_bytes": 90,
+      "name": "postgres_function",
+      "sqlparser_error": null,
+      "sqlparser_statements": 2,
+      "tree_sitter_bytes_covered": 90,
+      "tree_sitter_has_error": false,
+      "tree_sitter_named_children": 2,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": null,
+      "expected_statements": null,
+      "input_bytes": 18,
+      "name": "copy_protocol",
+      "sqlparser_error": null,
+      "sqlparser_statements": 1,
+      "tree_sitter_bytes_covered": 18,
+      "tree_sitter_has_error": true,
+      "tree_sitter_named_children": 1,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": null,
+      "expected_statements": null,
+      "input_bytes": 15,
+      "name": "unfinished_select",
+      "sqlparser_error": "sql parser error: Expected an expression, found: FROM",
+      "sqlparser_statements": null,
+      "tree_sitter_bytes_covered": 15,
+      "tree_sitter_has_error": false,
+      "tree_sitter_named_children": 1,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": null,
+      "expected_statements": null,
+      "input_bytes": 14,
+      "name": "unfinished_quote",
+      "sqlparser_error": "sql parser error: Unterminated string literal at Line: 1, Column: 8",
+      "sqlparser_statements": null,
+      "tree_sitter_bytes_covered": 14,
+      "tree_sitter_has_error": true,
+      "tree_sitter_named_children": 1,
+      "tree_sitter_root": "program"
+    },
+    {
+      "contract_passed": true,
+      "expected_statements": 2,
+      "input_bytes": 37,
+      "name": "postgres_escape",
+      "sqlparser_error": null,
+      "sqlparser_statements": 2,
+      "tree_sitter_bytes_covered": 37,
+      "tree_sitter_has_error": false,
+      "tree_sitter_named_children": 2,
+      "tree_sitter_root": "program"
+    }
+  ],
+  "kind": "sql_parser_spike",
+  "limitations": [
+    "Synthetic parser-only workload; not DataGrip or UI benchmark.",
+    "Tree structure/range equality does not establish semantic name resolution or full dialect compatibility.",
+    "Incremental timing includes text copy/tree edit; five samples only, no tail latency claim.",
+    "Unsupported and incomplete SQL remains executable via raw driver path."
+  ],
+  "measurements": [
+    {
+      "actual_bytes": 10257,
+      "cold_tree_parse_us": 989,
+      "has_error": false,
+      "incremental_insert_us": [
+        66,
+        64,
+        84,
+        64,
+        57
+      ],
+      "incremental_matches_full_reparse": true,
+      "iterations": 5,
+      "median_incremental_us": 64,
+      "target_bytes": 10240
+    },
+    {
+      "actual_bytes": 1048593,
+      "cold_tree_parse_us": 89051,
+      "has_error": false,
+      "incremental_insert_us": [
+        9067,
+        6706,
+        6529,
+        7004,
+        5939
+      ],
+      "incremental_matches_full_reparse": true,
+      "iterations": 5,
+      "median_incremental_us": 6706,
+      "target_bytes": 1048576
+    },
+    {
+      "actual_bytes": 10485774,
+      "cold_tree_parse_us": 757725,
+      "has_error": false,
+      "incremental_insert_us": [
+        76547,
+        76377,
+        74382,
+        72791,
+        76454
+      ],
+      "incremental_matches_full_reparse": true,
+      "iterations": 5,
+      "median_incremental_us": 76377,
+      "target_bytes": 10485760
+    }
+  ],
+  "schema_version": 1,
+  "versions": {
+    "sqlparser": "0.63.0",
+    "tree_sitter": "0.25.10",
+    "tree_sitter_sequel": "0.3.11"
+  }
+}

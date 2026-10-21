@@ -1,0 +1,28 @@
+{
+  "kind": "datagrip_first_run_idle_observation",
+  "version": "2026.2.6",
+  "build": "262.10968.148",
+  "pid": 10304,
+  "profile": "tmp/datagrip-baseline",
+  "project": "default auto-created by IDE; no DB configured",
+  "rss_samples_bytes": [
+    1130217472,
+    1130217472,
+    1130233856,
+    1130233856,
+    1130233856,
+    1130233856,
+    1130250240,
+    1132134400,
+    1132134400,
+    1132150784
+  ],
+  "runtime_observed": true,
+  "query_benchmark_complete": false,
+  "limitations": [
+    "First-run welcome workspace, not warmed database workload.",
+    "Only main process RSS sampled, no process-tree/GPU allocation accounting.",
+    "Not comparable to synthetic Rust fixture; no speed or memory ratio claim.",
+    "Skipped settings import and dismissed optional AI terms popup; no user database accessed."
+  ]
+}

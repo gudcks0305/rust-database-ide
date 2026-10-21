@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+exclude = ["vendor/tokio-postgres"]
+
+[workspace.package]
+edition = "2024"
+publish = false
+
+[profile.release]
+debug = 1
+
+[patch.crates-io]
+tokio-postgres = { path = "vendor/tokio-postgres" }

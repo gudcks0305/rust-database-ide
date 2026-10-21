@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "scope": "M0 isolated SQLite contract verifier, not production driver or UI benchmark",
+  "rusqlite": "0.40.2 (bundled, hooks)",
+  "sqlite": "3.53.2",
+  "timestamp_unix_ms": 1792574696281,
+  "passed": true,
+  "cases": [
+    {
+      "name": "native_batch_order_partial_error",
+      "passed": true,
+      "elapsed_us": 1939,
+      "detail": "trigger body, quoted/comment semicolons, ordered commands/results; error stops trailing SELECT"
+    },
+    {
+      "name": "temp_session_and_direct_transaction",
+      "passed": true,
+      "elapsed_us": 421,
+      "detail": "worker connection persists; second session isolated; is_autocommit follows direct SQL"
+    },
+    {
+      "name": "sqlite_storage_classes_roundtrip",
+      "passed": true,
+      "elapsed_us": 150,
+      "detail": "NULL, empty text, i64 maximum, exact binary fraction, bytes, Korean persisted and read"
+    },
+    {
+      "name": "readonly_and_competing_writer_timeout",
+      "passed": true,
+      "elapsed_us": 61744,
+      "detail": "read-only native error; configured busy_timeout=50ms; observed 59092us; writer recovers after rollback"
+    },
+    {
+      "name": "interrupt_scoped_and_next_execution",
+      "passed": true,
+      "elapsed_us": 1276,
+      "detail": "progress handshake proves native execution; native interrupt terminal response; stale id rejected both idle and while next execution active"
+    },
+    {
+      "name": "bounded_result_and_script_stop",
+      "passed": true,
+      "elapsed_us": 164,
+      "detail": "global row/payload budgets stop script; bounded SQL 64KiB and command queue 8"
+    }
+  ]
+}

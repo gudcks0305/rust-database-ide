@@ -1,0 +1,813 @@
+{
+  "name": "DataGrip",
+  "version": "2026.2.6",
+  "buildNumber": "262.10968.148",
+  "minRequiredJavaVersion": 25,
+  "launch": [
+    {
+      "os": "macOS",
+      "arch": "aarch64",
+      "launcherPath": "../MacOS/datagrip",
+      "javaExecutablePath": "../jbr/Contents/Home/bin/java",
+      "mainClass": "com.intellij.idea.Main"
+    }
+  ],
+  "layout_count": 1030,
+  "database_modules": [
+    {
+      "name": "com.intellij.database",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/DatabaseTools/lib/database-plugin.jar",
+        "plugins/DatabaseTools/lib/tips-database-plugin.jar",
+        "plugins/DatabaseTools/lib/intellij.platform.commercial.verifier.jar"
+      ]
+    },
+    {
+      "name": "com.intellij.database.ide",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/datagrip-impl/lib/datagrip-impl.jar",
+        "plugins/datagrip-impl/lib/tips-datagrip.jar",
+        "plugins/datagrip-impl/lib/intellij.platform.commercial.verifier.jar"
+      ]
+    },
+    {
+      "name": "com.intellij.modules.database",
+      "kind": "pluginAlias",
+      "classPath": null
+    },
+    {
+      "name": "com.intellij.modules.database-capable",
+      "kind": "pluginAlias",
+      "classPath": null
+    },
+    {
+      "name": "com.intellij.modules.database.connectivity",
+      "kind": "pluginAlias",
+      "classPath": null
+    },
+    {
+      "name": "com.intellij.modules.database.core",
+      "kind": "pluginAlias",
+      "classPath": null
+    },
+    {
+      "name": "com.intellij.modules.sql",
+      "kind": "pluginAlias",
+      "classPath": null
+    },
+    {
+      "name": "intellij.database",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.ai",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.ai.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.artifactsBundle",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/database-artifactsBundle/lib/database-artifactsBundle.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.backend.split",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.backend.split.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.cliCommands",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.cliCommands.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.cloudExplorer.aws",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/database-cloudExplorer-aws/lib/database-cloudExplorer-aws.jar",
+        "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.rds.jar",
+        "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.docdb.jar",
+        "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.redshift.jar",
+        "plugins/database-cloudExplorer-aws/lib/software.amazon.awssdk.dynamodb.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.cloudExplorer.gcloud",
+      "kind": "plugin",
+      "classPath": [
+        "plugins/database-cloudExplorer-gcloud/lib/database-cloudExplorer-gcloud.jar",
+        "plugins/database-cloudExplorer-gcloud/lib/google.cloud.bigquery.jar",
+        "plugins/database-cloudExplorer-gcloud/lib/google.apis.api.services.sqladmin.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.cloudExplorer.jba",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.cloudExplorer.jba.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.completionMlRanking",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.completionMlRanking.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.connectivity",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.connectivity.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.connectivity.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.connectivity.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.core.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.core.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.diagrams",
+      "kind": "moduleV2",
+      "classPath": null
+    },
+    {
+      "name": "intellij.database.dialects.base",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.base.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.base.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.base.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.bigquery",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.bigquery.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.bigquery.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.bigquery.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.cassandra",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cassandra.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.cassandra.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cassandra.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.clickhouse",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.clickhouse.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.clickhouse.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.clickhouse.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.cockroach",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cockroach.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.cockroach.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.cockroach.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.couchbase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.couchbase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.couchbase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.couchbase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.db2",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.db2.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.db2.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.db2.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.derby",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.derby.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.derby.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.derby.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.dynamo",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.dynamo.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.exasol",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.exasol.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.generic",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.generic.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.generic.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.generic.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.greenplum",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.greenplum.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.greenplum.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.greenplum.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.h2",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.h2.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.h2.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.h2.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.hive",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hive.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.hivebase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hivebase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.hsql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.hsql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.maria",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.maria.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mongo",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mongo.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mongo.js.external",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.js.external.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mongo.sql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mongo.sql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mssql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mssql.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mssql.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mssql.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mysql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mysqlbase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mysqlbase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.mysqlbase.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.mysqlbase.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.oracle",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.oracle.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.oracle.ex.coverage",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.oracle.ex.coverage.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgres",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgres.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgres.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgres.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgresbase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresbase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgresbase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresbase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgresgreenplumbase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresgreenplumbase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.postgresgreenplumbase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.postgresgreenplumbase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.redis",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redis.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.redis.backend",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redis.backend.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.redshift",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redshift.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.redshift.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.redshift.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.snowflake",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.snowflake.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.snowflake.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.snowflake.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.spark",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.spark.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sql92",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sql92.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sqlite",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sqlite.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sqlite.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sqlite.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sybase",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sybase.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.sybase.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.sybase.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.vertica",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.vertica.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.dialects.vertica.ex",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.dialects.vertica.ex.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.docker",
+      "kind": "moduleV2",
+      "classPath": null
+    },
+    {
+      "name": "intellij.database.flameGraphs",
+      "kind": "moduleV2",
+      "classPath": null
+    },
+    {
+      "name": "intellij.database.frontend.split",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.frontend.split.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.grazie",
+      "kind": "moduleV2",
+      "classPath": null
+    },
+    {
+      "name": "intellij.database.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.bookmarks",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.bookmarks.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.common",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.common.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.frontend",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.frontend.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.jcef",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.jcef.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.impl.navbar",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.impl.navbar.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.java",
+      "kind": "moduleV2",
+      "classPath": null
+    },
+    {
+      "name": "intellij.database.jdbcConsole",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.jdbcConsole.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.jdbcConsole.shim",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.jdbcConsole.shim.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.mcp",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.mcp.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.plugin.frameworks",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.plugin.frameworks.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.pro",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.pro.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.backend.core",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.backend.core.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.common.core",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.common.core.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.common.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.common.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.copyright",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.copyright.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.core.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.core.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.frontend.core",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.frontend.core.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.frontend.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.frontend.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.impl",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.impl.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.sql.intelliLang",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.sql.intelliLang.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.ssh",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.ssh.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.ssh.ui",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.ssh.ui.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.trialPromotion.idesWithFreeTier",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.trialPromotion.idesWithFreeTier.jar"
+      ]
+    },
+    {
+      "name": "intellij.database.util",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/DatabaseTools/lib/modules/intellij.database.util.jar"
+      ]
+    },
+    {
+      "name": "intellij.fullLine.sql",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/fullLine/lib/modules/intellij.fullLine.sql.jar"
+      ]
+    },
+    {
+      "name": "intellij.ml.llm.sql.completion",
+      "kind": "moduleV2",
+      "classPath": [
+        "plugins/fullLine/lib/modules/intellij.ml.llm.sql.completion.jar"
+      ]
+    },
+    {
+      "name": "intellij.platform.sqlite",
+      "kind": "productModuleV2",
+      "classPath": [
+        "lib/intellij.platform.sqlite.jar"
+      ]
+    }
+  ]
+}

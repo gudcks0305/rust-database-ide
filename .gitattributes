@@ -1,0 +1,4 @@
+# Preserve unchanged upstream formatting in these vendored files.
+# Application code and the local tokio-postgres patch remain whitespace-checked.
+vendor/tokio-postgres/LICENSE-MIT -whitespace
+vendor/tokio-postgres/src/error/sqlstate.rs -whitespace

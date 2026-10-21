@@ -1,0 +1,20 @@
+[package]
+name = "dbide-tools-ui"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license = "Apache-2.0"
+
+[dependencies]
+gpui = { package = "gpui-pre", version = "=0.3.9", default-features = false }
+gpui-platform = { package = "gpui-pre-platform", version = "=0.3.9", default-features = false, features = ["font-kit", "runtime_shaders"] }
+gpui-component = { version = "=0.8.0", features = ["syntect"] }
+dbide-workflows = { path = "../dbide-workflows" }
+dbide-profiles = { path = "../dbide-profiles" }
+dbide-schema = { path = "../dbide-schema" }
+dbide-data = { path = "../dbide-data" }
+futures-channel = "0.3"
+serde_json = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["rt", "time", "macros"] }
+sqlparser = { version = "=0.63.0", features = ["visitor"] }

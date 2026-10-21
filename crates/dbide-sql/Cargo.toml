@@ -1,0 +1,9 @@
+[package]
+name = "dbide-sql"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+sqlparser = { version = "=0.63.0", features = ["visitor"] }
+sha2 = "0.10"

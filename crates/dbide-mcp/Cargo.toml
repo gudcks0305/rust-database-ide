@@ -1,0 +1,24 @@
+[package]
+name = "dbide-mcp"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+dbide-driver-api = { path = "../dbide-driver-api" }
+dbide-profiles = { path = "../dbide-profiles" }
+dbide-pg-spike = { path = "../dbide-pg-spike" }
+dbide-sqlite = { path = "../dbide-sqlite" }
+dbide-mysql = { path = "../dbide-mysql" }
+dbide-sql = { path = "../dbide-sql" }
+rmcp = { version = "=3.6.0", default-features = false, features = ["server", "transport-io"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlparser = { version = "=0.63.0", features = ["visitor"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "io-util"] }
+tokio-util = "0.7"
+
+[dev-dependencies]
+rmcp = { version = "=3.6.0", default-features = false, features = ["client", "server", "transport-io"] }
+rusqlite = { version = "=0.40.2", features = ["bundled"] }
+tempfile = "3"

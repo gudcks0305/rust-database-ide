@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "kind": "native_ui_manual_qa",
+  "observed_at": "2026-10-21T14:11:02.637176+00:00",
+  "binary_sha256": "bae840da7ac55a1a3ca26bff99bac5ffec2b6de0d594756b61c1de9624a60a86",
+  "scope": "phase3 release, before current row-editor and subsequent fixes",
+  "profile_store": "tmp/ui-qa/profiles.json",
+  "databases": [
+    "owned PostgreSQL18.6 127.0.0.1:55439/dbide_fixture",
+    "owned SQLite tmp/ui-qa/native.sqlite"
+  ],
+  "passed": [
+    "Connect & Run without session password showed Authentication diagnostic; edit/save password then same action connected and SELECT1 completed.",
+    "Manual SELECT showed Active; SELECT1/0 showed Failed SQLSTATE22012 and disabled Commit; Rollback returned Idle.",
+    "Two SQL documents retained independent source/result ownership; dirty-tab close offered Save, Keep open, Discard; Keep open preserved source.",
+    "Refresh discovered baseline plus rich fixture tables/views; Format canonicalized SQL; actual query returned three customer rows; completion showed five catalog objects.",
+    "SQLite profile exposed path/create/read-only; explicit test-file creation connected successfully.",
+    "SQLite CREATE/INSERT/SELECT produced three rows preserving Korean text, NULL, and empty text as distinct displayed values.",
+    "Native Save As with an edited filename wrote exact SQL bytes, changed tab title and cleared dirty flag; exported selected CSV preserved Korean text, \\N NULL, and empty text.",
+    "Window close with unsaved QA tab prompted Save/Keep open/Discard; only owned QA changes were discarded."
+  ],
+  "found_and_reported": [
+    "Stale query error remained after successful Rollback (owner reports fix; not rerun on fixed binary).",
+    "Historical result transaction state could be mistaken for current shared session state (owner reports explicit labeling fix).",
+    "Completion opened duplicate popup and sidebar, clipped popup and low-contrast column headers (owner reports source fixes; not rerun)."
+  ],
+  "limitations": [
+    "No physical Korean IME composition or full VoiceOver validation.",
+    "No latency/frame benchmark or DataGrip comparison.",
+    "MySQL native profile QA still pending.",
+    "New CRUD, object drafts, and Codex WS UI were not in this tested binary."
+  ]
+}
