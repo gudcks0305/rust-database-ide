@@ -220,3 +220,18 @@ useful Preferences; and native navigation/view actions. Active tabs scroll into
 view on selection and panel-width changes. Existing safety gates are unchanged:
 row Apply remains disabled, and neither M0/M1 nor DataGrip parity is declared
 complete. Final native and test evidence identifies each tested binary.
+
+## Remaining everyday workflow gaps after button cleanup
+
+A source audit at the workspace-polish checkpoint confirmed these remain:
+
+- A read-only full-cell viewer for long text/JSON and range/column TSV copy.
+- A per-console schema/search-path picker with actual versus configured context.
+- Object search beyond the expanded tree, using indexed metadata with explicit
+  partial/not-loaded states.
+- Shared immutable metadata leases for completion; consoles currently maintain
+  separate bounded metadata snapshots from the navigator cache.
+- Disconnected table-tab shells in recovery, and searchable/filterable history
+  with visible captured targets. No transaction or result replay on restart.
+
+These are functional follow-ups, not reasons to restore the removed visual clutter.

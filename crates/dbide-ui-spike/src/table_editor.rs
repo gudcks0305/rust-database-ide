@@ -6,6 +6,7 @@ use dbide_data::{
 use dbide_ui_spike::table_edit_model::{Staging, VerifiedTable, cell_text};
 use gpui_component::input::{Textarea, TextareaState};
 use gpui_component::menu::{DropdownMenu, PopupMenuItem};
+use gpui_kit_assets::IconName;
 
 // Keep application captions separate from backend data so locale changes can redraw
 // existing statuses without rewriting SQL, cell contents, identifiers or diagnostics.
@@ -217,12 +218,25 @@ impl TableEditor {
             error: None,
             status: Message::CapturingTableMetadata.into(),
             search: cx.new(|cx| {
-                InputState::new(window, cx).placeholder(tr(locale, Message::FindLoadedPage))
+                InputState::new(window, cx).placeholder(query_text(
+                    locale,
+                    "현재 페이지 검색 · Enter",
+                    "Find in page · Enter",
+                ))
             }),
             search_locale: locale,
             _subscriptions: vec![subscription],
             _field_subscriptions: vec![],
         };
+        let search_subscription =
+            cx.subscribe_in(&state.search, window, |s, _, event, w, cx| match event {
+                InputEvent::PressEnter { .. } if !s.busy() && s.read_controls_enabled => {
+                    s.find(w, cx)
+                }
+                InputEvent::Change => cx.notify(),
+                _ => {}
+            });
+        state._subscriptions.push(search_subscription);
         state.capture(false, window, cx);
         state
     }
@@ -1095,6 +1109,10 @@ impl TableEditor {
                 }
                 menu
             });
+        let custom_query = !self.query_fields.is_empty()
+            || self.query_sort.is_some()
+            || !self.query.filters.is_empty()
+            || self.query.sort.is_some();
         let mut toolbar = div()
             .px_3()
             .py_2()
@@ -1110,13 +1128,6 @@ impl TableEditor {
                     .items_center()
                     .gap_2()
                     .child(
-                        div()
-                            .text_size(px(10.))
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(rgb(MUTED))
-                            .child(query_text(locale, "서버 조회", "SERVER QUERY")),
-                    )
-                    .child(
                         Self::button("table-add-filter", query_text(locale, "+ 필터", "+ Filter"))
                             .disabled(
                                 busy || columns.is_empty()
@@ -1127,32 +1138,29 @@ impl TableEditor {
                     .child(sort)
                     .child(page_size)
                     .child(div().flex_1())
-                    .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(
-                        if self.query_pending {
-                            query_text(
-                                locale,
-                                "변경 대기 · 적용 시 첫 페이지",
-                                "Pending · apply starts page 1",
+                    .when(self.query_pending, |el| {
+                        el.child(
+                            Self::button(
+                                "table-apply-query",
+                                query_text(locale, "조회 적용", "Apply query"),
                             )
-                        } else {
-                            query_text(
+                            .primary()
+                            .tooltip(query_text(
                                 locale,
-                                "필터 AND 결합 · 읽기 전용",
-                                "Filters use AND · read only",
-                            )
-                        },
-                    ))
-                    .child(
-                        Self::button(
-                            "table-apply-query",
-                            query_text(locale, "조회 적용", "Apply query"),
+                                "변경한 조회 조건을 첫 페이지부터 적용",
+                                "Apply pending query from page 1",
+                            ))
+                            .disabled(busy || self.metadata.is_none())
+                            .on_click(cx.listener(|s, _, w, cx| s.apply_query(w, cx))),
                         )
-                        .primary()
-                        .disabled(busy || self.metadata.is_none())
-                        .on_click(cx.listener(|s, _, w, cx| s.apply_query(w, cx))),
-                    )
-                    .child(
-                        Self::button("table-clear-query", query_text(locale, "초기화", "Reset"))
+                    })
+                    .when(custom_query, |el| {
+                        el.child(
+                            Self::button(
+                                "table-clear-query",
+                                query_text(locale, "초기화", "Reset"),
+                            )
+                            .ghost()
                             .disabled(busy || self.metadata.is_none())
                             .on_click(cx.listener(|s, _, w, cx| {
                                 s.query_fields.clear();
@@ -1160,7 +1168,8 @@ impl TableEditor {
                                 s.query_pending = true;
                                 s.apply_query(w, cx);
                             })),
-                    ),
+                        )
+                    }),
             );
         for (index, field) in self.query_fields.iter().enumerate() {
             let label = field
@@ -1244,6 +1253,7 @@ impl TableEditor {
                             .small()
                             .label("×")
                             .disabled(busy)
+                            .accessibility_label(query_text(locale, "필터 제거", "Remove filter"))
                             .tooltip(query_text(locale, "필터 제거", "Remove filter"))
                             .on_click(cx.listener(move |s, _, _, cx| {
                                 if index < s.query_fields.len() {
@@ -1278,7 +1288,11 @@ impl Render for TableEditor {
         let locale = self.locale;
         if self.search_locale != locale {
             self.search.update(cx, |input, cx| {
-                input.set_placeholder(tr(locale, Message::FindLoadedPage), window, cx)
+                input.set_placeholder(
+                    query_text(locale, "현재 페이지 검색 · Enter", "Find in page · Enter"),
+                    window,
+                    cx,
+                )
             });
             for field in &self.query_fields {
                 field.input.update(cx, |input, cx| {
@@ -1499,19 +1513,34 @@ impl Render for TableEditor {
                                 .child(query_text(locale, "읽기 전용", "READ ONLY")),
                         )
                         .child(
-                            Self::button("reload-table", tr(locale, Message::Reload))
+                            Button::new("reload-table")
+                                .ghost()
+                                .small()
+                                .icon(IconName::RefreshCw)
+                                .accessibility_label(tr(locale, Message::Reload))
+                                .tooltip(tr(locale, Message::Reload))
                                 .disabled(busy)
                                 .on_click(cx.listener(|s, _, w, cx| s.reload(0, w, cx))),
                         )
                         .child(
-                            Self::button("previous-page", tr(locale, Message::PreviousPage))
+                            Button::new("previous-page")
+                                .ghost()
+                                .small()
+                                .icon(IconName::ChevronLeft)
+                                .accessibility_label(tr(locale, Message::PreviousPage))
+                                .tooltip(tr(locale, Message::PreviousPage))
                                 .disabled(busy || self.page == 0)
                                 .on_click(cx.listener(|s, _, w, cx| {
                                     s.reload(s.page.saturating_sub(1), w, cx)
                                 })),
                         )
                         .child(
-                            Self::button("next-page", tr(locale, Message::NextPage))
+                            Button::new("next-page")
+                                .ghost()
+                                .small()
+                                .icon(IconName::ChevronRight)
+                                .accessibility_label(tr(locale, Message::NextPage))
+                                .tooltip(tr(locale, Message::NextPage))
                                 .disabled(
                                     busy || self.grid.read(cx).delegate().row_count()
                                         < self.query.page_size,
@@ -1544,11 +1573,21 @@ impl Render for TableEditor {
                                     .small(),
                             ),
                         )
-                        .child(
-                            Self::button("find-page", tr(locale, Message::Find))
-                                .disabled(busy)
-                                .on_click(cx.listener(|s, _, w, cx| s.find(w, cx))),
-                        ),
+                        .when(!self.search.read(cx).value().is_empty(), |el| {
+                            el.child(
+                                Self::button(
+                                    "clear-page-search",
+                                    query_text(locale, "검색 지우기", "Clear search"),
+                                )
+                                .ghost()
+                                .on_click(cx.listener(
+                                    |s, _, w, cx| {
+                                        s.search.update(cx, |input, cx| input.set_value("", w, cx));
+                                        cx.notify();
+                                    },
+                                )),
+                            )
+                        }),
                 )
                 .child(query_toolbar)
                 .child(
@@ -1639,7 +1678,11 @@ impl Render for TableEditor {
                 .py_1()
                 .text_size(px(10.))
                 .text_color(rgb(MUTED))
-                .child(tr(locale, Message::TableViewerHint)),
+                .child(query_text(
+                    locale,
+                    "페이지마다 새로 조회 · 검색은 현재 페이지에만 적용",
+                    "Pages refresh independently · search covers this page",
+                )),
         );
         if edit_controls && let Some(plan) = preview {
             root = root.child(

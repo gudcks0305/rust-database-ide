@@ -598,41 +598,28 @@ impl Workbench {
                     },
                 ))
                 .child(list)
-                .child(
-                    div()
-                        .px_2()
-                        .py_2()
-                        .border_t_1()
-                        .border_color(rgb(BORDER))
-                        .flex()
-                        .flex_wrap()
-                        .items_center()
-                        .gap_1()
-                        .child(Self::nav_text(
-                            "nav-budget",
-                            &format!(
-                                "{:.1} MiB · {} {} · {} {}",
-                                stats.accounted_bytes as f64 / 1048576.,
-                                self.navigator.running(),
-                                if ko { "조회 중" } else { "loading" },
-                                self.navigator.pending(),
-                                if ko { "대기" } else { "queued" }
-                            ),
-                        ))
-                        .child(
-                            Button::new("nav-clear")
-                                .ghost()
-                                .small()
-                                .label(if ko {
-                                    "캐시 비우기"
-                                } else {
-                                    "Clear cache"
-                                })
-                                .on_click(cx.listener(|s, _, _, cx| {
-                                    s.navigator.clear();
-                                    cx.notify();
-                                })),
-                        ),
+                .when(
+                    self.navigator.running() > 0 || self.navigator.pending() > 0,
+                    |el| {
+                        el.child(
+                            div()
+                                .px_2()
+                                .py_2()
+                                .border_t_1()
+                                .border_color(rgb(BORDER))
+                                .child(Self::nav_text(
+                                    "nav-budget",
+                                    &format!(
+                                        "{:.1} MiB · {} {} · {} {}",
+                                        stats.accounted_bytes as f64 / 1048576.,
+                                        self.navigator.running(),
+                                        if ko { "조회 중" } else { "loading" },
+                                        self.navigator.pending(),
+                                        if ko { "대기" } else { "queued" }
+                                    ),
+                                )),
+                        )
+                    },
                 );
         if let Some(error) = &self.navigator.notice {
             root = root

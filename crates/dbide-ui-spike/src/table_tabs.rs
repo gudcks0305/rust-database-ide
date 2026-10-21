@@ -151,6 +151,12 @@ impl Workbench {
                     )
                     .child(
                         Button::new(SharedString::from(format!("close-table-tab-{id}")))
+                            .accessibility_label(format!(
+                                "{} {} · {}",
+                                tr(self.locale, Message::CloseTable),
+                                tab.relation.name,
+                                tab.key.database
+                            ))
                             .small()
                             .ghost()
                             .label("×")

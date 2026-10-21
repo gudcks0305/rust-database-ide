@@ -385,12 +385,7 @@ impl Workbench {
                         self.button("cancel-table-operation", "Cancel")
                             .disabled(!owns_reader || self.connection != ConnectionState::Executing)
                             .on_click(cx.listener(move |s, _, _, cx| s.cancel(cancel, cx))),
-                    ))
-                    .child(
-                        self.button("close-table-editor", tr(self.locale, Message::CloseTable))
-                            .disabled(self.active_operation.is_some() || editor.read(cx).is_busy())
-                            .on_click(cx.listener(|s, _, w, cx| s.close_table_editor(w, cx))),
-                    ),
+                    )),
             )
             .when(!owns_reader, |el| el.child(div().px_4().py_2().text_color(rgb(MUTED)).child(if self.locale == Locale::Ko { "저장된 테이블 화면입니다. 이 탭을 다시 선택하면 테이블 전용 연결을 확인한 뒤 읽기를 활성화합니다." } else { "Retained table snapshot. Select this tab to verify its reader connection and enable reads." })))
             .child(

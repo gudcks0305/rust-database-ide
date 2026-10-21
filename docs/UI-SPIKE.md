@@ -480,3 +480,17 @@ the DB. Live table execution still resolves a current profile and captures fresh
 metadata separately. See [cache contracts](CATALOG-CACHE.md),
 [native QA](../evidence/ui-workspace-polish-qa.json) and
 [validation](../evidence/workspace-polish-validation.json).
+
+## Button cleanup (2026-10-22)
+
+The idle SQL toolbar keeps Run, Run current, SQL tools and one commit-policy
+menu. Cancel appears only with a captured cancellation target. Commit/rollback
+and the wire-state warning appear only when relevant; their existing dispatch
+guards are unchanged. Connect/Disconnect are mutually exclusive. File actions
+are grouped, and sidebar Tools contains Preferences, metadata cache management
+and diagnostics. Native menus and shortcuts remain available.
+
+Table search uses Enter, with Clear shown for nonempty text. Query Apply/Reset
+follow pending/custom filter state. Paging controls have localized accessible
+labels; the duplicate table-close button is removed in favor of the tab close
+action. [Cleanup QA](../evidence/button-cleanup-qa.json) records the tested builds.

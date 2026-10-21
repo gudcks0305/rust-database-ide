@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-22",
+  "base_commit": "b6e1fb8221cb7533868d49415956e016d7c40f1e",
+  "scope": "UI clutter cleanup only; no SQL generation, execution semantics or row-Apply change.",
+  "selected_issues": [
+    "Repeated disabled query/connection/transaction controls.",
+    "Equal visual weight for frequent and infrequent actions.",
+    "Duplicated application banner and table-close action.",
+    "Table search/action buttons visible without relevant state."
+  ],
+  "changes": [
+    "Idle connected SQL toolbar reduced from11buttons to4: Run, Run current, SQL tools, commit-policy menu.",
+    "Connection and disconnection are mutually exclusive; query cancel appears only for a captured cancel target.",
+    "Commit/rollback and transaction status remain visible when the wire state requires them. Policy changes retain existing transaction/busy guards.",
+    "File actions grouped; History retained; Preferences/database tools/cache clear/performance diagnostics grouped in Tools.",
+    "Result-set arrows require multiple result sets; Copy requires a selection.",
+    "Table search uses InputEvent::PressEnter. Clear appears only with text; Apply query only with pending edits; Reset only with filter/sort state.",
+    "Read-only and material paging warnings remain; repeated implementation/status paragraphs removed.",
+    "Duplicate table-close button removed; tab-close accessibility labels now name their target."
+  ],
+  "checks": {
+    "ui_tests": {
+      "passed": 90,
+      "failed": 0,
+      "ignored": 3
+    },
+    "subsequent_binary_tests": 12,
+    "fmt": "passed",
+    "ui_all_targets_clippy": "passed",
+    "release_package": "passed",
+    "diff_check": "passed",
+    "review": "Independent read-only diff review found no critical missing action or transaction-state regression."
+  },
+  "native_runs": [
+    {
+      "binary_sha256": "22285edae9caba605a3a524db88bf8dbe53c41e57faef8a774f7423d59b82091",
+      "passed": [
+        "SQL menu Complete opened actual suggestions.",
+        "Manual policy plus SELECT made Commit/Rollback visible and locked target selectors; Rollback returnedIdle and removed those controls. Auto policy restored.",
+        "Table pagination reached page3, ids101..105; typingQA item103 thenEnter selected row103, with Clear visible and no Find button."
+      ]
+    },
+    {
+      "binary_sha256": "89c3f0dfc81248ec4a8d89aaf7604bb82d646ce4d4ed8c94c2a995d7833e0087",
+      "passed": [
+        "Tools menu retained database tools, cache information/clear, diagnostics and Preferences.",
+        "File menu retained Open/Save/SaveAs.",
+        "Connect-and-Run returneddbide_console_b and exactKorean text; idle toolbar had4buttons and onlyDisconnect remained.",
+        "Cached table/field/index structure remained reachable and rendered beside compactSQL controls."
+      ]
+    }
+  ],
+  "screenshot": {
+    "local_path": "outputs/button-cleanup-2026-10-22/workspace.png",
+    "sha256": "f7f0bacc4d9dead69671c9d98ee89b7eaf5478fb4da9be9bcfe2baf1ef02bc3e"
+  },
+  "limits": [
+    "Owned loopback fixtures only.",
+    "No full accessibility/physical IME or all viewport claim.",
+    "Row Apply remains disabled; outstanding product capabilities are separate backlog work."
+  ]
+}

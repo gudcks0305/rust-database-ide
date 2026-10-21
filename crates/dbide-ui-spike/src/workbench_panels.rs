@@ -1,4 +1,5 @@
 use super::*;
+use gpui_component::menu::{DropdownMenu, PopupMenuItem};
 impl Workbench {
     pub(super) fn document_tabs(&self, cx: &mut Context<Self>) -> Div {
         div()
@@ -9,6 +10,15 @@ impl Workbench {
             .bg(rgb(PANEL))
             .border_b_1()
             .border_color(rgb(BORDER))
+            .child(
+                self.button("toggle-catalog", "☰")
+                    .tooltip(if self.locale == Locale::Ko {
+                        "탐색기 · ⌘B"
+                    } else {
+                        "Catalog · ⌘B"
+                    })
+                    .on_click(cx.listener(|s, _, w, cx| s.toggle_catalog(&ToggleCatalog, w, cx))),
+            )
             .child(
                 div()
                     .id("workspace-tabs")
@@ -53,6 +63,11 @@ impl Workbench {
                             )
                             .child(
                                 Button::new(("close-document", id as usize))
+                                    .accessibility_label(format!(
+                                        "{} {}",
+                                        tr(self.locale, Message::Close),
+                                        doc.model.title
+                                    ))
                                     .label("×")
                                     .small()
                                     .ghost()
@@ -82,29 +97,17 @@ impl Workbench {
                                 s.new_document(String::new(), "untitled.sql".into(), true, w, cx)
                             })),
                     )
-                    .child(
-                        self.button("open-sql", "Open…")
-                            .on_click(cx.listener(|s, _, w, cx| s.open_sql(w, cx))),
-                    )
-                    .child(
-                        self.button("save-current-sql", "Save")
-                            .disabled(!self.sql_view_active())
-                            .on_click(
-                                cx.listener(|s, _, w, cx| s.save_sql_action(&SaveSqlFile, w, cx)),
-                            ),
-                    ),
+                    .child(self.file_command_menu()),
             )
     }
     pub(super) fn query_toolbar(&self, cx: &mut Context<Self>) -> Div {
         let session = self.console();
-        let busy = session.busy();
-        let phase = session.phase;
-        let policy = session.commit_policy;
-        let wire = session.transaction_state;
-        let may_tx = session.may_have_transaction();
         let route = session.route();
-        let can_run = self.can_run(cx);
+        let wire = session.transaction_state;
+        let busy = session.busy();
+        let may_tx = session.may_have_transaction();
         let cancel = session.cancel_target();
+        let can_run = self.can_run(cx);
         div()
             .flex_shrink_0()
             .bg(rgb(PANEL))
@@ -113,140 +116,275 @@ impl Workbench {
             .px_3()
             .py_1()
             .flex()
+            .items_center()
             .flex_wrap()
             .gap_2()
             .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .flex_wrap()
-                    .min_w_0()
-                    .max_w_full()
-                    .gap_2()
-                    .child(
-                        self.button(
-                            "run",
-                            if phase == SessionPhase::Disconnected {
-                                "Connect & Run"
-                            } else {
-                                "Run script"
-                            },
-                        )
-                        .primary()
-                        .disabled(!can_run)
-                        .on_click(cx.listener(|s, _, _, cx| s.submit_query(cx))),
-                    )
-                    .child(
-                        self.button("run-current", "Run current")
-                            .disabled(!can_run)
-                            .on_click(
-                                cx.listener(|s, _, w, cx| s.run_current_action(&RunCurrent, w, cx)),
-                            ),
-                    )
-                    .child(
-                        self.button("cancel", "Cancel")
-                            .disabled(session.active_operation.is_none())
-                            .on_click(cx.listener(move |s, _, _, cx| {
-                                if let Some(target) = cancel {
-                                    s.cancel_console(route, target, cx);
-                                }
-                            })),
-                    )
-                    .child(div().w(px(1.)).h(px(20.)).bg(rgb(BORDER)))
-                    .child(self.button("format-sql", "Format").on_click(
-                        cx.listener(|s, _, w, cx| s.format_sql_action(&FormatSql, w, cx)),
-                    ))
-                    .child(
-                        self.button("complete-sql", "Complete")
-                            .tooltip("⌘J · Ctrl+Space · ↑↓ · Enter / Tab · Esc")
-                            .on_click(cx.listener(|s, _, w, cx| {
-                                s.complete_sql_action(&CompleteSql, w, cx)
-                            })),
-                    )
-                    .child(
-                        self.button(
-                            "refresh-completion-metadata",
-                            if self.locale == Locale::Ko {
-                                "메타데이터 ↻"
-                            } else {
-                                "Metadata ↻"
-                            },
-                        )
-                        .disabled(busy || session.target().is_none())
-                        .on_click(cx.listener(|s, _, w, cx| {
-                            s.refresh_completion_metadata_action(&RefreshCompletionMetadata, w, cx)
-                        })),
-                    )
-                    .child(
-                        self.button("analyze-sql", "Inspect SQL")
-                            .on_click(cx.listener(|s, _, _, cx| s.analyze_sql(cx))),
-                    ),
+                self.button(
+                    "run",
+                    if session.phase == SessionPhase::Disconnected {
+                        "Connect & Run"
+                    } else {
+                        "Run script"
+                    },
+                )
+                .primary()
+                .tooltip("⌘Enter")
+                .disabled(!can_run)
+                .on_click(cx.listener(|s, _, _, cx| s.submit_query(cx))),
             )
             .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .flex_wrap()
-                    .min_w_0()
-                    .max_w_full()
-                    .gap_2()
-                    .child(
-                        self.button("auto-policy", "Auto")
-                            .when(policy == CommitPolicy::Auto, |b| b.outline())
-                            .disabled(busy || may_tx || phase != SessionPhase::Connected)
-                            .on_click(
-                                cx.listener(|s, _, _, cx| s.change_policy(CommitPolicy::Auto, cx)),
-                            ),
-                    )
-                    .child(
-                        self.button("manual-policy", "Manual")
-                            .when(policy == CommitPolicy::Manual, |b| b.outline())
-                            .disabled(busy || may_tx || phase != SessionPhase::Connected)
-                            .on_click(
-                                cx.listener(|s, _, _, cx| {
-                                    s.change_policy(CommitPolicy::Manual, cx)
-                                }),
-                            ),
-                    )
-                    .child(
+                self.button("run-current", "Run current")
+                    .tooltip("⌘⇧Enter")
+                    .disabled(!can_run)
+                    .on_click(cx.listener(|s, _, w, cx| s.run_current_action(&RunCurrent, w, cx))),
+            )
+            .when(cancel.is_some(), |el| {
+                el.child(
+                    self.button("cancel", "Cancel")
+                        .tooltip("⌘.")
+                        .on_click(cx.listener(move |s, _, _, cx| {
+                            if let Some(target) = cancel {
+                                s.cancel_console(route, target, cx);
+                            }
+                        })),
+                )
+            })
+            .child(self.sql_command_menu(cx))
+            .child(div().flex_1())
+            .when(session.phase == SessionPhase::Connected, |el| {
+                el.child(self.commit_policy_menu(cx))
+            })
+            .when(may_tx, |el| {
+                el.when(wire == ServerTransactionState::Active, |el| {
+                    el.child(
                         self.button("commit-tx", "Commit")
-                            .disabled(
-                                busy || phase != SessionPhase::Connected
-                                    || wire != ServerTransactionState::Active,
-                            )
+                            .disabled(busy || session.phase != SessionPhase::Connected)
                             .on_click(cx.listener(|s, _, _, cx| s.finish_transaction(true, cx))),
                     )
-                    .child(
-                        self.button("rollback-tx", "Rollback")
-                            .disabled(busy || phase != SessionPhase::Connected || !may_tx)
-                            .on_click(cx.listener(|s, _, _, cx| s.finish_transaction(false, cx))),
-                    )
-                    .child(
-                        div()
-                            .id("wire-transaction-state")
-                            .role(Role::Status)
-                            .aria_label(format!(
-                                "{}: {}",
-                                if self.locale == Locale::Ko {
-                                    "현재 트랜잭션"
-                                } else {
-                                    "Current transaction"
-                                },
-                                self.tx_label(wire)
-                            ))
-                            .text_size(px(10.))
-                            .text_color(rgb(MUTED))
-                            .child(format!(
-                                "{}: {}",
-                                if self.locale == Locale::Ko {
-                                    "현재 트랜잭션"
-                                } else {
-                                    "Transaction"
-                                },
-                                self.tx_label(wire)
-                            )),
+                })
+                .child(
+                    self.button("rollback-tx", "Rollback")
+                        .disabled(busy || session.phase != SessionPhase::Connected)
+                        .on_click(cx.listener(|s, _, _, cx| s.finish_transaction(false, cx))),
+                )
+                .child(
+                    div()
+                        .id("wire-transaction-state")
+                        .role(Role::Status)
+                        .text_size(px(11.))
+                        .text_color(rgb(0xd4ad78))
+                        .child(format!(
+                            "{}: {}",
+                            tr(self.locale, Message::Transaction),
+                            self.tx_label(wire)
+                        )),
+                )
+            })
+    }
+    fn sql_command_menu(&self, cx: &mut Context<Self>) -> AnyElement {
+        let ko = self.locale == Locale::Ko;
+        let weak = cx.weak_entity();
+        let metadata_locked = self.console().busy() || self.console().target().is_none();
+        Button::new("sql-command-menu")
+            .small()
+            .ghost()
+            .label(if ko {
+                "SQL 도구 ▾"
+            } else {
+                "SQL tools ▾"
+            })
+            .dropdown_menu(move |menu, _, _| {
+                let inspect = weak.clone();
+                menu.item(
+                    PopupMenuItem::new(if ko { "SQL 서식" } else { "Format SQL" })
+                        .action(Box::new(FormatSql)),
+                )
+                .item(
+                    PopupMenuItem::new(if ko { "자동 완성" } else { "Complete SQL" })
+                        .action(Box::new(CompleteSql)),
+                )
+                .item(
+                    PopupMenuItem::new(if ko { "SQL 검사" } else { "Inspect SQL" }).on_click(
+                        move |_, _, cx| {
+                            let _ = inspect.update(cx, |s, cx| s.analyze_sql(cx));
+                        },
                     ),
-            )
+                )
+                .separator()
+                .item(
+                    PopupMenuItem::new(if ko {
+                        "메타데이터 새로고침"
+                    } else {
+                        "Refresh metadata"
+                    })
+                    .disabled(metadata_locked)
+                    .action(Box::new(RefreshCompletionMetadata)),
+                )
+            })
+            .into_any_element()
+    }
+    fn commit_policy_menu(&self, cx: &mut Context<Self>) -> AnyElement {
+        let session = self.console();
+        let route = session.route();
+        let policy = session.commit_policy;
+        let locked = session.busy()
+            || session.may_have_transaction()
+            || session.phase != SessionPhase::Connected;
+        let weak = cx.weak_entity();
+        let ko = self.locale == Locale::Ko;
+        let label = match (ko, policy) {
+            (true, CommitPolicy::Auto) => "자동 커밋 ▾",
+            (true, CommitPolicy::Manual) => "수동 커밋 ▾",
+            (false, CommitPolicy::Auto) => "Auto commit ▾",
+            (false, CommitPolicy::Manual) => "Manual commit ▾",
+        };
+        Button::new("commit-policy-menu")
+            .tooltip(if locked {
+                if ko {
+                    "진행 중인 작업과 트랜잭션을 마친 뒤 변경하세요."
+                } else {
+                    "Finish the current operation and transaction before changing policy."
+                }
+            } else {
+                if ko {
+                    "이 SQL 콘솔의 커밋 방식"
+                } else {
+                    "Commit policy for this SQL console"
+                }
+            })
+            .small()
+            .ghost()
+            .label(label)
+            .disabled(locked)
+            .dropdown_menu(move |menu, _, _| {
+                let auto = weak.clone();
+                let manual = weak.clone();
+                menu.item(
+                    PopupMenuItem::new(if ko { "자동 커밋" } else { "Auto commit" })
+                        .checked(policy == CommitPolicy::Auto)
+                        .disabled(locked)
+                        .on_click(move |_, _, cx| {
+                            let _ = auto.update(cx, |s, cx| {
+                                if s.console().route() == route {
+                                    s.change_policy(CommitPolicy::Auto, cx);
+                                }
+                            });
+                        }),
+                )
+                .item(
+                    PopupMenuItem::new(if ko { "수동 커밋" } else { "Manual commit" })
+                        .checked(policy == CommitPolicy::Manual)
+                        .disabled(locked)
+                        .on_click(move |_, _, cx| {
+                            let _ = manual.update(cx, |s, cx| {
+                                if s.console().route() == route {
+                                    s.change_policy(CommitPolicy::Manual, cx);
+                                }
+                            });
+                        }),
+                )
+            })
+            .into_any_element()
+    }
+    fn file_command_menu(&self) -> AnyElement {
+        let locale = self.locale;
+        let active = self.sql_view_active();
+        Button::new("file-command-menu")
+            .small()
+            .ghost()
+            .label(if locale == Locale::Ko {
+                "파일 ▾"
+            } else {
+                "File ▾"
+            })
+            .dropdown_menu(move |menu, _, _| {
+                menu.item(
+                    PopupMenuItem::new(tr(locale, Message::Open)).action(Box::new(OpenSqlFile)),
+                )
+                .item(
+                    PopupMenuItem::new(tr(locale, Message::Save))
+                        .disabled(!active)
+                        .action(Box::new(SaveSqlFile)),
+                )
+                .item(
+                    PopupMenuItem::new(tr(locale, Message::SaveAs))
+                        .disabled(!active)
+                        .action(Box::new(SaveSqlAs)),
+                )
+            })
+            .into_any_element()
+    }
+    pub(super) fn sidebar_tools_menu(&self, cx: &mut Context<Self>) -> AnyElement {
+        let ko = self.locale == Locale::Ko;
+        let cache_bytes = self.navigator.stats().accounted_bytes;
+        let weak = cx.weak_entity();
+        let locked = self.configuration_operation.is_some() || self.pending_table_open.is_some();
+        Button::new("workspace-tools-menu")
+            .small()
+            .ghost()
+            .label(if ko { "도구 ▾" } else { "Tools ▾" })
+            .dropdown_menu(move |menu, _, _| {
+                let tools = weak.clone();
+                let diagnostics = weak.clone();
+                let cache = weak.clone();
+                menu.item(
+                    PopupMenuItem::new(if ko {
+                        "데이터베이스 도구"
+                    } else {
+                        "Database tools"
+                    })
+                    .disabled(locked)
+                    .on_click(move |_, w, cx| {
+                        let _ = tools.update(cx, |s, cx| s.open_tools(w, cx));
+                    }),
+                )
+                .separator()
+                .label(format!(
+                    "{} · {:.1} MiB",
+                    if ko {
+                        "메모리 캐시"
+                    } else {
+                        "Memory cache"
+                    },
+                    cache_bytes as f64 / 1048576.
+                ))
+                .item(
+                    PopupMenuItem::new(if ko {
+                        "메타데이터 캐시 비우기"
+                    } else {
+                        "Clear metadata cache"
+                    })
+                    .on_click(move |_, _, cx| {
+                        let _ = cache.update(cx, |s, cx| {
+                            s.navigator.clear();
+                            cx.notify();
+                        });
+                    }),
+                )
+                .item(
+                    PopupMenuItem::new(if ko {
+                        "성능 진단"
+                    } else {
+                        "Performance diagnostics"
+                    })
+                    .on_click(move |_, _, cx| {
+                        let _ = diagnostics.update(cx, |s, cx| {
+                            s.show_tools = !s.show_tools;
+                            cx.notify();
+                        });
+                    }),
+                )
+                .separator()
+                .item(
+                    PopupMenuItem::new(tr(
+                        if ko { Locale::Ko } else { Locale::En },
+                        Message::Preferences,
+                    ))
+                    .action(Box::new(OpenPreferences)),
+                )
+            })
+            .into_any_element()
     }
     pub(super) fn sql_tools_panel(&self, cx: &mut Context<Self>) -> Div {
         let revision = self.current_revision();

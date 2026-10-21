@@ -183,22 +183,30 @@ impl Workbench {
                             )
                         },
                     )
-                    .child(
-                        self.button("connect-console", "Connect console")
-                            .disabled(
-                                target.is_none()
-                                    || busy
-                                    || session.phase == SessionPhase::Connected,
-                            )
-                            .on_click(cx.listener(|s, _, _, cx| s.connect_console(cx))),
-                    )
-                    .child(
-                        self.button("disconnect-console", "Disconnect console")
-                            .disabled(!session.has_worker())
-                            .on_click(
-                                cx.listener(move |s, _, _, cx| s.disconnect_console(route, cx)),
-                            ),
-                    ),
+                    .when(session.phase == SessionPhase::Disconnected, |el| {
+                        el.child(
+                            self.button("connect-console", "Connect console")
+                                .tooltip(if locale == Locale::Ko {
+                                    "연결만 열기 · SQL은 실행하지 않음"
+                                } else {
+                                    "Connect only · do not execute SQL"
+                                })
+                                .disabled(target.is_none() || busy)
+                                .on_click(cx.listener(|s, _, _, cx| s.connect_console(cx))),
+                        )
+                    })
+                    .when(session.phase != SessionPhase::Disconnected, |el| {
+                        el.child(
+                            self.button("disconnect-console", "Disconnect console")
+                                .disabled(
+                                    !session.has_worker()
+                                        || session.phase == SessionPhase::Disconnecting,
+                                )
+                                .on_click(
+                                    cx.listener(move |s, _, _, cx| s.disconnect_console(route, cx)),
+                                ),
+                        )
+                    }),
             );
         if self.console_database_editor == Some(route) {
             bar = bar.child(

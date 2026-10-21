@@ -1653,86 +1653,67 @@ impl Render for Workbench {
         let busy = self.busy();
         let query_busy = self.console().busy();
         let query_configured = self.console().target().is_some();
-        let sidebar =
-            div()
-                .w(px(self.app_settings.sidebar_width as f32))
-                .flex_shrink_0()
-                .bg(rgb(PANEL))
-                .border_r_1()
-                .border_color(rgb(BORDER))
-                .flex()
-                .flex_col()
-                .child(
-                    div()
-                        .h(px(48.))
-                        .px_4()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .child(self.ui_label("Connections")),
-                        )
-                        .child(
-                            self.button("new-profile", "+ New")
-                                .disabled(busy)
-                                .on_click(cx.listener(|s, _, w, cx| s.edit_profile(true, w, cx))),
-                        ),
-                )
-                .child(self.database_explorer(cx))
-                .when(self.deleted.is_some(), |el| {
-                    el.child(self.button("undo-delete", "Undo profile removal").on_click(
-                        cx.listener(|s, _, _, cx| {
+        let sidebar = div()
+            .w(px(self.app_settings.sidebar_width as f32))
+            .flex_shrink_0()
+            .bg(rgb(PANEL))
+            .border_r_1()
+            .border_color(rgb(BORDER))
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .h(px(48.))
+                    .px_4()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .child(
+                        div()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(self.ui_label("Connections")),
+                    )
+                    .child(
+                        self.button("new-profile", "+ New")
+                            .disabled(busy)
+                            .on_click(cx.listener(|s, _, w, cx| s.edit_profile(true, w, cx))),
+                    ),
+            )
+            .child(self.database_explorer(cx))
+            .when(self.deleted.is_some(), |el| {
+                el.child(
+                    self.button("undo-delete", "Undo profile removal")
+                        .on_click(cx.listener(|s, _, _, cx| {
                             if let Some(p) = s.deleted.take() {
                                 let _ = s.workspace.upsert(p.clone());
                                 s.persist_profile_mutation(ProfileMutation::Upsert(p), cx);
                                 cx.notify();
                             }
-                        }),
-                    ))
-                })
-                .child(
-                    div()
-                        .px_3()
-                        .py_3()
-                        .border_t_1()
-                        .border_color(rgb(BORDER))
-                        .flex()
-                        .flex_wrap()
-                        .gap_2()
-                        .child(
-                            self.button("history-toggle", "History")
-                                .on_click(cx.listener(|s, _, _, cx| {
-                                    s.show_history = !s.show_history;
-                                    if s.show_history {
-                                        s.show_sql_tools = false;
-                                        s.transfer_preview = None;
-                                    }
-                                    cx.notify();
-                                })),
-                        )
-                        .child(self.button("preferences-toggle", "Preferences").on_click(
-                            cx.listener(|s, _, w, cx| {
-                                s.open_preferences_action(&OpenPreferences, w, cx)
-                            }),
-                        ))
-                        .child(
-                            self.button("advanced-toggle", "Advanced")
-                                .on_click(cx.listener(|s, _, _, cx| {
-                                    s.show_tools = !s.show_tools;
-                                    cx.notify();
-                                })),
-                        )
-                        .child(
-                            self.button("tools-toggle", "Tools")
-                                .disabled(
-                                    self.configuration_operation.is_some()
-                                        || self.pending_table_open.is_some(),
-                                )
-                                .on_click(cx.listener(|s, _, w, cx| s.open_tools(w, cx))),
-                        ),
-                );
+                        })),
+                )
+            })
+            .child(
+                div()
+                    .px_3()
+                    .py_3()
+                    .border_t_1()
+                    .border_color(rgb(BORDER))
+                    .flex()
+                    .flex_wrap()
+                    .gap_2()
+                    .child(
+                        self.button("history-toggle", "History")
+                            .on_click(cx.listener(|s, _, _, cx| {
+                                s.show_history = !s.show_history;
+                                if s.show_history {
+                                    s.show_sql_tools = false;
+                                    s.transfer_preview = None;
+                                }
+                                cx.notify();
+                            })),
+                    )
+                    .child(self.sidebar_tools_menu(cx)),
+            );
 
         let result_body = div()
             .id("result-grid")
@@ -1886,23 +1867,37 @@ impl Render for Workbench {
                                     |s, _, w, cx| s.toggle_results(&ToggleResults, w, cx),
                                 )),
                             )
-                            .child(
-                                self.button("prev-result", "‹")
-                                    .disabled(self.selected_page == 0)
-                                    .on_click(cx.listener(|s, _, _, cx| s.select_page(false, cx))),
-                            )
-                            .child(
-                                self.button("next-result", "›")
-                                    .disabled(self.selected_page + 1 >= self.pages.len())
-                                    .on_click(cx.listener(|s, _, _, cx| s.select_page(true, cx))),
-                            )
-                            .child(
-                                self.button("copy", "Copy cell")
-                                    .disabled(self.grid.read(cx).selected_cell().is_none())
-                                    .on_click(
-                                        cx.listener(|s, _, w, cx| s.copy_cell(&CopyCell, w, cx)),
-                                    ),
-                            )
+                            .when(self.pages.len() > 1, |el| {
+                                el.child(
+                                    self.button("prev-result", "‹")
+                                        .tooltip(if self.locale == Locale::Ko {
+                                            "이전 결과 집합"
+                                        } else {
+                                            "Previous result set"
+                                        })
+                                        .disabled(self.selected_page == 0)
+                                        .on_click(
+                                            cx.listener(|s, _, _, cx| s.select_page(false, cx)),
+                                        ),
+                                )
+                                .child(
+                                    self.button("next-result", "›")
+                                        .tooltip(if self.locale == Locale::Ko {
+                                            "다음 결과 집합"
+                                        } else {
+                                            "Next result set"
+                                        })
+                                        .disabled(self.selected_page + 1 >= self.pages.len())
+                                        .on_click(
+                                            cx.listener(|s, _, _, cx| s.select_page(true, cx)),
+                                        ),
+                                )
+                            })
+                            .when(self.grid.read(cx).selected_cell().is_some(), |el| {
+                                el.child(self.button("copy", "Copy cell").tooltip("⌘C").on_click(
+                                    cx.listener(|s, _, w, cx| s.copy_cell(&CopyCell, w, cx)),
+                                ))
+                            })
                             .child(self.result_more_menu(cx)),
                     ),
             )
@@ -2227,51 +2222,6 @@ impl Render for Workbench {
             .on_mouse_move(cx.listener(Self::resize_move))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::resize_end))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::resize_end))
-            .child(
-                div()
-                    .h(px(34.))
-                    .flex_shrink_0()
-                    .px_4()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .border_b_1()
-                    .border_color(rgb(BORDER))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(
-                                self.button("toggle-catalog", "☰")
-                                    .tooltip(if self.locale == Locale::Ko {
-                                        "탐색기 표시 · ⌘B"
-                                    } else {
-                                        "Toggle catalog · ⌘B"
-                                    })
-                                    .on_click(cx.listener(|s, _, w, cx| {
-                                        s.toggle_catalog(&ToggleCatalog, w, cx)
-                                    })),
-                            )
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .child(self.ui_label("Database IDE")),
-                            )
-                            .child(div().text_color(rgb(MUTED)).child("/"))
-                            .child(
-                                div()
-                                    .text_color(rgb(MUTED))
-                                    .child(self.ui_label("Local workspace")),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(10.))
-                            .text_color(rgb(MUTED))
-                            .child(dbide_ui_spike::workbench_model::engine_name(self.engine())),
-                    ),
-            )
             .child(body)
             .child(
                 div()
