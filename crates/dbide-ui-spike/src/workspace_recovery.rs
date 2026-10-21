@@ -35,10 +35,20 @@ fn load_preferences(path: &std::path::Path) -> Result<Preferences, String> {
         .map_err(|_| "Editor preferences malformed; original preserved.".into())
 }
 #[derive(Clone, PartialEq, Eq)]
+struct DocumentStamp {
+    id: u64,
+    revision: u64,
+    target_generation: u64,
+    saved_pointer: usize,
+    saved_length: usize,
+    title: String,
+    path: Option<PathBuf>,
+}
+#[derive(Clone, PartialEq, Eq)]
 struct Stamp {
     input_changes: u64,
     active: u64,
-    documents: Vec<(u64, u64, usize, usize, String, Option<PathBuf>)>,
+    documents: Vec<DocumentStamp>,
 }
 pub(super) struct Recovery {
     store: Option<WorkspaceStore>,
@@ -80,15 +90,14 @@ impl Workbench {
             documents: self
                 .documents
                 .iter()
-                .map(|d| {
-                    (
-                        d.model.id,
-                        d.model.revision,
-                        d.model.saved_source.as_ptr() as usize,
-                        d.model.saved_source.len(),
-                        d.model.title.clone(),
-                        d.model.path.clone(),
-                    )
+                .map(|d| DocumentStamp {
+                    id: d.model.id,
+                    revision: d.model.revision,
+                    target_generation: d.session.route().generation,
+                    saved_pointer: d.model.saved_source.as_ptr() as usize,
+                    saved_length: d.model.saved_source.len(),
+                    title: d.model.title.clone(),
+                    path: d.model.path.clone(),
                 })
                 .collect(),
         }
@@ -108,6 +117,7 @@ impl Workbench {
                     revision: d.model.revision,
                     path: d.model.path.clone(),
                     profile_id: d.required_profile_id.clone(),
+                    execution_target: d.session.stored_target(),
                 })
                 .collect(),
         }
@@ -164,6 +174,24 @@ impl Workbench {
         self.documents.clear();
         for doc in snapshot.documents {
             let required_profile_id = doc.profile_id.clone();
+            let mut session = ConsoleSession::new(doc.id);
+            if let Some(target) = &doc.execution_target
+                && let Some(profile) = self
+                    .workspace
+                    .profiles
+                    .iter()
+                    .find(|p| p.id == target.profile_id)
+                && let Ok(profile) = target.resolve(profile)
+            {
+                let route = session.route();
+                let _ = session.bind(
+                    route,
+                    ConnectionRequest {
+                        profile,
+                        password: String::new(),
+                    },
+                );
+            }
             let (model, sql) = dbide_ui_spike::recovery_model::restore_document(doc);
             let id = model.id;
             let editor = cx.new(|cx| {
@@ -182,8 +210,25 @@ impl Workbench {
                         cx.notify();
                     }
                 }));
+            let database = session
+                .target()
+                .map(|p| p.database.clone())
+                .unwrap_or_default();
+            let password_draft = cx.new(|cx| {
+                InputState::new(window, cx)
+                    .masked(true)
+                    .placeholder("Session password")
+            });
+            let database_draft = cx.new(|cx| {
+                let mut input = InputState::new(window, cx).placeholder("Database name");
+                input.set_value(database, window, cx);
+                input
+            });
             self.documents.push(SqlDocument {
+                password_draft,
+                database_draft,
                 required_profile_id,
+                session,
                 model,
                 editor,
                 results: ResultSnapshot::default(),

@@ -38,5 +38,8 @@ if [[ "$mode" == --owned-live ]]; then
   for package in dbide-pg-spike dbide-bridge dbide-mysql dbide-workflows dbide-mcp dbide-cli dbide-data; do
     cargo test -p "$package" --tests -- --ignored --test-threads=1
   done
+  # Public ConsoleSession state machine; no native window or user profile access.
+  # Requires explicit `fixture-engines.sh seed pg consoles` setup beforehand.
+  cargo test -p dbide-ui-spike --test console_sessions -- --ignored --test-threads=1
 fi
 printf '%s\n' "Current checks passed ($mode). Native UI, Keychain opt-in, physical IME, and comparative performance remain separate gates."

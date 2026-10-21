@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "kind": "native_ui_core_recovery_qa",
+  "observed_date": "2026-10-22",
+  "binary_sha256": "37d02578d7ac63c2d526d43f3e02ee45ed00d676810865151d05e0faa97d3f79",
+  "scope": "Packaged compact explorer/accessibility/recovery build before per-console runtime and localization integration; menu/focus source changes not native-tested in this pass.",
+  "profile_store": "tmp/ui-final-qa/profiles.json",
+  "passed": [
+    "PostgreSQL Save & Connect loaded schema tree and reported Idle. Table expansion displayed columns, types, PK; Structure showed actual defaults, identity, and numeric type.",
+    "Owned 105-row PostgreSQL fixture: Data returned first 100 rows, next page IDs101-105, disabled Next; Find highlighted QA item104.",
+    "CLI added cli-concurrent while GUI remained open. GUI history preference save retained all four profiles and displayed the new profile.",
+    "Cmd+Enter returned SELECT42 plus Korean result and history; editor Undo/Redo preserved the exact SQL.",
+    "Cancel pg_sleep30 returned SQLSTATE57014 and retired session; subsequent SELECT43 automatically reconnected and completed.",
+    "MySQL connection discovered four fixture objects; orders Data returned three rows including decimal20.0000.",
+    "MySQL Manual SELECT showed Active; missing-table error42S02 showed Unknown, Commit disabled and Rollback enabled; Rollback returned Idle.",
+    "Compact tree and Structure exposed field/type/nullability/PK/default details in accessibility text.",
+    "Opt-in recovery saved two unsaved SQL tabs and active tab2 to a0600 workspace snapshot. Reopening restored both exact buffers and dirty state without connection or SQL execution.",
+    "With editor focus, Cmd+Q exited successfully; explicit process relaunch restored both unsaved SQL buffers.",
+    "SQLite tree and Structure displayed id INTEGER NOT NULL primary key and note TEXT NULL; advanced adapter metadata limitations remained visible."
+  ],
+  "limitations": [
+    "Initial-window-focus keyboard shortcut issue and empty native menu discovered; fixes exist in source but were not exercised in this tested package.",
+    "Per-tab dedicated connection/database selection and Korean-English UI were not yet integrated into this binary.",
+    "No physical Korean IME composition, full VoiceOver, or cross-app Finder drag validation.",
+    "No matched DataGrip performance comparison; GUI row Apply remains disabled pending namespace-binding correctness."
+  ]
+}

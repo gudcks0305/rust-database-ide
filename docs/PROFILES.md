@@ -106,7 +106,10 @@ data: enabled history is plaintext local data protected only by file permissions
 
 ## Validation and recovery
 
-Schema version is `1`. Unsupported versions, malformed JSON, duplicate profile
+Schema version is `2`. Version-1 files migrate in memory on load; no file is
+rewritten until a later successful explicit save/update. Existing history entries
+without `execution_target` remain `None` and unresolved, even when a global
+profile is selected. Unsupported versions, malformed JSON, duplicate profile
 IDs, invalid selections, unknown fields, oversized input, and invalid connection
 fields return errors and preserve the original file; there is no automatic reset.
 The UI must surface errors and let the user repair or explicitly choose another
@@ -137,3 +140,47 @@ The subprocess fixture receives temporary paths only through its own environment
 
 The lock API is supported by the pinned Rust 1.99.1 toolchain; see
 [std::fs::File::lock](https://doc.rust-lang.org/std/fs/struct.File.html#method.lock).
+
+## Per-console stored execution targets
+
+`StoredExecutionTarget { profile_id, engine, database, endpoint_fingerprint }`
+is password-free configuration, not an authenticated session. Use
+`StoredExecutionTarget::capture(&profile, database)` for an explicitly selected
+database, and `target.resolve(&existing_profile)` to recover an effective profile.
+Both return `Result<_, ExecutionTargetError>` and perform no filesystem, secret,
+network, or Keychain reads. Resolution requires the exact stable profile ID,
+engine, and endpoint fingerprint. It returns a cloned configuration whose
+`database` is the stored explicit override; the current global/default database
+must not replace it. SQLite only accepts logical database `main`; its actual
+file remains the fingerprinted `sqlite_path`. Restoration never infers SQLite
+from a database name or attaches a new file.
+
+The fingerprint is a `v1:`-prefixed SHA-256 of an ordered serialized tuple of the
+effective connection parameters. It includes engine, host/port/user/TLS and
+selected CA path for network engines, file path/create policy for SQLite, and
+read-only/timeout policy for both. Display name, stable ID, and profile/default
+or explicit database are excluded: ID and database are checked/stored separately.
+SQLite ignores irrelevant network fields; plaintext network mode ignores its
+unused CA path. Changing an effective endpoint invalidates restoration; renaming
+a profile or changing its default database does not. This is a conservative
+configuration identity, not server identity, certificate content pinning, or a
+security signature. A file path still matching does not prove its file contents
+or DNS destination stayed unchanged.
+
+`HistoryEntry.execution_target: Option<StoredExecutionTarget>` is serialized
+when present and must agree with the entry's `profile_id`. Missing legacy target
+information stays unresolved; never bind old SQL to the current global target.
+Documents use the same shared type through the workspace recovery crate. A
+matching restored target must remain disconnected, with no authentication,
+automatic SQL, connection, transaction, or execution-state restoration. A missing
+profile or mismatched endpoint requires explicit reselection. Store validation
+only checks target structure; the UI must call `resolve` against the current
+profile before treating it as a selectable execution configuration.
+
+Version-1 migration retains all existing profile/history data and selection,
+upgrades only the in-memory version, and leaves the original bytes unchanged
+until save. Future schemas and malformed targets are rejected and preserved.
+An older application that cannot read version 2 must likewise reject it rather
+than reset the file. `execution_targets` regressions cover naming/default-DB
+changes, endpoint changes, SQLite file policies, explicit DB persistence,
+password-free serialization, legacy unresolved entries, and corrupt preservation.

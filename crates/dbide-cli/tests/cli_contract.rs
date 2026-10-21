@@ -77,6 +77,85 @@ fn help_and_missing_arguments_are_actionable() {
     success(run(d.path(), &["sql", "format", "--help"]));
     assert!(!d.path().join("profiles.json").exists());
 }
+
+#[test]
+fn language_settings_share_profile_parent_and_preserve_profile_and_unknown_fields() {
+    let d = TempDir::new().unwrap();
+    assert_eq!(
+        success(run(d.path(), &["config", "language", "get"])),
+        "ko\n"
+    );
+    assert_eq!(
+        fs::read_dir(d.path()).unwrap().count(),
+        0,
+        "get must not create settings"
+    );
+    assert_eq!(
+        success(run(d.path(), &["config", "language", "set", "en"])),
+        "en\n"
+    );
+    let path = d.path().join("app-settings.json");
+    let mut settings: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(settings["locale"], "en");
+    assert!(!d.path().join("profiles.json").exists());
+    settings["future_preference"] = serde_json::json!({"preserve": true});
+    fs::write(&path, serde_json::to_vec(&settings).unwrap()).unwrap();
+    add(d.path());
+    success(run(d.path(), &["config", "set", "persist_history", "true"]));
+    let profile = d.path().join("profiles.json");
+    let original = fs::read(&profile).unwrap();
+    assert_eq!(
+        success(run(d.path(), &["config", "language", "set", "ko"])),
+        "ko\n"
+    );
+    assert_eq!(fs::read(&profile).unwrap(), original);
+    let settings: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(settings["locale"], "ko");
+    assert_eq!(
+        settings["future_preference"],
+        serde_json::json!({"preserve": true})
+    );
+    // Locale is independent of profile schema parsing and cannot repair/destroy it.
+    fs::write(&profile, b"{malformed-profile-preserved").unwrap();
+    assert_eq!(
+        success(run(d.path(), &["config", "language", "get"])),
+        "ko\n"
+    );
+    assert_eq!(
+        success(run(d.path(), &["config", "language", "set", "en"])),
+        "en\n"
+    );
+    assert_eq!(fs::read(profile).unwrap(), b"{malformed-profile-preserved");
+}
+
+#[test]
+fn language_rejects_unsupported_values_and_preserves_malformed_or_future_settings() {
+    let d = TempDir::new().unwrap();
+    for args in [
+        &["config", "language"][..],
+        &["config", "language", "set"][..],
+        &["config", "language", "set", "fr"][..],
+    ] {
+        assert_eq!(run(d.path(), args).status.code(), Some(2));
+    }
+    assert_eq!(fs::read_dir(d.path()).unwrap().count(), 0);
+    let path = d.path().join("app-settings.json");
+    for invalid in [
+        b"{malformed-settings".as_slice(),
+        br#"{"schema_version":999,"locale":"en"}"#.as_slice(),
+    ] {
+        fs::write(&path, invalid).unwrap();
+        for args in [
+            &["config", "language", "get"][..],
+            &["config", "language", "set", "ko"][..],
+        ] {
+            let output = run(d.path(), args);
+            assert_eq!(output.status.code(), Some(2));
+            assert!(output.stdout.is_empty());
+            assert_eq!(fs::read(&path).unwrap(), invalid);
+        }
+    }
+}
 #[test]
 fn profile_config_workflow_and_recoverable_removal() {
     let d = TempDir::new().unwrap();
@@ -259,6 +338,109 @@ fn passwords_are_explicit_and_never_written_and_history_is_opt_in() {
 }
 
 #[test]
+fn history_captures_submitted_target_and_rejects_later_endpoint_redirection() {
+    use dbide_profiles::{
+        DatabaseEngine, ExecutionTargetError, ProfileStore, StoredExecutionTarget,
+    };
+    let d = TempDir::new().unwrap();
+    add(d.path());
+    success(query(d.path(), "SELECT 1;", "json"));
+    success(run(
+        d.path(),
+        &[
+            "profiles",
+            "add",
+            "--id",
+            "other",
+            "--name",
+            "Other connection",
+            "--engine",
+            "sqlite",
+            "--sqlite-path",
+            d.path().join("other.db").to_str().unwrap(),
+            "--sqlite-create",
+        ],
+    ));
+    success(run(d.path(), &["profiles", "select", "other"]));
+    // SQLite's profile database field is not its execution database; main is.
+    success(run(
+        d.path(),
+        &[
+            "profiles",
+            "edit",
+            "fixture",
+            "--database",
+            "unused-network-default",
+        ],
+    ));
+    success(run(d.path(), &["config", "set", "persist_history", "true"]));
+    success(query(d.path(), "SELECT 'captured-target';", "json"));
+    let store = ProfileStore::open(d.path().join("profiles.json")).unwrap();
+    let state = store.load().unwrap();
+    let submitted = state
+        .profiles
+        .iter()
+        .find(|p| p.id == "fixture")
+        .unwrap()
+        .clone();
+    assert_eq!(state.selected_profile_id.as_deref(), Some("other"));
+    let target = state.history[0].execution_target.as_ref().unwrap().clone();
+    assert_eq!(
+        target,
+        StoredExecutionTarget::capture(&submitted, "main").unwrap()
+    );
+    assert_eq!(target.engine, DatabaseEngine::Sqlite);
+    assert_eq!(target.profile_id, "fixture");
+    assert_eq!(target.database, "main");
+    assert_eq!(
+        target.resolve(&submitted).unwrap().sqlite_path,
+        submitted.sqlite_path
+    );
+
+    success(run(
+        d.path(),
+        &[
+            "query",
+            "--profile",
+            "fixture",
+            "--sql",
+            "SELECT 'read-only-target';",
+            "--format",
+            "json",
+            "--read-only",
+        ],
+    ));
+    let mut effective = submitted.clone();
+    effective.read_only = true;
+    assert_eq!(
+        store.load().unwrap().history[1]
+            .execution_target
+            .as_ref()
+            .unwrap(),
+        &StoredExecutionTarget::capture(&effective, "main").unwrap()
+    );
+
+    success(run(
+        d.path(),
+        &[
+            "profiles",
+            "edit",
+            "fixture",
+            "--sqlite-path",
+            d.path().join("redirected.db").to_str().unwrap(),
+        ],
+    ));
+    let changed = store.load().unwrap();
+    assert_eq!(changed.history[0].execution_target.as_ref(), Some(&target));
+    let changed_profile = changed.profiles.iter().find(|p| p.id == "fixture").unwrap();
+    assert_eq!(
+        target.resolve(changed_profile),
+        Err(ExecutionTargetError::EndpointChanged)
+    );
+    assert!(!d.path().join("redirected.db").exists());
+}
+
+#[test]
 fn history_save_failure_keeps_database_outcome_and_output_without_replay() {
     let d = TempDir::new().unwrap();
     add(d.path());
@@ -281,6 +463,7 @@ fn history_save_failure_keeps_database_outcome_and_output_without_replay() {
                 executed_at_unix_ms: 1,
                 outcome: "Completed".into(),
                 row_count: Some(0),
+                execution_target: None,
             })
             .unwrap();
     }
@@ -696,6 +879,7 @@ fn live_fixture(engine: &str, port: &str, username: &str) {
             "3",
         ],
     ));
+    success(run(d.path(), &["config", "set", "persist_history", "true"]));
     let mut c = command(
         d.path(),
         &[
@@ -713,6 +897,21 @@ fn live_fixture(engine: &str, port: &str, username: &str) {
     c.env("DBIDE_CLI_OWNED_PASSWORD", "dbide_fixture_only");
     let v: Value = serde_json::from_str(&success(c.output().unwrap())).unwrap();
     assert_eq!(v["outcome"], "Completed");
+    let state = dbide_profiles::ProfileStore::open(d.path().join("profiles.json"))
+        .unwrap()
+        .load()
+        .unwrap();
+    let target = state.history[0].execution_target.as_ref().unwrap();
+    assert_eq!(target.database, "dbide_fixture");
+    assert_eq!(
+        target,
+        &dbide_profiles::StoredExecutionTarget::capture(&state.profiles[0], "dbide_fixture")
+            .unwrap()
+    );
+    assert_eq!(
+        target.resolve(&state.profiles[0]).unwrap().database,
+        "dbide_fixture"
+    );
     let events = v["events"].as_array().unwrap();
     assert_eq!(
         events

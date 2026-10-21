@@ -61,6 +61,21 @@ pub struct SchemaObject {
     pub kind: String,
     pub columns: Vec<SchemaColumn>,
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchemaInfo {
+    pub name: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchemaObjectInfo {
+    pub schema: String,
+    pub name: String,
+    pub kind: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelationRef {
+    pub schema: String,
+    pub name: String,
+}
 /// Advertised catalog access; discovery does not attempt a connection to each database.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DatabaseInfo {
@@ -100,6 +115,23 @@ pub enum BridgeEvent {
         databases: Vec<DatabaseInfo>,
         truncated: bool,
     },
+    SchemasLoaded {
+        operation: OperationId,
+        schemas: Vec<SchemaInfo>,
+        truncated: bool,
+    },
+    ObjectsLoaded {
+        operation: OperationId,
+        schema: String,
+        objects: Vec<SchemaObjectInfo>,
+        truncated: bool,
+    },
+    ColumnsLoaded {
+        operation: OperationId,
+        relation: RelationRef,
+        columns: Vec<SchemaColumn>,
+        truncated: bool,
+    },
     Connected {
         operation: OperationId,
     },
@@ -128,6 +160,7 @@ enum Command {
     TestConnection(ConnectionRequest),
     InspectSchema,
     ListDatabases,
+    Catalog(CatalogRequest),
     Connect,
     Execute(String),
     ApplyBatch {
@@ -139,6 +172,11 @@ enum Command {
     Rollback,
     Cancel(CancelTarget),
     Disconnect,
+}
+enum CatalogRequest {
+    Schemas,
+    Objects(String),
+    Columns(RelationRef),
 }
 struct Request {
     operation: OperationId,
@@ -244,6 +282,21 @@ impl DatabaseBridge {
     }
     pub fn refresh_databases(&self) -> Result<OperationId, BridgeSubmitError> {
         self.list_databases()
+    }
+    pub fn list_schemas(&self) -> Result<OperationId, BridgeSubmitError> {
+        self.submit(Command::Catalog(CatalogRequest::Schemas), 3)
+    }
+    pub fn list_objects(&self, schema: String) -> Result<OperationId, BridgeSubmitError> {
+        if schema.len() > 4096 {
+            return Err(BridgeSubmitError::SqlTooLarge);
+        }
+        self.submit(Command::Catalog(CatalogRequest::Objects(schema)), 3)
+    }
+    pub fn list_columns(&self, relation: RelationRef) -> Result<OperationId, BridgeSubmitError> {
+        if relation.schema.len() > 4096 || relation.name.len() > 4096 {
+            return Err(BridgeSubmitError::SqlTooLarge);
+        }
+        self.submit(Command::Catalog(CatalogRequest::Columns(relation)), 3)
     }
     pub fn connect(&self) -> Result<OperationId, BridgeSubmitError> {
         self.submit(Command::Connect, 2)
@@ -566,30 +619,12 @@ async fn metadata(session: &Session) -> Result<(Vec<SchemaObject>, bool), &'stat
                 objects.push(SchemaObject {
                     schema,
                     name,
-                    kind: match value(2).as_str() {
-                        "v" => "view",
-                        "m" => "materialized view",
-                        "f" => "foreign table",
-                        _ => "table",
-                    }
-                    .into(),
+                    kind: object_kind(&value(2)),
                     columns: vec![],
                 });
             }
-            if values.get(3).is_some_and(Option::is_some) {
-                objects.last_mut().unwrap().columns.push(SchemaColumn {
-                    name: value(3),
-                    data_type: value(4),
-                    nullable: value(5) == "true",
-                    primary_key_ordinal: values
-                        .get(6)
-                        .and_then(|v| v.as_deref())
-                        .and_then(|v| v.parse::<u16>().ok())
-                        .filter(|n| *n > 0),
-                    foreign_key: value(7) == "true",
-                    default: values.get(8).cloned().flatten(),
-                    extra: values.get(9).cloned().flatten(),
-                });
+            if let Some(column) = column_from_values(&values) {
+                objects.last_mut().unwrap().columns.push(column);
             }
         }
     }
@@ -655,6 +690,125 @@ async fn databases(
         }
     }
     Ok((databases, truncated))
+}
+fn column_from_values(values: &[Option<String>]) -> Option<SchemaColumn> {
+    let value = |i: usize| values.get(i).cloned().flatten();
+    Some(SchemaColumn {
+        name: value(3)?,
+        data_type: value(4).unwrap_or_default(),
+        nullable: value(5).as_deref() == Some("true"),
+        primary_key_ordinal: value(6)
+            .and_then(|v| v.parse::<u16>().ok())
+            .filter(|n| *n > 0),
+        foreign_key: value(7).as_deref() == Some("true"),
+        default: value(8),
+        extra: value(9),
+    })
+}
+fn object_kind(value: &str) -> String {
+    match value {
+        "v" => "view",
+        "m" => "materialized view",
+        "f" => "foreign table",
+        _ => "table",
+    }
+    .into()
+}
+enum CatalogResult {
+    Schemas(Vec<SchemaInfo>),
+    Objects {
+        schema: String,
+        objects: Vec<SchemaObjectInfo>,
+    },
+    Columns {
+        relation: RelationRef,
+        columns: Vec<SchemaColumn>,
+    },
+}
+fn valid_catalog_request(request: &CatalogRequest) -> bool {
+    let valid = |s: &str| !s.is_empty() && s.len() <= 4096 && !s.contains('\0');
+    match request {
+        CatalogRequest::Schemas => true,
+        CatalogRequest::Objects(schema) => valid(schema),
+        CatalogRequest::Columns(relation) => valid(&relation.schema) && valid(&relation.name),
+    }
+}
+async fn catalog(
+    session: &Session,
+    request: CatalogRequest,
+) -> Result<(CatalogResult, bool), &'static str> {
+    let sql = session.catalog_sql(&request);
+    let report = tokio::time::timeout(
+        Duration::from_secs(4),
+        session.execute(&sql, CommitPolicy::Auto),
+    )
+    .await
+    .map_err(|_| "Metadata loading timed out")??;
+    if report.outcome != Outcome::Completed {
+        return Err("Metadata loading failed; check catalog access permissions");
+    }
+    let mut truncated = report.truncated;
+    let cap = if matches!(request, CatalogRequest::Schemas) {
+        256
+    } else {
+        2048
+    };
+    let mut rows = 0;
+    let mut schemas = Vec::new();
+    let mut objects = Vec::new();
+    let mut columns = Vec::new();
+    for event in report.events {
+        if let dbide_driver_api::Event::Row { values } = event {
+            rows += 1;
+            if rows > cap {
+                truncated = true;
+                break;
+            }
+            let value = |i: usize| values.get(i).cloned().flatten();
+            match &request {
+                CatalogRequest::Schemas => {
+                    if let Some(name) =
+                        value(0).filter(|name| !name.is_empty() && name.len() <= 4096)
+                    {
+                        schemas.push(SchemaInfo { name });
+                    } else {
+                        truncated = true;
+                    }
+                }
+                CatalogRequest::Objects(_) => {
+                    if let (Some(schema), Some(name), Some(kind)) = (value(0), value(1), value(2)) {
+                        if schema.len() > 4096 || name.len() > 4096 {
+                            truncated = true;
+                            continue;
+                        }
+                        objects.push(SchemaObjectInfo {
+                            schema,
+                            name,
+                            kind: object_kind(&kind),
+                        });
+                    } else {
+                        truncated = true;
+                    }
+                }
+                CatalogRequest::Columns(_) => {
+                    if let Some(column) = column_from_values(&values) {
+                        columns.push(column);
+                    }
+                }
+            }
+        }
+    }
+    let result = match request {
+        CatalogRequest::Schemas => CatalogResult::Schemas(schemas),
+        CatalogRequest::Objects(schema) => CatalogResult::Objects { schema, objects },
+        CatalogRequest::Columns(relation) => {
+            if rows == 0 && !truncated {
+                return Err("Relation no longer exists or is not visible; refresh its object list");
+            }
+            CatalogResult::Columns { relation, columns }
+        }
+    };
+    Ok((result, truncated))
 }
 async fn worker(
     mut commands: mpsc::Receiver<Request>,
@@ -753,6 +907,20 @@ async fn worker(
                             let result=tokio::select! {_=shutdown.changed()=>{probe.close();break;},_=control.wait(operation,request_epoch)=>Err("Database discovery cancelled"),result=databases(&probe,request)=>result};
                             probe.close();
                             match result {Ok((databases,truncated))=>{if !budget.send(BridgeEvent::DatabasesLoaded{operation,databases,truncated}) {break;}},Err(message)=>{if !budget.error(operation,message) {break;}}}
+                        }
+                    }
+                    Command::Catalog(query) => {
+                        if active.is_some() {if !budget.error(operation,"Wait for execution to finish before loading metadata") {break;} continue;}
+                        if !valid_catalog_request(&query) {if !budget.error(operation,"Metadata scope is invalid") {break;} continue;}
+                        let Some(request)=configured.as_ref() else {if !budget.error(operation,"Configure a connection profile first") {break;} continue;};
+                        let connected=tokio::select! {_=shutdown.changed()=>break,result=open(request,operation,&mut budget,false,&mut control,request_epoch)=>result};
+                        if let Ok(probe)=connected {
+                            let result=tokio::select! {_=shutdown.changed()=>{probe.close();break;},_=control.wait(operation,request_epoch)=>Err("Metadata loading cancelled"),result=catalog(&probe,query)=>result};
+                            probe.close();
+                            match result {Ok((result,truncated))=>{
+                                let event=match result {CatalogResult::Schemas(schemas)=>BridgeEvent::SchemasLoaded{operation,schemas,truncated},CatalogResult::Objects{schema,objects}=>BridgeEvent::ObjectsLoaded{operation,schema,objects,truncated},CatalogResult::Columns{relation,columns}=>BridgeEvent::ColumnsLoaded{operation,relation,columns,truncated}};
+                                if !budget.send(event) {break;}
+                            },Err(message)=>{if !budget.error(operation,message) {break;}}}
                         }
                     }
                     Command::Connect | Command::Execute(_) => {

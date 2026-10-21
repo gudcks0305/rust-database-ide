@@ -1003,3 +1003,375 @@ fn postgres_database_discovery_preserves_transaction_and_temp() {
 fn mysql_database_discovery_preserves_transaction_and_diagnostics() {
     network_discovery(DatabaseEngine::MySql);
 }
+
+fn lazy_schemas(bridge: &mut DatabaseBridge) -> Vec<dbide_bridge::SchemaInfo> {
+    let id = bridge.list_schemas().unwrap();
+    assert!(matches!(next(bridge),BridgeEvent::Connecting{operation,..} if operation==id));
+    match next(bridge) {
+        BridgeEvent::SchemasLoaded {
+            operation,
+            schemas,
+            truncated,
+        } => {
+            assert_eq!(operation, id);
+            assert!(!truncated);
+            schemas
+        }
+        event => panic!("{event:?}"),
+    }
+}
+fn lazy_objects(bridge: &mut DatabaseBridge, schema: &str) -> Vec<dbide_bridge::SchemaObjectInfo> {
+    let id = bridge.list_objects(schema.into()).unwrap();
+    assert!(matches!(next(bridge),BridgeEvent::Connecting{operation,..} if operation==id));
+    match next(bridge) {
+        BridgeEvent::ObjectsLoaded {
+            operation,
+            schema: scope,
+            objects,
+            truncated,
+        } => {
+            assert_eq!(operation, id);
+            assert_eq!(scope, schema);
+            assert!(!truncated);
+            objects
+        }
+        event => panic!("{event:?}"),
+    }
+}
+fn lazy_columns(bridge: &mut DatabaseBridge, schema: &str, name: &str) -> Vec<SchemaColumn> {
+    let relation = dbide_bridge::RelationRef {
+        schema: schema.into(),
+        name: name.into(),
+    };
+    let id = bridge.list_columns(relation.clone()).unwrap();
+    assert!(matches!(next(bridge),BridgeEvent::Connecting{operation,..} if operation==id));
+    match next(bridge) {
+        BridgeEvent::ColumnsLoaded {
+            operation,
+            relation: scope,
+            columns,
+            truncated,
+        } => {
+            assert_eq!(operation, id);
+            assert_eq!(scope, relation);
+            assert!(!truncated);
+            columns
+        }
+        event => panic!("{event:?}"),
+    }
+}
+#[test]
+fn sqlite_lazy_metadata_filters_exact_scope_without_attached_or_unrelated_columns() {
+    let file = File::new();
+    let mut bridge = DatabaseBridge::new().unwrap();
+    configure(&mut bridge, file.request());
+    let unrelated = (0..1700)
+        .map(|n| format!("c{n} TEXT"))
+        .collect::<Vec<_>>()
+        .join(",");
+    completed(execute(
+        &mut bridge,
+        &format!(
+            r#"CREATE TABLE shared(id INTEGER PRIMARY KEY,a_only TEXT DEFAULT 'main');
+        CREATE TABLE unrelated_wide({unrelated});CREATE TABLE "odd'\name"(quoted TEXT);
+        ATTACH DATABASE ':memory:' AS other;CREATE TABLE other.shared(b_only INTEGER);
+        INSERT INTO other.shared VALUES(52);CREATE TEMP TABLE lazy_temp(v INTEGER);INSERT INTO lazy_temp VALUES(51)"#
+        ),
+    ));
+    let active = completed(execute(
+        &mut bridge,
+        "BEGIN; INSERT INTO shared(a_only) VALUES('pending')",
+    ));
+    assert_eq!(
+        lazy_schemas(&mut bridge),
+        vec![dbide_bridge::SchemaInfo {
+            name: "main".into()
+        }]
+    );
+    let objects = lazy_objects(&mut bridge, "main");
+    assert!(
+        objects
+            .iter()
+            .any(|o| o.name == "shared" && o.kind == "table")
+    );
+    assert_eq!(
+        objects.len(),
+        3,
+        "object listing does not expand unrelated columns"
+    );
+    let columns = lazy_columns(&mut bridge, "main", "shared");
+    assert_eq!(columns.len(), 2);
+    assert_eq!(columns[1].name, "a_only");
+    assert_eq!(columns[1].default.as_deref(), Some("'main'"));
+    assert_eq!(
+        lazy_columns(&mut bridge, "main", "odd'\\name")[0].name,
+        "quoted"
+    );
+    let wide = dbide_bridge::RelationRef {
+        schema: "main".into(),
+        name: "unrelated_wide".into(),
+    };
+    let id = bridge.list_columns(wide.clone()).unwrap();
+    assert!(matches!(next(&mut bridge),BridgeEvent::Connecting{operation,..} if operation==id));
+    match next(&mut bridge) {
+        BridgeEvent::ColumnsLoaded {
+            operation,
+            relation,
+            columns,
+            truncated,
+        } => {
+            assert_eq!(operation, id);
+            assert_eq!(relation, wide);
+            assert!(truncated);
+            assert!(!columns.is_empty() && columns.len() <= 2048);
+        }
+        event => panic!("{event:?}"),
+    }
+
+    assert!(
+        lazy_objects(&mut bridge, "other").is_empty(),
+        "probe does not claim physical-session attachments"
+    );
+    assert!(lazy_objects(&mut bridge, "main' UNION SELECT 'bad','bad','r' --").is_empty());
+    let id = bridge
+        .list_columns(dbide_bridge::RelationRef {
+            schema: "main".into(),
+            name: "shared' OR 1=1 --".into(),
+        })
+        .unwrap();
+    assert!(matches!(next(&mut bridge),BridgeEvent::Connecting{operation,..} if operation==id));
+    assert!(
+        matches!(next(&mut bridge),BridgeEvent::Error{operation:Some(operation),message} if operation==id&&message.contains("no longer exists"))
+    );
+    let after = completed(execute(&mut bridge, "SELECT v FROM lazy_temp"));
+    assert_eq!(after.key.session, active.key.session);
+    assert_eq!(after.transaction_state, ServerTransactionState::Active);
+    assert_eq!(scalar(&after), "51");
+    assert_eq!(
+        scalar(&completed(execute(
+            &mut bridge,
+            "SELECT b_only FROM other.shared"
+        ))),
+        "52"
+    );
+    assert_eq!(
+        scalar(&completed(execute(
+            &mut bridge,
+            "SELECT a_only FROM shared"
+        ))),
+        "pending"
+    );
+    let id = bridge.rollback().unwrap();
+    completed(terminal(&mut bridge, id));
+}
+#[test]
+#[ignore = "requires explicitly owned PostgreSQL fixture at 55439 and DBIDE_BRIDGE_FIXTURES=owned-loopback"]
+fn postgres_lazy_metadata_keeps_same_names_in_separate_schemas() {
+    let mut bridge = DatabaseBridge::new().unwrap();
+    configure(&mut bridge, fixture(DatabaseEngine::PostgreSql));
+    completed(execute(
+        &mut bridge,
+        r#"DROP SCHEMA IF EXISTS dbide_bridge_lazy_a CASCADE;DROP SCHEMA IF EXISTS dbide_bridge_lazy_b CASCADE;DROP SCHEMA IF EXISTS pgdbide_bridge_lazy CASCADE;
+        CREATE SCHEMA dbide_bridge_lazy_a;CREATE SCHEMA dbide_bridge_lazy_b;CREATE SCHEMA pgdbide_bridge_lazy;
+        CREATE TABLE dbide_bridge_lazy_a.shared(a_only TEXT DEFAULT 'scope-a');
+        CREATE TABLE dbide_bridge_lazy_b.shared(b_only INTEGER);
+        CREATE TABLE dbide_bridge_lazy_a."odd'\name"(quoted TEXT);
+        CREATE TEMP TABLE lazy_temp(v INTEGER);INSERT INTO lazy_temp VALUES(61)"#,
+    ));
+    let active = completed(execute(
+        &mut bridge,
+        "BEGIN;INSERT INTO dbide_bridge_lazy_a.shared VALUES('pending')",
+    ));
+    let schemas = lazy_schemas(&mut bridge);
+    assert!(
+        schemas.iter().any(|s| s.name == "pgdbide_bridge_lazy"),
+        "only the literal pg_ prefix is reserved"
+    );
+    assert!(
+        !schemas
+            .iter()
+            .any(|s| s.name == "pg_catalog" || s.name == "pg_toast")
+    );
+    assert!(schemas.iter().any(|s| s.name == "dbide_bridge_lazy_a"));
+    assert!(schemas.iter().any(|s| s.name == "dbide_bridge_lazy_b"));
+    assert!(
+        lazy_objects(&mut bridge, "dbide_bridge_lazy_a")
+            .iter()
+            .all(|o| o.schema == "dbide_bridge_lazy_a")
+    );
+    assert_eq!(
+        lazy_columns(&mut bridge, "dbide_bridge_lazy_a", "shared")[0].name,
+        "a_only"
+    );
+    assert_eq!(
+        lazy_columns(&mut bridge, "dbide_bridge_lazy_b", "shared")[0].name,
+        "b_only"
+    );
+    assert_eq!(
+        lazy_columns(&mut bridge, "dbide_bridge_lazy_a", "odd'\\name")[0].name,
+        "quoted"
+    );
+    assert!(lazy_objects(&mut bridge, "dbide_bridge_lazy_a' OR true --").is_empty());
+    let after = completed(execute(&mut bridge, "SELECT v FROM lazy_temp"));
+    assert_eq!(after.key.session, active.key.session);
+    assert_eq!(after.transaction_state, ServerTransactionState::Active);
+    assert_eq!(scalar(&after), "61");
+    assert_eq!(
+        scalar(&completed(execute(
+            &mut bridge,
+            "SELECT a_only FROM dbide_bridge_lazy_a.shared"
+        ))),
+        "pending"
+    );
+    let id = bridge.rollback().unwrap();
+    completed(terminal(&mut bridge, id));
+    completed(execute(
+        &mut bridge,
+        "DROP SCHEMA dbide_bridge_lazy_a CASCADE;DROP SCHEMA dbide_bridge_lazy_b CASCADE;DROP SCHEMA pgdbide_bridge_lazy CASCADE",
+    ));
+}
+#[test]
+#[ignore = "requires explicitly owned MySQL fixture at 55441 and DBIDE_BRIDGE_FIXTURES=owned-loopback"]
+fn mysql_lazy_metadata_uses_selected_database_as_schema() {
+    let request = fixture(DatabaseEngine::MySql);
+    let database = request.profile.database.clone();
+    let mut bridge = DatabaseBridge::new().unwrap();
+    configure(&mut bridge, request);
+    completed(execute(
+        &mut bridge,
+        "DROP TABLE IF EXISTS bridge_lazy_fixture;CREATE TABLE bridge_lazy_fixture(id INTEGER PRIMARY KEY,value TEXT DEFAULT ('seed'));CREATE TEMPORARY TABLE lazy_temp(v INTEGER);INSERT INTO lazy_temp VALUES(71)",
+    ));
+    let active = completed(execute(
+        &mut bridge,
+        "BEGIN;INSERT INTO bridge_lazy_fixture VALUES(1,'pending')",
+    ));
+    assert_eq!(
+        lazy_schemas(&mut bridge),
+        vec![dbide_bridge::SchemaInfo {
+            name: database.clone()
+        }]
+    );
+    assert!(
+        lazy_objects(&mut bridge, &database)
+            .iter()
+            .any(|o| o.schema == database && o.name == "bridge_lazy_fixture")
+    );
+    let columns = lazy_columns(&mut bridge, &database, "bridge_lazy_fixture");
+    assert_eq!(columns.len(), 2);
+    assert_eq!(columns[0].primary_key_ordinal, Some(1));
+    assert!(
+        lazy_objects(&mut bridge, "information_schema").is_empty(),
+        "selected DB cannot be bypassed by scope"
+    );
+    assert!(lazy_objects(&mut bridge, "dbide_fixture' OR 1=1 --\\").is_empty());
+    assert_eq!(
+        scalar(&completed(execute(&mut bridge, "SELECT ROW_COUNT()"))),
+        "1"
+    );
+    let after = completed(execute(&mut bridge, "SELECT v FROM lazy_temp"));
+    assert_eq!(after.key.session, active.key.session);
+    assert_eq!(after.transaction_state, ServerTransactionState::Active);
+    assert_eq!(scalar(&after), "71");
+    let id = bridge.rollback().unwrap();
+    completed(terminal(&mut bridge, id));
+    completed(execute(&mut bridge, "DROP TABLE bridge_lazy_fixture"));
+}
+
+fn network_lazy_database_scopes(engine: DatabaseEngine) {
+    let first_request = fixture(engine);
+    let first_database = first_request.profile.database.clone();
+    let mut second_request = fixture(engine);
+    second_request.profile.database = "dbide_console_b".into();
+    let mut first = DatabaseBridge::new().unwrap();
+    let mut second = DatabaseBridge::new().unwrap();
+    configure(&mut first, first_request);
+    configure(&mut second, second_request);
+    completed(execute(
+        &mut first,
+        "DROP TABLE IF EXISTS bridge_lazy_database_scope;CREATE TABLE bridge_lazy_database_scope(scope_a TEXT)",
+    ));
+    completed(execute(
+        &mut second,
+        "DROP TABLE IF EXISTS bridge_lazy_database_scope;CREATE TABLE bridge_lazy_database_scope(scope_b INTEGER)",
+    ));
+    let first_schema = if engine == DatabaseEngine::MySql {
+        first_database.as_str()
+    } else {
+        "public"
+    };
+    let second_schema = if engine == DatabaseEngine::MySql {
+        "dbide_console_b"
+    } else {
+        "public"
+    };
+    assert!(
+        lazy_objects(&mut first, first_schema)
+            .iter()
+            .any(|o| o.name == "bridge_lazy_database_scope")
+    );
+    assert!(
+        lazy_objects(&mut second, second_schema)
+            .iter()
+            .any(|o| o.name == "bridge_lazy_database_scope")
+    );
+    assert_eq!(
+        lazy_columns(&mut first, first_schema, "bridge_lazy_database_scope")[0].name,
+        "scope_a"
+    );
+    assert_eq!(
+        lazy_columns(&mut second, second_schema, "bridge_lazy_database_scope")[0].name,
+        "scope_b"
+    );
+    let current = if engine == DatabaseEngine::MySql {
+        "SELECT DATABASE()"
+    } else {
+        "SELECT current_database()"
+    };
+    assert_eq!(
+        scalar(&completed(execute(&mut first, current))),
+        first_database
+    );
+    assert_eq!(
+        scalar(&completed(execute(&mut second, current))),
+        "dbide_console_b"
+    );
+    completed(execute(&mut first, "DROP TABLE bridge_lazy_database_scope"));
+    completed(execute(
+        &mut second,
+        "DROP TABLE bridge_lazy_database_scope",
+    ));
+}
+#[test]
+#[ignore = "requires explicitly owned PostgreSQL fixtures dbide_fixture/dbide_console_b on 55439"]
+fn postgres_lazy_metadata_keeps_same_names_in_separate_databases() {
+    network_lazy_database_scopes(DatabaseEngine::PostgreSql);
+}
+#[test]
+#[ignore = "requires explicitly owned MySQL fixtures dbide_fixture/dbide_console_b on 55441"]
+fn mysql_lazy_metadata_keeps_same_names_in_separate_databases() {
+    network_lazy_database_scopes(DatabaseEngine::MySql);
+}
+
+#[test]
+fn lazy_metadata_validation_is_bounded_and_operation_targeted() {
+    let mut bridge = DatabaseBridge::new().unwrap();
+    let id = bridge.list_schemas().unwrap();
+    assert!(
+        matches!(next(&mut bridge),BridgeEvent::Error{operation:Some(operation),..} if operation==id)
+    );
+    assert_eq!(
+        bridge.list_objects("x".repeat(4097)),
+        Err(dbide_bridge::BridgeSubmitError::SqlTooLarge)
+    );
+    assert_eq!(
+        bridge.list_columns(dbide_bridge::RelationRef {
+            schema: "main".into(),
+            name: "x".repeat(4097)
+        }),
+        Err(dbide_bridge::BridgeSubmitError::SqlTooLarge)
+    );
+    let id = bridge.list_objects("invalid\0scope".into()).unwrap();
+    assert!(
+        matches!(next(&mut bridge),BridgeEvent::Error{operation:Some(operation),message} if operation==id&&message.contains("scope is invalid"))
+    );
+}

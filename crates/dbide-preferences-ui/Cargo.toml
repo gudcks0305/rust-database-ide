@@ -1,0 +1,10 @@
+[package]
+name = "dbide-preferences-ui"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+gpui = { package = "gpui-pre", version = "=0.3.9", default-features = false }
+gpui-component = { version = "=0.8.0", features = ["syntect"] }
+dbide-i18n = { path = "../dbide-i18n" }

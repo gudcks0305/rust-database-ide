@@ -28,6 +28,9 @@ impl Default for ResultSnapshot {
 pub struct SqlDocument {
     pub model: DocumentModel,
     pub required_profile_id: Option<String>,
+    pub session: dbide_ui_spike::console_session::ConsoleSession,
     pub editor: Entity<EditorState>,
+    pub password_draft: Entity<gpui_component::input::InputState>,
+    pub database_draft: Entity<gpui_component::input::InputState>,
     pub results: ResultSnapshot,
 }

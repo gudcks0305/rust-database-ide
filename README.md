@@ -10,11 +10,12 @@ DataGrip의 주요 작업 흐름을 Rust 데스크톱 앱으로 독립 재구현
 - REA 6.7.0으로 1차 정적 분석, 별도 패키지 메타데이터 조사 완료.
 - 기능 목록, Rust 구조, 구현 순서, 성능/정확성 통과 기준 작성.
 - Rust native UI, PostgreSQL/SQLite/MySQL, 일반 연결 프로필, SQL 파일 탭, transaction 제어, 자동완성, CLI 구현.
+- 탭별 전용 세션·연결 시작 DB 선택, 한국어/영어 Preferences와 CLI 언어 설정, 연결 없이 SQL·대상 복구. 실제 PG 탭 간 트랜잭션·취소 격리와 언어 재시작 유지 확인.
 - 행 편집·schema tools·Codex WebSocket 연동을 통합 검증 중. [최신 기능별 상태와 한계](docs/CURRENT-STATUS.md).
 - **제품 전체·M1–M6 전체 완성·DataGrip 성능 우위는 아직 달성하지 않음.**
 
-현재 우선 작업은 탭별 연결·Database 선택, 데이터베이스 트리, Preferences,
-한·영 UI, 메모리 한도를 둔 메타데이터 조회·자동완성이다.
+현재 우선 작업은 데이터베이스 트리의 지연 조회·캐시 연동, Preferences 확대,
+남은 전문 화면 번역, 메모리 한도를 둔 메타데이터 기반 자동완성이다.
 [UX 조사](docs/UX-RESEARCH.md)와 [제품 backlog](docs/PRODUCT-BACKLOG.md)에
 구현 상태와 검증 조건을 분리해 기록한다.
 

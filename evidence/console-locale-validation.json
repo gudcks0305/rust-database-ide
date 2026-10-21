@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-21T16:05:39.185408+00:00",
+  "scope": "Per-console configured targets, ko/en core UI/CLI preferences, target recovery, scoped metadata APIs and bounded cache foundation. UI-only capacity feedback rechecked after workspace run.",
+  "runs": [
+    {
+      "kind": "workspace",
+      "command": "cargo test --workspace",
+      "passed": 332,
+      "failed": 0,
+      "ignored": 58,
+      "local_log": "tmp/console-locale-final-tests.log",
+      "log_sha256": "fe4ab06e2985f8f73ce5e94d94bf02e3499a59c53f05e42f92e5d05978dbba4a"
+    },
+    {
+      "kind": "owned-live",
+      "command": "owned fixture opt-in:7 database packages plus console_sessions",
+      "passed": 57,
+      "failed": 0,
+      "ignored": 0,
+      "local_log": "tmp/console-locale-final-live.log",
+      "log_sha256": "90c8930cb56148841908446e6123dce86db2ab056de689cebfb94a5fd414df60"
+    },
+    {
+      "kind": "ui-recheck",
+      "command": "cargo test -p dbide-ui-spike (after capacity feedback refinement)",
+      "passed": 58,
+      "failed": 0,
+      "ignored": 1,
+      "local_log": "tmp/console-locale-capacity-tests.log",
+      "log_sha256": "0803098eed5c56a32bd9bd96bace6964b50768824db1254d7f4622b770c0cbed"
+    },
+    {
+      "kind": "vendor",
+      "command": "cargo test --manifest-path vendor/tokio-postgres/Cargo.toml --test transaction_status_wire",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "local_log": "tmp/console-locale-vendor-tests.log",
+      "log_sha256": "4c84ef2a87e78e1605dff26a2c015a05aa5286d314f03456f74adfddc43a377a"
+    }
+  ],
+  "other_checks": [
+    "cargo clippy --workspace --all-targets -- -D warnings",
+    "UI clippy/release after final capacity refinement",
+    "cargo fmt --all -- --check",
+    "scripts/verify_project.py",
+    "shellcheck fixture-engines.sh and verify-current.sh",
+    "git diff --check",
+    "native console/locale evidence in ui-console-locale-qa.json"
+  ],
+  "limits": [
+    "M0/M1 overall acceptance remains incomplete; physical IME, full VoiceOver, cross-app drag and matched performance remain unverified.",
+    "Lazy explorer/cache host integration, specialized view translation and observed MySQL raw USE context remain pending.",
+    "GUI row Apply stays disabled pending namespace-binding acceptance."
+  ]
+}

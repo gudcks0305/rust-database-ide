@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "kind": "native_per_console_locale_qa",
+  "observed_at": "2026-10-21T15:49:16.343278+00:00",
+  "runs": [
+    {
+      "binary_sha256": "c3304f9bbdb8baa307486d00fbbcd75e7f775d361de61005cae8d28ce72b07f6",
+      "profile_store": "tmp/ui-final-qa/profiles.json",
+      "passed": [
+        "CLI set en was reflected at native startup; Cmd+comma opened Preferences before editor focus.",
+        "Preferences switched English to Korean and back; native File/Query menus, core toolbar and Preferences changed immediately without changing either SQL buffer.",
+        "Tab A connected to dbide_fixture, created one TEMP table, switched Manual, inserted a second row and retained Active transaction while tab B changed target.",
+        "Tab B advertised databases via separate discovery; selecting dbide_console_b changed only B. SELECT current_database returned dbide_console_b and mixed Korean/English cell text was exact.",
+        "Returning to A preserved SQL, dbide_fixture target and Active transaction. SELECT from its TEMP table returned2rows; target selectors stayed disabled during the transaction.",
+        "B pg_sleep30 was cancelled. A retained its Active transaction and2rows; A Rollback followed by SELECT returned1row. B alone showed cancellation.",
+        "B next Run automatically reconnected after cancellation and returned dbide_console_b plus Korean text.",
+        "Cmd+Q flushed recovery. CLI language get returned ko. Restart restored Korean UI, both exact SQL buffers, active B and distinct stored database targets, all disconnected.",
+        "Owned PG pg_stat_activity showed zero other client backends after restore; no automatic connection or SQL execution."
+      ],
+      "found_for_correction": [
+        "Korean sidebar bottom buttons overflowed into editor.",
+        "Core English fallbacks, search/empty captions and cancellation wrappers remained.",
+        "Global footer retained stale operation state or the other tab status."
+      ]
+    },
+    {
+      "unsigned_release_sha256": "e68138e3006b497803d90a13a5948334eee32b08e7b4f81e74fd3e033f534859",
+      "packaged_binary_sha256": null,
+      "hash_limit": "Release owner supplied the unsigned hash before packaging; the signed package hash was not retained for this intermediate native pass.",
+      "passed": [
+        "Korean labels cover object search, SQL empty state, transaction AX captions, export controls and session password placeholder.",
+        "Sidebar bottom actions wrap within the sidebar instead of overflowing into the editor.",
+        "Footer shows the active console ID, connection phase and transaction state instead of an old global/other-tab state.",
+        "At32tabs, a SQLite explorer SQL action preserved the active PostgreSQL dbide_console_b target and exact sentinelSQL. The follow-up capacity-feedback build visibly reports the32-tab limit and that no SQL was submitted."
+      ],
+      "limits": [
+        "The32-tab SQL action preserved target/source but initially lacked visible refusal feedback; the subsequent run below tests that correction."
+      ]
+    },
+    {
+      "binary_sha256": "e7fdf060c15667e06d1bfd7ef6d8e1457d8c9750fee0be4df7dd2df150547ef6",
+      "passed": [
+        "Restart restored Korean core controls, the32-tab snapshot and exact PostgreSQL sentinel target/source.",
+        "New-console action at32tabs visibly reported the Korean capacity diagnostic, unchanged connection/database/SQL, and no execution.",
+        "Existing SQL remained unchanged; the owned QA workspace was restored from its two-tab backup after app exit."
+      ],
+      "limits": [
+        "Active overflowing tab is not automatically scrolled into view; tracked in product backlog.",
+        "Capacity/layout/localization refinements do not replace the earlier full native A/B run; that run has its own binary hash."
+      ]
+    }
+  ],
+  "limits": [
+    "Physical Korean IME and full VoiceOver remain unverified.",
+    "Left explorer lazy hierarchy/cache integration remains pending.",
+    "MySQL raw USE changes are not observed; selector/history record configured connection target.",
+    "GUI row Apply remains disabled pending namespace binding correctness."
+  ],
+  "corrected_findings": [
+    "Sidebar wrapping",
+    "Core localization fallbacks",
+    "Active-console footer state",
+    "Capacity refusal visibility",
+    "Endpoint-bound session credential cache (pure regression tests; no user credentials accessed)"
+  ]
+}

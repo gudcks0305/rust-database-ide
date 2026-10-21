@@ -1,11 +1,18 @@
 mod documents;
 mod native_menus;
+mod preferences;
+use dbide_i18n::{Locale, Message, tr};
 mod object_inspector;
 mod profile_form;
 mod profile_persistence;
 use profile_persistence::{ProfileMutation, ProfileWrite};
+mod console_selector;
 mod table_editor;
 mod workbench_actions;
+mod workbench_consoles;
+use dbide_ui_spike::console_session::{
+    ConsoleEffect, ConsoleRoute, ConsoleSession, MAX_CONSOLE_WORKERS, SessionPhase,
+};
 mod workbench_explorer;
 mod workbench_panels;
 mod workbench_tables;
@@ -35,7 +42,7 @@ use gpui_kit_assets::Assets;
 use profile_form::ProfileForm;
 use serde::Serialize;
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashSet, VecDeque},
     ops::Range,
     sync::Arc as Rc,
     time::{Duration, Instant},
@@ -51,6 +58,7 @@ actions!(
         RunQuery,
         RunCurrent,
         CancelQuery,
+        OpenPreferences,
         FormatSql,
         CompleteSql,
         NewSqlFile,
@@ -270,6 +278,7 @@ struct Metrics<'a> {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DiagnosticContext {
     Other,
+    Capacity,
     Connection,
     Schema,
     Query,
@@ -308,6 +317,12 @@ struct Workbench {
     close_prompt_open: bool,
     quit_after_close: bool,
     menu_state: Option<(bool, bool, bool)>,
+    locale: Locale,
+    settings_store: Option<dbide_settings::SettingsStore>,
+    settings_busy: bool,
+    settings_pending: Option<Locale>,
+    settings_error: Option<String>,
+    preferences: Option<Entity<dbide_preferences_ui::PreferencesPanel>>,
     transfer_preview: Option<dbide_data::DataPreview>,
     grid: Entity<TableState<ResultGrid>>,
     bridge: Option<DatabaseBridge>,
@@ -316,7 +331,7 @@ struct Workbench {
     profile_writes: VecDeque<ProfileWrite>,
     profile_write_busy: bool,
     recovery: workspace_recovery::Recovery,
-    passwords: HashMap<String, String>,
+    passwords: dbide_ui_spike::session_credentials::SessionCredentials,
     configured: Option<ConnectionRequest>,
     form: Option<ProfileForm>,
     form_error: Option<String>,
@@ -337,6 +352,8 @@ struct Workbench {
     table_editor: Option<Entity<table_editor::TableEditor>>,
     table_operation: Option<TableOperation>,
     connection_revision: u64,
+    console_poll_cursor: usize,
+    console_database_editor: Option<ConsoleRoute>,
     last_execution: Option<dbide_pg_spike::ExecutionKey>,
     deleted: Option<ConnectionProfile>,
     pending_sql: Option<String>,
@@ -456,6 +473,14 @@ impl Workbench {
             documents: vec![SqlDocument {
                 model: DocumentModel::new(1, "console.sql".into(), initial_source),
                 required_profile_id: None,
+                session: ConsoleSession::new(1),
+                password_draft: cx.new(|cx| {
+                    InputState::new(window, cx)
+                        .masked(true)
+                        .placeholder("Session password")
+                }),
+                database_draft: cx
+                    .new(|cx| InputState::new(window, cx).placeholder("Database name")),
                 editor,
                 results: ResultSnapshot::default(),
             }],
@@ -476,6 +501,12 @@ impl Workbench {
             close_prompt_open: false,
             quit_after_close: false,
             menu_state: None,
+            locale: Locale::default(),
+            settings_store: None,
+            settings_busy: false,
+            settings_pending: None,
+            settings_error: None,
+            preferences: None,
             transfer_preview: None,
             grid,
             bridge,
@@ -484,7 +515,7 @@ impl Workbench {
             profile_writes: VecDeque::new(),
             profile_write_busy: false,
             recovery: workspace_recovery::Recovery::default(),
-            passwords: HashMap::new(),
+            passwords: dbide_ui_spike::session_credentials::SessionCredentials::default(),
             configured: None,
             form: None,
             form_error: None,
@@ -511,6 +542,8 @@ impl Workbench {
             table_editor: None,
             table_operation: None,
             connection_revision: 0,
+            console_poll_cursor: 0,
+            console_database_editor: None,
             last_execution: None,
             deleted: None,
             pending_sql: None,
@@ -570,6 +603,7 @@ impl Workbench {
             this.editor
                 .update(cx, |editor, cx| editor.focus(window, cx));
         }
+        this.init_settings(cx);
         this.init_recovery(window, cx);
         this
     }
@@ -621,6 +655,13 @@ impl Workbench {
         cx.notify();
     }
     fn cancel_query_action(&mut self, _: &CancelQuery, _: &mut Window, cx: &mut Context<Self>) {
+        if self.table_editor.is_none() && !self.fixture_smoke {
+            let route = self.console().route();
+            if let Some(target) = self.console().cancel_target() {
+                self.cancel_console(route, target, cx);
+            }
+            return;
+        }
         let target = self
             .active_execution
             .map(CancelTarget::Execution)
@@ -637,6 +678,10 @@ impl Workbench {
         self.submit_sql(sql, cx);
     }
     fn submit_sql(&mut self, sql: String, cx: &mut Context<Self>) {
+        if !self.fixture_smoke {
+            self.submit_console_sql(sql, cx);
+            return;
+        }
         if !self.document_profile_matches() {
             self.status = self.document_connection_label();
             cx.notify();
@@ -696,6 +741,7 @@ impl Workbench {
         cx.notify();
     }
     fn poll_bridge(&mut self, cx: &mut Context<Self>) {
+        self.poll_console_sessions(cx);
         // At most 32 events per turn; all DB/network work belongs to the private runtime.
         for _ in 0..32 {
             let Some(event) = self.bridge.as_mut().and_then(DatabaseBridge::try_next) else {
@@ -728,8 +774,7 @@ impl Workbench {
                                 cx,
                             );
                         }
-                        self.passwords
-                            .insert(request.profile.id.clone(), request.password.clone());
+                        self.passwords.remember(&request);
                         self.connection = ConnectionState::Disconnected;
                         self.status = format!("{} selected · not connected", request.profile.name);
                         self.transaction_state = ServerTransactionState::Unknown;
@@ -867,7 +912,10 @@ impl Workbench {
                     }
                 }
                 // Database discovery UI is introduced with the per-console context step.
-                BridgeEvent::DatabasesLoaded { .. } => {}
+                BridgeEvent::DatabasesLoaded { .. }
+                | BridgeEvent::SchemasLoaded { .. }
+                | BridgeEvent::ObjectsLoaded { .. }
+                | BridgeEvent::ColumnsLoaded { .. } => {}
                 BridgeEvent::SchemaLoaded {
                     operation,
                     objects,
@@ -1163,46 +1211,21 @@ impl Workbench {
                 .iter()
                 .find(|d| d.model.id == self.active_document)
                 .and_then(|d| d.required_profile_id.as_deref()),
-            self.configured.as_ref().map(|r| r.profile.id.as_str()),
+            self.console().target().map(|p| p.id.as_str()),
         )
     }
     fn document_connection_label(&self) -> String {
-        if let Some(id) = self
-            .documents
-            .iter()
-            .find(|d| d.model.id == self.active_document)
-            .and_then(|d| d.required_profile_id.as_ref())
-        {
-            let name = self
-                .workspace
-                .profiles
-                .iter()
-                .find(|p| &p.id == id)
-                .map(|p| p.name.as_str())
-                .unwrap_or("Missing profile");
-            format!(
-                "History connection: {name} [{}]{}",
-                id,
-                if self.document_profile_matches() {
-                    ""
-                } else {
-                    " · select this profile to enable Run"
-                }
-            )
-        } else {
-            self.configured
-                .as_ref()
-                .map(|r| {
-                    format!(
-                        "Shared connection: {} · {}",
-                        r.profile.name,
-                        dbide_ui_spike::workbench_model::profile_target(&r.profile)
-                    )
-                })
-                .unwrap_or_else(|| "No connection selected".into())
-        }
+        self.console_context_label()
     }
     fn can_run(&self, cx: &App) -> bool {
+        if !self.fixture_smoke {
+            return self.console().target().is_some()
+                && !self.console().busy()
+                && !self.recovery.close_after
+                && self.tools.is_none()
+                && self.table_editor.is_none()
+                && !self.editor.read(cx).value().trim().is_empty();
+        }
         dbide_ui_spike::can_submit_query(
             self.bridge.is_some(),
             self.configured.is_some(),
@@ -1211,7 +1234,7 @@ impl Workbench {
         )
     }
     fn button(&self, id: &'static str, label: &'static str) -> Button {
-        Button::new(id).label(label).small()
+        Button::new(id).label(self.ui_label(label)).small()
     }
     fn transaction_may_be_open(&self) -> bool {
         dbide_ui_spike::workbench_model::transaction_may_be_open(
@@ -1254,7 +1277,7 @@ impl Workbench {
                 .map(|r| r.profile.clone())
                 .unwrap_or_default()
         };
-        let password = self.passwords.get(&profile.id).cloned().unwrap_or_default();
+        let password = self.passwords.get(&profile).unwrap_or_default();
         self.form = Some(ProfileForm::new(profile, &password, window, cx));
         self.form_error = None;
         cx.notify();
@@ -1319,7 +1342,7 @@ impl Workbench {
             return;
         }
         if let Some(profile) = self.workspace.profiles.iter().find(|p| p.id == id).cloned() {
-            let password = self.passwords.get(id).cloned().unwrap_or_default();
+            let password = self.passwords.get(&profile).unwrap_or_default();
             if self.configure(ConnectionRequest { profile, password }, cx) {
                 self.form = None;
                 self.diagnostic = None;
@@ -1339,7 +1362,7 @@ impl Workbench {
         if let Some(request) = self.configured.take() {
             let removed_id = request.profile.id.clone();
             self.workspace.remove(&removed_id);
-            self.passwords.remove(&request.profile.id);
+            self.passwords.forget_profile(&request.profile.id);
             self.deleted = Some(request.profile);
             self.persist_profile_mutation(ProfileMutation::Remove(removed_id), cx);
             self.disconnect(cx);
@@ -1369,14 +1392,20 @@ impl Workbench {
 }
 impl Render for Workbench {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.refresh_core_placeholders(window, cx);
         let normal = self.table_editor.is_none() && self.tools.is_none();
         let menu_state = (
             normal,
             normal && self.can_run(cx),
-            self.active_operation.is_some(),
+            if self.table_editor.is_some() {
+                self.active_operation.is_some()
+            } else {
+                self.console().active_operation.is_some()
+            },
         );
         if self.menu_state != Some(menu_state) {
             cx.set_menus(native_menus::menus(
+                self.locale,
                 menu_state.0,
                 menu_state.1,
                 menu_state.2,
@@ -1428,20 +1457,34 @@ impl Render for Workbench {
             "Logical grid · 1,000,000 × 200".into()
         } else if let Some(page) = self.pages.get(self.selected_page) {
             format!(
-                "Result {} / {} · {}{}",
+                "{} {} / {} · {}{}",
+                tr(self.locale, Message::Results),
                 self.selected_page + 1,
                 self.pages.len(),
                 if page.command_only {
-                    "Command".into()
+                    if self.locale == Locale::Ko {
+                        "명령 완료"
+                    } else {
+                        "Command"
+                    }
+                    .into()
                 } else {
-                    format!("{} retained rows", page.rows.len())
+                    if self.locale == Locale::Ko {
+                        format!("보관된 {}행", page.rows.len())
+                    } else {
+                        format!("{} retained rows", page.rows.len())
+                    }
                 },
                 page.affected_rows
-                    .map(|n| format!(" · count {n}"))
+                    .map(|n| if self.locale == Locale::Ko {
+                        format!(" · 행 수 {n}")
+                    } else {
+                        format!(" · count {n}")
+                    })
                     .unwrap_or_default()
             )
         } else {
-            "Query results".into()
+            self.ui_label("Query results").to_string()
         };
         if let Some(owner) = &self.result_owner {
             result_label = format!("{} · {}", result_label, owner.label());
@@ -1452,6 +1495,8 @@ impl Render for Workbench {
                 .get(self.selected_page)
                 .is_some_and(|p| p.command_only);
         let busy = self.busy();
+        let query_busy = self.console().busy();
+        let query_configured = self.console().target().is_some();
         let configured = self.configured.is_some();
         let sidebar = div()
             .w(px(230.))
@@ -1468,7 +1513,11 @@ impl Render for Workbench {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(div().font_weight(FontWeight::SEMIBOLD).child("Connections"))
+                    .child(
+                        div()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(self.ui_label("Connections")),
+                    )
                     .child(
                         self.button("new-profile", "+ New")
                             .disabled(busy)
@@ -1594,6 +1643,7 @@ impl Render for Workbench {
                     .border_t_1()
                     .border_color(rgb(BORDER))
                     .flex()
+                    .flex_wrap()
                     .gap_2()
                     .child(
                         self.button("history-toggle", "History")
@@ -1604,6 +1654,12 @@ impl Render for Workbench {
                                     s.transfer_preview = None;
                                 }
                                 cx.notify();
+                            })),
+                    )
+                    .child(
+                        self.button("preferences-toggle", "Preferences")
+                            .on_click(cx.listener(|s, _, w, cx| {
+                                s.open_preferences_action(&OpenPreferences, w, cx)
                             })),
                     )
                     .child(
@@ -1674,19 +1730,19 @@ impl Render for Workbench {
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_size(px(15.))
-                                .child(if busy {
+                                .child(self.ui_label(if query_busy {
                                     "Query in progress"
                                 } else {
                                     "Your results appear here"
-                                }),
+                                })),
                         )
-                        .child(div().text_color(rgb(MUTED)).child(if busy {
+                        .child(div().text_color(rgb(MUTED)).child(self.ui_label(if query_busy {
                             "Waiting for the database. You can cancel this execution."
-                        } else if configured {
+                        } else if query_configured {
                             "Run the editor with ⌘Enter. A disconnected session reconnects first."
                         } else {
                             "Create a connection, then run your first query."
-                        })),
+                        }))),
                 )
             });
         let mut content = div()
@@ -1696,6 +1752,7 @@ impl Render for Workbench {
             .flex()
             .flex_col()
             .child(self.document_tabs(cx))
+            .child(self.console_context_bar(cx))
             .child(self.query_toolbar(cx))
             .child(
                 div()
@@ -1787,7 +1844,15 @@ impl Render for Workbench {
                     ),
             )
             .child(result_body);
-        if let Some(diagnostic) = &self.diagnostic {
+        if self.console().diagnostic.is_some()
+            && !self.fixture_smoke
+            && !self
+                .diagnostic
+                .as_ref()
+                .is_some_and(|d| d.context == DiagnosticContext::Capacity)
+        {
+            content = content.child(self.console_diagnostic(cx));
+        } else if let Some(diagnostic) = &self.diagnostic {
             let (title, message, hint) = &diagnostic.body;
             content = content.child(
                 div()
@@ -1892,7 +1957,45 @@ impl Render for Workbench {
             .min_h_0()
             .child(sidebar)
             .child(content);
-        if self.form.is_some() {
+        if let Some(preferences) = &self.preferences {
+            body = body.child(
+                div()
+                    .w(px(380.))
+                    .flex_shrink_0()
+                    .bg(rgb(PANEL))
+                    .border_l_1()
+                    .border_color(rgb(BORDER))
+                    .flex()
+                    .flex_col()
+                    .child(
+                        div()
+                            .p_3()
+                            .flex()
+                            .justify_between()
+                            .child(self.ui_label("Preferences"))
+                            .child(self.button("close-preferences", "Close").on_click(
+                                cx.listener(|s, _, _, cx| {
+                                    s.preferences = None;
+                                    cx.notify();
+                                }),
+                            )),
+                    )
+                    .when(self.settings_busy, |el| {
+                        el.child(
+                            div()
+                                .id("settings-persist-status")
+                                .px_4()
+                                .role(Role::Status)
+                                .aria_label(self.ui_label("Saving…"))
+                                .child(self.ui_label("Saving…")),
+                        )
+                    })
+                    .when_some(self.settings_error.as_ref(), |el, error| {
+                        el.child(div().px_4().text_color(rgb(0xf0b797)).child(error.clone()))
+                    })
+                    .child(div().flex_1().min_h_0().child(preferences.clone())),
+            );
+        } else if self.form.is_some() {
             body = body.child(self.connection_form_panel(cx));
         } else if let Some(inspector) = &self.structure {
             body = body.child(
@@ -1940,7 +2043,7 @@ impl Render for Workbench {
                         div()
                             .p_4()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .child("Query history"),
+                            .child(self.ui_label("Query history")),
                     )
                     .child(
                         div()
@@ -1987,6 +2090,7 @@ impl Render for Workbench {
                                 |(ix, entry)| {
                                     let sql = entry.sql.clone();
                                     let history_profile=entry.profile_id.clone();
+                                    let history_target=entry.execution_target.clone();
                                     div()
                                         .id(("history", ix))
                                         .role(Role::Button)
@@ -1999,9 +2103,10 @@ impl Render for Workbench {
                                         .cursor_pointer()
                                         .hover(|s| s.bg(rgb(0x252a33)))
                                         .on_click(cx.listener(move |s, _, w, cx| {
-                                            if s.documents.len()>=32 {s.status="Close a SQL tab before opening history.".into();cx.notify();return;}
+                                            if s.documents.len()>=32 {s.show_sql_tab_limit(cx);return;}
                                             s.new_document(sql.clone(),"history.sql".into(),false,w,cx);
-                                            if let Some(doc)=s.documents.iter_mut().find(|d|d.model.id==s.active_document){doc.required_profile_id=Some(history_profile.clone());}
+                                            let request=history_target.as_ref().and_then(|t|s.workspace.profiles.iter().find(|p|p.id==t.profile_id).and_then(|p|t.resolve(p).ok())).map(|profile|ConnectionRequest{profile,password:String::new()});
+                                            if let Some(doc)=s.documents.iter_mut().find(|d|d.model.id==s.active_document){doc.required_profile_id=Some(history_profile.clone());doc.session=ConsoleSession::new(doc.model.id);if let Some(request)=request{let _=doc.session.bind(doc.session.route(),request);}let database=doc.session.target().map(|p|p.database.clone()).unwrap_or_default();doc.database_draft.update(cx,|input,cx|input.set_value(database,w,cx));doc.password_draft.update(cx,|input,cx|input.set_value(String::new(),w,cx));}
                                             s.status="History SQL opened without execution; Run requires its original profile.".into();
                                         }))
                                         .child(
@@ -2037,6 +2142,7 @@ impl Render for Workbench {
             .text_size(px(12.))
             .on_drop::<ExternalPaths>(cx.listener(Self::drop_sql_files))
             .drag_over::<ExternalPaths>(|style, _, _, _| style.border_2().border_color(rgb(ACCENT)))
+            .on_action(cx.listener(Self::open_preferences_action))
             .on_action(cx.listener(Self::new_sql_action))
             .on_action(cx.listener(Self::open_sql_action))
             .on_action(cx.listener(Self::save_sql_action))
@@ -2068,10 +2174,14 @@ impl Render for Workbench {
                             .child(
                                 div()
                                     .font_weight(FontWeight::SEMIBOLD)
-                                    .child("Database IDE"),
+                                    .child(self.ui_label("Database IDE")),
                             )
                             .child(div().text_color(rgb(MUTED)).child("/"))
-                            .child(div().text_color(rgb(MUTED)).child("Local workspace")),
+                            .child(
+                                div()
+                                    .text_color(rgb(MUTED))
+                                    .child(self.ui_label("Local workspace")),
+                            ),
                     )
                     .child(
                         div()
@@ -2085,7 +2195,7 @@ impl Render for Workbench {
                 div()
                     .id("status")
                     .role(Role::Status)
-                    .aria_label(self.status.clone())
+                    .aria_label(self.active_console_status_label())
                     .h(px(28.))
                     .flex_shrink_0()
                     .px_4()
@@ -2099,7 +2209,7 @@ impl Render for Workbench {
                         div()
                             .text_size(px(10.))
                             .text_color(rgb(MUTED))
-                            .child(self.status.clone()),
+                            .child(self.active_console_status_label()),
                     )
                     .child(
                         div()
@@ -2117,7 +2227,11 @@ impl Render for Workbench {
                             } else {
                                 MUTED
                             }))
-                            .child(self.connection.label()),
+                            .child(format!(
+                                "{}: {}",
+                                tr(self.locale, Message::Explorer),
+                                self.ui_label(self.connection.label())
+                            )),
                     ),
             )
             .into_any_element()
@@ -2149,6 +2263,8 @@ fn main() {
         });
         cx.bind_keys([
             KeyBinding::new("cmd-q", Quit, None),
+            KeyBinding::new("cmd-,", OpenPreferences, None),
+            KeyBinding::new("cmd-,", OpenPreferences, Some("Input")),
             KeyBinding::new("cmd-shift-m", ReportMetrics, None),
             KeyBinding::new("cmd-c", CopyCell, Some("FixtureGrid")),
             KeyBinding::new("cmd-enter", RunQuery, None),
@@ -2216,6 +2332,7 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                     }};
                 }
                 fallback_action!(Quit, quit_action, false);
+                fallback_action!(OpenPreferences, open_preferences_action, false);
                 fallback_action!(OpenSqlFile, open_sql_action, true);
                 fallback_action!(NewSqlFile, new_sql_action, true);
                 fallback_action!(SaveSqlFile, save_sql_action, true);

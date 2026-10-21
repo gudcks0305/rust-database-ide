@@ -11,10 +11,13 @@ describe the behavior as shipped or supported.
 **User outcome:** every SQL tab shows where it will run and keeps that target
 until the user changes it in that tab.
 
-**Current state:** the workspace has profile selection and query execution
-menus. History/recovered tabs can retain a required profile. Ordinary SQL tabs
-still rely on the currently configured workbench profile; independent
-per-tab datasource/database/schema/session selectors are not complete.
+**Current state:** each SQL tab owns a lazy dedicated session and explicit
+connection/configured-database selectors. Native A/B tests preserve transactions,
+temporary tables, results and cancellation ownership across target switches.
+Recovery resolves an exact stored target and starts disconnected. Search-path
+selection and observation of raw SQL context changes remain incomplete; profile
+deletion/changed-profile UX for already-live immutable sessions needs a separate
+explicit policy and acceptance pass.
 
 **Work:**
 
@@ -22,10 +25,13 @@ per-tab datasource/database/schema/session selectors are not complete.
   search path, and session status.
 - Let a tab explicitly bind or switch target. Use the workspace-selected
   profile only when creating a new unbound tab.
-- Block Run when the tab’s required profile/context is missing, changed, or
-  disconnected. Offer a clear rebind action; never execute against another
-  tab’s current profile by accident.
+- Block Run when the required context is unresolved. A disconnected but resolved
+  target can connect before the requested execution, with visible failure and
+  retry feedback. Never replay dispatched SQL or use another tab's target.
 - Show connection state separately from selected profile state.
+- Keep the active tab visible when many tabs overflow the strip; the 32-tab
+  native test showed that newly created active tabs can be outside the visible
+  strip even though their console context remains correct.
 
 **Acceptance:** create two profiles with a same-named table but different
 marker values. Bind two tabs to different targets, switch the workspace
@@ -67,9 +73,11 @@ branches intact; full refresh visibly invalidates and rebuilds the snapshot.
 Korean or English labels consistently.
 
 **Current state:** native File and Query menus expose core editor actions and a
-recovery toggle is available in the tab strip. No general Preferences screen,
-central keymap settings, or Korean/English localization catalog was observed.
-The visible interface is English.
+recovery toggle is available in the tab strip. The baseline inspection found no
+general Preferences screen or central keymap settings. Subsequent work added a
+typed Korean/English catalog and a shared CLI/GUI settings store, with Preferences
+host integration and native runtime/restart locale acceptance completed for the
+core surface. Specialized English views, broader preferences and keymaps remain; see [CURRENT-STATUS.md](CURRENT-STATUS.md).
 
 **Work:**
 

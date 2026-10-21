@@ -118,16 +118,22 @@ bash scripts/fixture-engines.sh seed pg-tls rich
 bash scripts/fixture-engines.sh seed mysql rich
 # 선택적 PostgreSQL metadata fidelity: comments/collation/deferred/unvalidated
 bash scripts/fixture-engines.sh seed pg fidelity
+# 탭별 database 선택/세션 격리를 확인할 작은 두 번째 DB (데이터 적재 없음):
+bash scripts/fixture-engines.sh seed pg consoles
+bash scripts/fixture-engines.sh seed mysql consoles
 ```
 
-seed는 target 하나와 `baseline|rich|fidelity`를 모두 지정해야 한다. `seed all`은 거부한다.
-고정 `dbide_fixture` DB에서만 실행되며 사용자 URL이나 DB명을 인자로 받지 않는다.
+seed는 target 하나와 `baseline|rich|fidelity|consoles`를 모두 지정해야 한다. `seed all`은 거부한다.
+사용자 URL이나 DB명을 인자로 받지 않는다. 일반 seed는 고정 `dbide_fixture`에서
+실행한다. `consoles`는 같은 owned container 안에 `dbide_console_b`가 없을 때만
+생성한다. 기존 DB/테이블/row를 수정하거나 삭제하지 않는다.
 
 | Seed | PostgreSQL namespace | MySQL names in `dbide_fixture` |
 |---|---|---|
 | baseline | `dbide_benchmark.customers` / 기존 versioned baseline.sql | `dbide_benchmark_customers` |
 | rich | `dbide_workflow_features`: versioned catalog_features.sql | `dbide_demo_customers`, `dbide_demo_orders`, `dbide_demo_notes`, `dbide_demo_customer_totals` view |
 | fidelity | `dbide_workflow_features`: versioned catalog_fidelity.sql | 지원하지 않음 |
+| consoles | 두 번째 DB `dbide_console_b`, 데이터 적재 없음 | 두 번째 DB `dbide_console_b`, 데이터 적재 없음 |
 
 PG rich는 composite PK/FK, deferred FK, identity/generated column, CHECK,
 expression/partial/descending/INCLUDE index와 view를 추가한다. 별도 fidelity는

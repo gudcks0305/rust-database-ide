@@ -97,6 +97,34 @@ uses the profile timeout, and exact operation Cancel/Disconnect/Drop interrupt t
 probe. Permission/query failures produce a terminal Error with the operation ID
 and a fixed catalog/list-permission hint. No raw server connection errors escape.
 
+Lazy browsing is additive: `list_schemas()` emits `SchemasLoaded`,
+`list_objects(schema)` emits `ObjectsLoaded`, and `list_columns(RelationRef {
+schema, name })` emits `ColumnsLoaded`. Each event carries the exact operation ID,
+requested scope where applicable, and `truncated`. `SchemaInfo` contains only a
+name; `SchemaObjectInfo` contains schema/name/normalized kind and no columns.
+Expanding a schema queries only object names/kinds; expanding one relation queries
+only that relation's columns. The compatibility `inspect_schema()` / `SchemaLoaded`
+snapshot remains unchanged and is not required for these expansion paths.
+
+Each lazy operation uses its own connection to the configured database and a
+four-second query deadline, honors exact cancellation, and rejects active user
+execution. PostgreSQL lists visible user schemas in the selected database. MySQL
+returns only its selected database as the schema; object/column filters cannot
+escape into another database. SQLite exposes only `main`, preserving the original
+session's attachments. Changing the configured profile is always explicit.
+
+Schema lists retain at most 256 entries; object/column lists at most 2,048, with an
+extra sentinel row requested to detect truncation. Every query also retains the
+existing 512 KiB / 4,096-event driver budget. Scope identifiers are bounded to
+4,096 UTF-8 bytes each, and NUL/empty scopes fail with operation-targeted feedback.
+Filters use PostgreSQL E-literal escaping, MySQL UTF-8 hex literals, or SQLite
+literal escaping; identifiers are never concatenated unquoted as SQL syntax.
+An absent relation produces a refresh-required error. Oversized result streams
+emit partial data with `truncated=true`; an empty partial result is not advertised
+as complete. Cache ownership, endpoint/database/scope keys, invalidation and stale
+operation-generation checks remain with the caller; these methods perform no
+hidden eager loads or cache mutation.
+
 PostgreSQL TLS uses native-tls system trust and hostname verification. `Require` and
 `VerifyFull` both require verified TLS; `Require` deliberately offers no insecure
 certificate-only policy. Explicit `root_cert_path` adds one PEM root (regular

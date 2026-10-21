@@ -4,9 +4,10 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use dbide_bridge::{BridgeEvent, DatabaseBridge, OperationId, Outcome};
 use dbide_credentials::{CredentialStore, MacKeychainStore, Secret};
 use dbide_profiles::{
-    ConnectionProfile, ConnectionRequest, DatabaseEngine, HistoryEntry, ProfileStore, TlsMode,
-    WorkspaceState,
+    ConnectionProfile, ConnectionRequest, DatabaseEngine, HistoryEntry, ProfileStore,
+    StoredExecutionTarget, TlsMode, WorkspaceState,
 };
+use dbide_settings::{Locale, SettingsStore};
 use std::{
     fs,
     io::{self, Read, Write},
@@ -147,6 +148,26 @@ enum ConfigCommand {
         #[arg(action=clap::ArgAction::Set)]
         value: bool,
     },
+    /// Read or change the shared GUI language without opening profiles or databases.
+    Language {
+        #[command(subcommand)]
+        command: LanguageCommand,
+    },
+}
+#[derive(Subcommand)]
+enum LanguageCommand {
+    /// Print ko or en. Missing settings default to ko without creating a file.
+    Get,
+    /// Atomically change only locale in app-settings.json beside the selected profiles file.
+    Set {
+        #[arg(value_enum)]
+        locale: Language,
+    },
+}
+#[derive(Clone, Copy, ValueEnum)]
+enum Language {
+    Ko,
+    En,
 }
 #[derive(Args, Default)]
 #[group(id = "password_source", multiple = false)]
@@ -447,6 +468,27 @@ fn run(cli: Cli, cancelled: &AtomicBool) -> Result<()> {
         let formatted = dbide_sql::format_sql(&sql(input)?, dialect).map_err(config)?;
         return output::publish(&destination, formatted.as_bytes());
     }
+    if let Command::Config {
+        command: ConfigCommand::Language { command },
+    } = cli.command
+    {
+        let profile_path = match cli.config {
+            Some(path) => path,
+            None => ProfileStore::default_path().map_err(config)?,
+        };
+        let settings = SettingsStore::for_profile_path(profile_path);
+        let value = match command {
+            LanguageCommand::Get => settings.load().map_err(config)?,
+            LanguageCommand::Set { locale } => settings
+                .set_locale(match locale {
+                    Language::Ko => Locale::Ko,
+                    Language::En => Locale::En,
+                })
+                .map_err(config)?,
+        };
+        println!("{}", value.locale.code());
+        return Ok(());
+    }
     let store = store(cli.config)?;
     match cli.command {
         Command::Profiles { command } => match command {
@@ -520,6 +562,7 @@ fn run(cli: Cli, cancelled: &AtomicBool) -> Result<()> {
                 }
                 Ok(())
             }),
+            ConfigCommand::Language { .. } => unreachable!(),
         },
         Command::Query(q) => query(&store, q, cancelled),
         Command::Schema(s) => schema(&store, s, cancelled),
@@ -631,6 +674,14 @@ fn query(store: &ProfileStore, q: Query, cancelled: &AtomicBool) -> Result<()> {
     let mut p = profile(&state, q.profile.as_deref())?;
     p.read_only |= q.read_only;
     let id = p.id.clone();
+    // Capture the exact submitted request before ownership passes to the worker;
+    // later profile edits/selection must not change this execution's identity.
+    let database = if p.engine == DatabaseEngine::Sqlite {
+        "main"
+    } else {
+        &p.database
+    };
+    let execution_target = StoredExecutionTarget::capture(&p, database).map_err(config)?;
     let request = request(p, q.auth)?;
     let mut bridge = DatabaseBridge::new().map_err(config)?;
     configure_bridge(&mut bridge, request, q.timeout_secs, cancelled)?;
@@ -679,6 +730,7 @@ fn query(store: &ProfileStore, q: Query, cancelled: &AtomicBool) -> Result<()> {
                         .as_millis() as u64,
                     outcome: format!("{:?}", report.outcome),
                     row_count: Some(row_count),
+                    execution_target: Some(execution_target),
                 })
                 .map_err(config)
         }) {

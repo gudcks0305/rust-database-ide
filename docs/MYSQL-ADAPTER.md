@@ -142,3 +142,65 @@ Primary sources:
 - [QueryResult](https://docs.rs/mysql_async/0.37.1/mysql_async/struct.QueryResult.html)
 - [MySQL KILL](https://dev.mysql.com/doc/refman/8.4/en/kill.html)
 - [MySQL transaction characteristics](https://dev.mysql.com/doc/refman/8.4/en/set-transaction.html)
+
+## Configured database versus server current database (2026-10-22)
+
+The current adapter does **not** track the server's current database after raw
+`USE`. `Opts::db_name()` is initial connection configuration, not a live getter.
+Native console query history currently captures the configured target from the
+console request (`console_session.rs::stored_target` / `pending_target`); that
+snapshot must not be presented as a protocol-confirmed current database after
+arbitrary SQL. Reconfiguring a console is explicit connection selection; raw
+`USE` can change its existing server session independently.
+
+Read-only inspection of installed `mysql_async 0.37.1` and `mysql_common 0.37.3`
+found a native, diagnostics-preserving implementation path, but it is not yet
+implemented or tested against a database:
+
+- `mysql_async-0.37.1/src/opts/mod.rs:1152-1177`, `get_capabilities`, omits
+  `CLIENT_SESSION_TRACK` and has no public additional-capability builder.
+  `src/conn/mod.rs:533` negotiates the intersection of server and client flags.
+  The public `Conn::opts()` at line 428 exposes only those configured options;
+  `Opts::db_name()` at `src/opts/mod.rs:807` reads their stored `db_name`.
+- `mysql_common-0.37.3/src/packets/mod.rs:738`,
+  `OkPacket::session_state_info()`, already parses session tracker entries.
+  `SessionStateInfo::decode()` at line 459 decodes
+  `SessionStateChange::Schema`, whose bytes accessor is defined in
+  `src/packets/session_state_change.rs:166`. `mysql_async` reexports these public
+  types in `src/lib.rs:503-510`.
+- Reading only the final `Conn::last_ok_packet()` is insufficient. Each native
+  OK/EOF replaces it in `mysql_async-0.37.1/src/conn/mod.rs:306-309`; ERR clears it
+  at lines 313-318. Thus `USE other; SELECT 1` or `USE other; failing_statement`
+  can erase the schema notification before the adapter receives the final report.
+  `src/queryable/query_result/mod.rs:179-183` advances into the next result while
+  finishing the previous one, making a final-result-only hook inadequate too.
+
+The smallest robust planned driver change is to negotiate
+`CLIENT_SESSION_TRACK` and capture each decoded schema notification inside
+`Conn::handle_ok` before overwriting the packet. A bounded current-database
+snapshot plus an observation revision/getter is sufficient for final context;
+a per-execution snapshot before and after SQL can then be added to execution
+metadata and carried through the bridge for console/history updates. Keep this
+metadata independent of the retained row/event budget so truncation cannot
+silently lose authoritative routing context. A batch that changes databases
+needs both snapshots or a mixed-context indication; its initial configured target
+alone does not describe every statement. Vendoring this driver change and
+changing the shared report/API require coordinated follow-up, not implicit SQL
+probing or inference from SQL text.
+
+MySQL's schema tracker requires client capability negotiation plus server
+`session_track_schema=ON` (default ON in MySQL 8.4). The variable is dynamic and
+session-scoped; SQL users can disable it. Unsupported negotiation, unavailable
+tracking, decode failure, or observed tracker disablement must yield an explicit
+unknown/unavailable observation. A last observed schema must be labeled as such;
+tracking that users can turn off is not an unconditional proof of current state.
+Connection-time tracker configuration and tracking its own variable changes may
+improve coverage, but must not introduce post-query SQL that destroys
+`ROW_COUNT()` or `SHOW WARNINGS`. No database operations or driver edits were
+performed for this investigation.
+
+Official protocol references:
+
+- [MySQL 8.4 server session tracking](https://dev.mysql.com/doc/refman/8.4/en/session-state-tracking.html)
+- [MySQL 8.4 session_track_schema](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_session_track_schema)
+- [MySQL 8.4 schema tracker entries](https://dev.mysql.com/doc/c-api/8.4/en/mysql-session-track-get-first.html)

@@ -16,24 +16,21 @@ impl Workbench {
             .overflow_y_scroll()
             .px_2();
         if self.schema.is_empty() {
-            list = list.child(
-                div()
-                    .p_2()
-                    .text_color(rgb(MUTED))
-                    .child(if self.schema_loading {
-                        "Loading tables and views…"
-                    } else if self.connection == ConnectionState::Connected {
-                        "Refresh to load this database."
-                    } else {
-                        "Connect, then Refresh to browse this database."
-                    }),
-            );
+            list = list.child(div().p_2().text_color(rgb(MUTED)).child(self.ui_label(
+                if self.schema_loading {
+                    "Loading tables and views…"
+                } else if self.connection == ConnectionState::Connected {
+                    "Refresh to load this database."
+                } else {
+                    "Connect, then Refresh to browse this database."
+                },
+            )));
         } else if groups.is_empty() {
             list = list.child(
                 div()
                     .p_2()
                     .text_color(rgb(MUTED))
-                    .child("No matching schema, table or column."),
+                    .child(self.ui_label("No matching schema, table or column.")),
             );
         }
         for (schema, objects) in groups {
@@ -120,7 +117,7 @@ impl Workbench {
                                     .gap_1()
                                     .child(
                                         Button::new(SharedString::from(format!("structure-{key}")))
-                                            .label("Structure")
+                                            .label(self.ui_label("Structure"))
                                             .small()
                                             .on_click(cx.listener(move |s, _, _, cx| {
                                                 let request = s.configured.clone();
@@ -137,7 +134,7 @@ impl Workbench {
                                     )
                                     .child(
                                         Button::new(SharedString::from(format!("data-{key}")))
-                                            .label("Data")
+                                            .label(self.ui_label("Data"))
                                             .small()
                                             .disabled(
                                                 self.busy()
@@ -150,12 +147,20 @@ impl Workbench {
                                     )
                                     .child(
                                         Button::new(SharedString::from(format!("sql-{key}")))
-                                            .label("SQL")
+                                            .label(self.ui_label("SQL"))
                                             .small()
                                             .on_click(cx.listener(move |s, _, w, cx| {
+                                                if s.documents.len() >= 32 {
+                                                    s.show_sql_tab_limit(cx);
+                                                    return;
+                                                }
+
                                                 let sql =
                                                     dbide_ui_spike::workbench_model::table_query(
-                                                        s.engine(),
+                                                        s.configured
+                                                            .as_ref()
+                                                            .map(|r| r.profile.engine)
+                                                            .unwrap_or_default(),
                                                         &draft.schema,
                                                         &draft.name,
                                                     );
@@ -166,6 +171,10 @@ impl Workbench {
                                                     w,
                                                     cx,
                                                 );
+                                                if let Some(request) = s.configured.clone() {
+                                                    let route = s.console().route();
+                                                    s.bind_console(route, request, w, cx);
+                                                }
                                             })),
                                     ),
                             )
@@ -221,7 +230,7 @@ impl Workbench {
                                     .aria_label("No columns returned")
                                     .ml_3()
                                     .text_color(rgb(MUTED))
-                                    .child("No columns returned."),
+                                    .child(self.ui_label("No columns returned.")),
                             );
                         }
                     }
@@ -246,7 +255,7 @@ impl Workbench {
                         div()
                             .text_color(rgb(MUTED))
                             .text_size(px(10.))
-                            .child("DATABASE EXPLORER"),
+                            .child(self.ui_label("DATABASE EXPLORER")),
                     )
                     .child(
                         self.button("refresh-schema", "Refresh")
@@ -275,7 +284,7 @@ impl Workbench {
                 div().px_2().pb_2().child(
                     Input::new(&self.object_search)
                         .small()
-                        .aria_label("Search schemas tables and columns"),
+                        .aria_label(tr(self.locale, Message::SearchObjects)),
                 ),
             )
             .child(
@@ -285,11 +294,25 @@ impl Workbench {
                     .text_size(px(10.))
                     .text_color(rgb(MUTED))
                     .child(format!(
-                        "{} loaded objects · {} loaded columns{}",
+                        "{} {} · {} {}{}",
                         self.schema.len(),
+                        if self.locale == Locale::Ko {
+                            "불러온 객체"
+                        } else {
+                            "loaded objects"
+                        },
                         self.schema.iter().map(|o| o.columns.len()).sum::<usize>(),
+                        if self.locale == Locale::Ko {
+                            "불러온 열"
+                        } else {
+                            "loaded columns"
+                        },
                         if self.schema_truncated {
-                            " · metadata limit reached; subset only"
+                            if self.locale == Locale::Ko {
+                                " · 메타데이터 한도 도달, 일부만 표시"
+                            } else {
+                                " · metadata limit reached; subset only"
+                            }
                         } else {
                             ""
                         }
@@ -306,14 +329,22 @@ impl Workbench {
         if self.busy() || self.connection != ConnectionState::Connected {
             return;
         }
-        if self.engine() == DatabaseEngine::PostgreSql
+        if self
+            .configured
+            .as_ref()
+            .map(|r| r.profile.engine)
+            .unwrap_or_default()
+            == DatabaseEngine::PostgreSql
             && dbide_ui_spike::explorer_model::is_table(&object.kind)
         {
             self.open_table_editor(object.schema, object.name, window, cx);
             return;
         }
         let sql = dbide_ui_spike::workbench_model::table_query(
-            self.engine(),
+            self.configured
+                .as_ref()
+                .map(|r| r.profile.engine)
+                .unwrap_or_default(),
             &object.schema,
             &object.name,
         );
@@ -327,12 +358,14 @@ impl Workbench {
         cx: &mut Context<Self>,
     ) {
         if self.documents.len() >= 32 {
-            self.status =
-                "Close a SQL tab before opening table data (maximum 32). No SQL executed.".into();
-            cx.notify();
+            self.show_sql_tab_limit(cx);
             return;
         }
         self.new_document(sql.clone(), title, false, window, cx);
+        if let Some(request) = self.configured.clone() {
+            let route = self.console().route();
+            self.bind_console(route, request, window, cx);
+        }
         self.submit_sql(sql, cx);
     }
 }

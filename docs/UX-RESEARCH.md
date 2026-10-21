@@ -7,6 +7,10 @@ the feature scope in `FEATURE-MATRIX.md`.
 
 ## Current product state
 
+This table records the baseline inspected before the per-console and localization
+changes. Subsequent implementation and acceptance are tracked in
+[CURRENT-STATUS.md](CURRENT-STATUS.md); do not read this baseline as a live inventory.
+
 | Area | Observed state | Evidence boundary |
 |---|---|---|
 | Connections | A `+ New` action opens a profile form. PostgreSQL, SQLite, and MySQL profiles can be selected; connection setup, test, credential, and TLS controls are present. | Native prototype; database engines and profile options do not imply complete engine support. |

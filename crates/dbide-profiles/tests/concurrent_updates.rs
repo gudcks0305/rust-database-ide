@@ -26,6 +26,7 @@ fn process_update_worker() {
                     executed_at_unix_ms: iteration,
                     outcome: "completed".into(),
                     row_count: Some(1),
+                    execution_target: None,
                 })
             })
             .unwrap();

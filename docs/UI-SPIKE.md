@@ -116,15 +116,29 @@ decoded on load; CRLF remains intact; saves use plain UTF-8. Native Open, Unicod
 uppercase extension, canonical deduplication and dirty-buffer preservation were
 verified by the coordinator. Physical cross-application Finder drag remains
 unverified due the native automation foreground-window limitation; hook/source
-and eight loader tests are separate evidence. Tabs currently
-remain in memory until explicitly saved; automatic session restoration is not
-implemented.
+and eight loader tests are separate evidence. Optional SQL draft recovery is
+implemented and described below; it restores buffers, not live sessions.
 
-Tabs explicitly share the selected connection, whose actual name/host/database
-appears in the transaction bar. Each submitted query captures its originating
-tab ID/title and active profile/target. Terminal results are installed only in
-that tab's snapshot, even if the user changes tabs while it runs. Result labels
-identify that captured origin. Query concurrency remains one bridge execution.
+Each SQL tab owns a dedicated lazy `ConsoleSession`/bridge and immutable route
+(console ID plus generation). Connection and configured-database selectors act
+only on that tab. Each submitted query captures its owner and password-free
+execution target; inactive tabs receive their own terminal results and history.
+Polling is bounded per UI turn. At most eight console workers are admitted;
+idle sessions are never silently evicted because temporary objects and session
+settings may remain meaningful.
+
+Target changes require no pending operation and a known Idle/disconnected state.
+Active, Failed and live Unknown transactions must be resolved or explicitly
+disconnected. Rebinding visibly resets the new session's policy to Auto. Browse
+profile selection does not retarget an existing console. PostgreSQL/MySQL database
+selection opens a new dedicated connection; SQLite identifies its configured
+file as `main`. The displayed database is the configured initial target: raw
+MySQL `USE`/session setting changes are not tracked by this selector.
+
+Native QA verified A's temporary table and Manual transaction surviving B's
+switch to another database, execution and cancellation. A Rollback changed its
+visible row count from two to one. B's next Run reconnected only B. See
+[console/locale evidence](../evidence/ui-console-locale-qa.json).
 
 **Run current** / Cmd+Shift+Enter asks `dbide-sql::statement_at_cursor` for a safe
 boundary at the editor's UTF-8 byte cursor. Unsupported/uncertain boundaries show
@@ -147,10 +161,12 @@ Clicking an object opens a safely identifier-quoted `SELECT * ... LIMIT 100` in
 a new editor tab; it does not execute that statement. PostgreSQL/SQLite use
 doubled double quotes and MySQL uses doubled backticks. Formatting, current
 statement selection, completion, analysis and rename use the actual selected
-connection's dialect. Profile, result-origin and shared-session labels show the
-engine plus network target or SQLite file path. The current explorer shows object names,
-kinds and column counts. Hierarchical column browsing, DDL and semantic search
-are separate remaining features. Schema limits are reported in status.
+console's dialect. Profile, result-origin and console labels show the engine
+plus configured network target or SQLite file path. The explorer displays
+schema/object/column branches and field details. The connection→database→schema
+lazy hierarchy is still pending host integration; scoped bridge APIs and a
+bounded cache foundation are implemented separately. Schema limits are reported
+as partial snapshots, not complete database indexing.
 
 Results preserve script order, including each rowset and command count.
 Previous/next controls select individual results. SQL NULL and empty text remain
@@ -224,8 +240,11 @@ upsert/remove/select/history/preference change. A single background queue orders
 file locking/fsync work; the UI never writes its stale whole profile list.
 Successful acknowledgments merge fresh CLI profiles and retain session-only
 history. Profile Save activates its captured settings only after persistence
-succeeds. History tabs retain their originating profile ID: Run is disabled if
-the selected profile differs or was removed. Opening history never runs SQL.
+succeeds. History and recovery retain a `StoredExecutionTarget` containing profile
+ID, engine, configured database and endpoint fingerprint. Existing records with
+only a legacy profile ID remain unresolved until explicit selection. A changed
+or missing endpoint cannot silently retarget a restored tab. Opening history
+never connects or runs SQL.
 
 **Recovery: Off/On** is an explicit, separate opt-in from persisted SQL history.
 When enabled, SQL drafts, order, active tab, exact saved/dirty baselines, file
@@ -349,3 +368,19 @@ this implementation worker does not launch the app. The preceding UI revision
 passed coordinator native save/bad-port diagnostics/edit/reconnect/query/schema
 QA; those observations do not establish native behavior for these new controls.
 Upstream `block` 0.1.6's future-incompatibility warning remains.
+
+## Korean / English preferences
+
+Cmd+, and the application menu open Preferences. Language changes save through
+the shared `dbide-settings` store in the background and apply only after a
+successful write. Concurrent selections are serialized; corrupt/future settings
+are preserved and errors remain visible. CLI `config language get/set ko|en` uses
+the same `app-settings.json` beside the chosen profile store. Native QA verified
+English startup from CLI settings, both runtime language directions and Korean
+after restart, preserving SQL source and distinct restored database targets.
+
+Core menus, controls, connection form and status wrappers use Korean/English
+labels. SQL, identifiers, profile names and original database diagnostics remain
+verbatim. Some specialized tools and upstream component fallback messages are
+still English; this is not a claim of complete translation or physical Korean
+IME acceptance. See [preferences](PREFERENCES.md) and [catalog](I18N.md).

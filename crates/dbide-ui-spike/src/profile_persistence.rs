@@ -134,6 +134,7 @@ mod tests {
     #[::core::prelude::v1::test]
     fn session_history_mutation_never_turns_on_persistence() {
         let entry = HistoryEntry {
+            execution_target: None,
             profile_id: "owned".into(),
             sql: "SELECT 1".into(),
             executed_at_unix_ms: 1,

@@ -11,7 +11,7 @@ fixture_lock=''
 fail() { echo "Fixture error: $*" >&2; exit 1; }
 usage() {
   echo 'Usage: fixture-engines.sh start|status|stop [all|pg|pg-tls|mysql]'
-  echo '       fixture-engines.sh seed pg|pg-tls|mysql baseline|rich|fidelity'
+  echo '       fixture-engines.sh seed pg|pg-tls|mysql baseline|rich|fidelity|consoles'
   echo '       fixture-engines.sh renew-certs'
 }
 container_for() { case "$1" in pg) echo dbide-m0-pg;; pg-tls) echo dbide-tls-pg;; mysql) echo dbide-mysql;; *) fail 'Unknown fixture target';; esac; }
@@ -196,7 +196,9 @@ stop_one() {
 }
 seed_mysql() {
   local kind=$1
-  if [[ "$kind" == baseline ]]; then
+  if [[ "$kind" == consoles ]]; then
+    mysql_sql -e 'CREATE DATABASE IF NOT EXISTS dbide_console_b CHARACTER SET utf8mb4'
+  elif [[ "$kind" == baseline ]]; then
     mysql_sql <<'SQL'
 CREATE TABLE IF NOT EXISTS dbide_benchmark_customers(id bigint PRIMARY KEY,name varchar(128) NOT NULL,email varchar(256),status varchar(16) NOT NULL,balance decimal(18,4),display_name varchar(128),created_at datetime(6),active boolean,metadata json,optional_text text);
 INSERT IGNORE INTO dbide_benchmark_customers
@@ -219,10 +221,16 @@ SQL
 }
 seed_one() {
   local target=$1 kind=$2 source
-  [[ "$kind" == baseline || "$kind" == rich || "$kind" == fidelity ]] || fail 'Seed kind must be baseline, rich, or fidelity'
+  [[ "$kind" == baseline || "$kind" == rich || "$kind" == fidelity || "$kind" == consoles ]] || fail 'Seed kind must be baseline, rich, fidelity, or consoles'
   [[ "$target" != mysql || "$kind" != fidelity ]] || fail 'The fidelity fixture is PostgreSQL-only'
   assert_owned "$target"; running "$target" || fail 'Start the selected fixture before explicit seeding'
   if [[ "$target" == mysql ]]; then seed_mysql "$kind"
+  elif [[ "$kind" == consoles ]]; then
+    docker exec -i "$(container_for "$target")" psql -U postgres -d dbide_fixture -v ON_ERROR_STOP=1 <<'SQL'
+SELECT 'CREATE DATABASE dbide_console_b'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'dbide_console_b')
+\gexec
+SQL
   else
     case "$kind" in
       baseline) source="$fixture_root/fixtures/postgres/baseline.sql";;

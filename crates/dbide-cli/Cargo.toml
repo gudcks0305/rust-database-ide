@@ -16,6 +16,7 @@ dbide-credentials = { path = "../dbide-credentials" }
 dbide-data = { path = "../dbide-data" }
 dbide-driver-api = { path = "../dbide-driver-api" }
 dbide-profiles = { path = "../dbide-profiles" }
+dbide-settings = { path = "../dbide-settings" }
 dbide-sql = { path = "../dbide-sql" }
 serde_json = "1"
 tempfile = "3"

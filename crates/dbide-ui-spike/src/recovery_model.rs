@@ -26,6 +26,7 @@ mod tests {
             revision: 9,
             path: Some("/nonexistent/original.sql".into()),
             profile_id: Some("captured-only".into()),
+            execution_target: None,
         };
         let (model, sql) = restore_document(snapshot.clone());
         assert_eq!(model.id, u64::MAX);
@@ -45,6 +46,7 @@ mod tests {
             revision: 0,
             path: Some("/missing/query.sql".into()),
             profile_id: None,
+            execution_target: None,
         });
         assert!(!model.dirty(&restored));
     }

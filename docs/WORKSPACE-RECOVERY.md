@@ -21,7 +21,7 @@ WorkspaceError>`; `save(&snapshot)` returns `Result<(), WorkspaceError>`.
 
 `WorkspaceSnapshot` contains `schema_version: u32`, ordered
 `documents: Vec<DocumentSnapshot>`, and `active_document_id: Option<u64>`.
-`Default` is version 1 with no documents and no active ID. Nonempty workspaces
+`Default` is version 2 with no documents and no active ID. Nonempty workspaces
 require an active ID that exists in the documents. IDs must be unique/nonzero.
 
 Each document contains:
@@ -31,8 +31,11 @@ Each document contains:
 - `saved_sql: String`: the last known saved baseline; `.dirty()` compares the
   exact strings. Dirty status survives restart without reading a file.
 - `path: Option<PathBuf>`: metadata only, not a file to automatically read/write.
-- `profile_id: Option<String>`: connection context only, allowed to reference a
-  profile that was later removed. The UI must resolve or mark it unavailable.
+- `profile_id: Option<String>`: legacy/display context only, allowed to reference
+  a profile that was later removed.
+- `execution_target: Option<dbide_profiles::StoredExecutionTarget>`: the exact
+  password-free per-console profile/engine/database/endpoint context. When both
+  target and legacy profile ID are present, their IDs must agree.
 
 Revision and tab order survive round trip. Recovered SQL may be incomplete or
 invalid SQL; syntax validity is deliberately not a restoration requirement.
@@ -59,7 +62,7 @@ by file permissions. It is separate from optional query-history persistence.
 
 ## Limits and failure behavior
 
-Version 1 allows at most 32 documents. Current and saved SQL buffers are each
+Version 2 allows at most 32 documents. Current and saved SQL buffers are each
 limited to 64 KiB of UTF-8 bytes, aligned with the current query/history SQL
 budget. Total serialized JSON is limited to 2 MiB. Limits apply to bytes, not
 characters. Maximum title size is 256 bytes, path 4096, and profile ID 128.
@@ -118,3 +121,21 @@ IDs, UTF-8 byte limits, total size preservation, corrupt/partial/future/unknown
 JSON preservation, abandoned partial temporary files, redacted SQL Debug,
 permissions, and unchanged referenced SQL files. They do not read user SQL files
 or profiles, run a database, or perform real power-loss fault injection.
+
+## Version 1 migration and execution context
+
+Version-1 snapshots load through a bounded in-memory migration to version 2;
+missing `execution_target` fields deserialize as `None`. Reading does not rewrite
+or rename the original. A later successful save emits version 2. Dirty buffers,
+revision, ordering, path metadata, and active ID survive migration. Future or
+malformed versions/targets stay rejected and preserved. There is no attempt to
+invent missing target context from the selected global connection or the legacy
+`profile_id` field.
+
+The shared [stored execution target](PROFILES.md#per-console-stored-execution-targets)
+contains the exact explicit database and endpoint fingerprint. The UI may call
+`resolve` with the matching existing profile, but must restore it disconnected
+without loading credentials, connecting, restoring a transaction, or running SQL.
+Endpoint mismatches or missing profiles require explicit reselection. SQLite
+context is logical `main` tied to the stored file configuration. A restored target
+is configuration only, not evidence of a live connection or unchanged remote data.

@@ -1,6 +1,8 @@
 //! Deterministic logical data source with no retained row collection.
+pub mod console_session;
 pub mod explorer_model;
 pub mod recovery_model;
+pub mod session_credentials;
 pub mod workbench_model;
 use std::ops::Range;
 

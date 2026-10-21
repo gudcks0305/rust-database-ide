@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 pub const MAX_DOCUMENTS: usize = 32;
 pub const MAX_SQL_BYTES: usize = 64 * 1024;
 pub const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
@@ -25,12 +25,29 @@ pub struct DocumentSnapshot {
     pub path: Option<PathBuf>,
     /// Context only. Restoration never configures or opens a connection.
     pub profile_id: Option<String>,
+    #[serde(default)]
+    pub execution_target: Option<dbide_profiles::StoredExecutionTarget>,
 }
 impl DocumentSnapshot {
     pub fn dirty(&self) -> bool {
         self.sql != self.saved_sql
     }
     pub fn validate(&self) -> Result<(), WorkspaceError> {
+        if let Some(target) = &self.execution_target {
+            target
+                .validate()
+                .map_err(|_| WorkspaceError::Invalid("document execution target is invalid"))?;
+            if self
+                .profile_id
+                .as_deref()
+                .is_some_and(|id| id != target.profile_id)
+            {
+                return Err(WorkspaceError::Invalid(
+                    "document profile and execution target IDs differ",
+                ));
+            }
+        }
+
         if self.id == 0 {
             return Err(WorkspaceError::Invalid("document ID must be nonzero"));
         }
@@ -80,6 +97,7 @@ impl fmt::Debug for DocumentSnapshot {
             .field("revision", &self.revision)
             .field("path", &self.path)
             .field("profile_id", &self.profile_id)
+            .field("execution_target", &self.execution_target)
             .finish()
     }
 }
@@ -214,8 +232,11 @@ impl WorkspaceStore {
         if bytes.len() > MAX_FILE_BYTES {
             return Err(WorkspaceError::TooLarge);
         }
-        let snapshot: WorkspaceSnapshot =
+        let mut snapshot: WorkspaceSnapshot =
             serde_json::from_slice(&bytes).map_err(|_| WorkspaceError::Malformed)?;
+        if snapshot.schema_version == 1 {
+            snapshot.schema_version = SCHEMA_VERSION;
+        }
         snapshot.validate()?;
         Ok(Some(snapshot))
     }
@@ -307,6 +328,7 @@ mod tests {
             revision: 9,
             path: Some(PathBuf::from("/must-not-open-or-write/statement.sql")),
             profile_id: Some("profile-may-no-longer-exist".into()),
+            execution_target: None,
         }
     }
     fn snapshot() -> WorkspaceSnapshot {

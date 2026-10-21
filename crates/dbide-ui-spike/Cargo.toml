@@ -26,3 +26,7 @@ tokio = { version = "1", features = ["rt", "time"] }
 libc = "0.2"
 
 dbide-workspace = { path = "../dbide-workspace" }
+
+dbide-i18n = { path = "../dbide-i18n" }
+dbide-settings = { path = "../dbide-settings" }
+dbide-preferences-ui = { path = "../dbide-preferences-ui" }

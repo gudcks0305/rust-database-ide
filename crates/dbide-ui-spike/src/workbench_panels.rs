@@ -6,7 +6,7 @@ impl Workbench {
             let id=doc.model.id;let title=format!("{}{}",doc.model.title,if doc.model.dirty(&doc.editor.read(cx).value()){" ●"}else{""});
             div().flex().items_center().border_b_2().border_color(rgb(if id==self.active_document{ACCENT}else{PANEL}))
                 .child(Button::new(("document",id as usize)).label(title).small().when(id==self.active_document,|b|b.primary()).on_click(cx.listener(move|s,_,_,cx|s.switch_document(id,cx))))
-                .child(Button::new(("close-document",id as usize)).label("×").small().disabled(self.active_operation.is_some()&&self.pending_owner.as_ref().is_some_and(|o|o.belongs_to(id))).on_click(cx.listener(move|s,_,w,cx|s.close_document(id,w,cx))))
+                .child(Button::new(("close-document",id as usize)).label("×").small().disabled(doc.session.busy()||doc.session.may_have_transaction()).on_click(cx.listener(move|s,_,w,cx|s.close_document(id,w,cx))))
         })))
         .child(div().px_2().flex().gap_1()
             .child(self.button("new-sql","New").on_click(cx.listener(|s,_,w,cx|s.new_document(String::new(),"untitled.sql".into(),true,w,cx))))
@@ -18,12 +18,15 @@ impl Workbench {
                 .disabled(self.recovery.loading||self.recovery.preference_busy||(self.recovery.blocked&&!self.recovery.enabled)).on_click(cx.listener(|s,_,w,cx|s.toggle_recovery(w,cx)))))
     }
     pub(super) fn query_toolbar(&self, cx: &mut Context<Self>) -> Div {
-        let busy = self.busy();
+        let session = self.console();
+        let busy = session.busy();
+        let phase = session.phase;
+        let policy = session.commit_policy;
+        let wire = session.transaction_state;
+        let may_tx = session.may_have_transaction();
+        let route = session.route();
         let can_run = self.can_run(cx);
-        let cancel = self
-            .active_execution
-            .map(CancelTarget::Execution)
-            .or_else(|| self.active_operation.map(CancelTarget::Operation));
+        let cancel = session.cancel_target();
         div()
             .flex_shrink_0()
             .bg(rgb(PANEL))
@@ -42,7 +45,7 @@ impl Workbench {
                     .child(
                         self.button(
                             "run",
-                            if self.connection == ConnectionState::Disconnected {
+                            if phase == SessionPhase::Disconnected {
                                 "Connect & Run"
                             } else {
                                 "Run script"
@@ -61,8 +64,12 @@ impl Workbench {
                     )
                     .child(
                         self.button("cancel", "Cancel")
-                            .disabled(self.active_operation.is_none())
-                            .on_click(cx.listener(move |s, _, _, cx| s.cancel(cancel, cx))),
+                            .disabled(session.active_operation.is_none())
+                            .on_click(cx.listener(move |s, _, _, cx| {
+                                if let Some(target) = cancel {
+                                    s.cancel_console(route, target, cx);
+                                }
+                            })),
                     )
                     .child(div().w(px(1.)).h(px(20.)).bg(rgb(BORDER)))
                     .child(self.button("format-sql", "Format").on_click(
@@ -83,22 +90,16 @@ impl Workbench {
                     .gap_2()
                     .child(
                         self.button("auto-policy", "Auto")
-                            .when(self.commit_policy == CommitPolicy::Auto, |b| b.primary())
-                            .disabled(
-                                busy || self.transaction_may_be_open()
-                                    || self.connection != ConnectionState::Connected,
-                            )
+                            .when(policy == CommitPolicy::Auto, |b| b.primary())
+                            .disabled(busy || may_tx || phase != SessionPhase::Connected)
                             .on_click(
                                 cx.listener(|s, _, _, cx| s.change_policy(CommitPolicy::Auto, cx)),
                             ),
                     )
                     .child(
                         self.button("manual-policy", "Manual")
-                            .when(self.commit_policy == CommitPolicy::Manual, |b| b.primary())
-                            .disabled(
-                                busy || self.transaction_may_be_open()
-                                    || self.connection != ConnectionState::Connected,
-                            )
+                            .when(policy == CommitPolicy::Manual, |b| b.primary())
+                            .disabled(busy || may_tx || phase != SessionPhase::Connected)
                             .on_click(
                                 cx.listener(|s, _, _, cx| {
                                     s.change_policy(CommitPolicy::Manual, cx)
@@ -108,27 +109,40 @@ impl Workbench {
                     .child(
                         self.button("commit-tx", "Commit")
                             .disabled(
-                                busy || self.connection != ConnectionState::Connected
-                                    || self.transaction_state != ServerTransactionState::Active,
+                                busy || phase != SessionPhase::Connected
+                                    || wire != ServerTransactionState::Active,
                             )
                             .on_click(cx.listener(|s, _, _, cx| s.finish_transaction(true, cx))),
                     )
                     .child(
                         self.button("rollback-tx", "Rollback")
-                            .disabled(
-                                busy || self.connection != ConnectionState::Connected
-                                    || !self.transaction_may_be_open(),
-                            )
+                            .disabled(busy || phase != SessionPhase::Connected || !may_tx)
                             .on_click(cx.listener(|s, _, _, cx| s.finish_transaction(false, cx))),
                     )
                     .child(
                         div()
                             .id("wire-transaction-state")
                             .role(Role::Status)
-                            .aria_label(format!("Current transaction {:?}", self.transaction_state))
+                            .aria_label(format!(
+                                "{}: {}",
+                                if self.locale == Locale::Ko {
+                                    "현재 트랜잭션"
+                                } else {
+                                    "Current transaction"
+                                },
+                                self.tx_label(wire)
+                            ))
                             .text_size(px(10.))
                             .text_color(rgb(MUTED))
-                            .child(format!("Wire: {:?}", self.transaction_state)),
+                            .child(format!(
+                                "{}: {}",
+                                if self.locale == Locale::Ko {
+                                    "현재 트랜잭션"
+                                } else {
+                                    "Transaction"
+                                },
+                                self.tx_label(wire)
+                            )),
                     )
                     .child(
                         div()
@@ -155,8 +169,8 @@ impl Workbench {
             .child(div().p_4().flex().items_center().justify_between().child(div().font_weight(FontWeight::SEMIBOLD).child("SQL assistance"))
                 .child(self.button("close-sql-tools","Close").on_click(cx.listener(|s,_,_,cx|{s.show_sql_tools=false;s.completions.clear();cx.notify();}))))
             .child(div().id("sql-tools-scroll").flex_1().min_h_0().overflow_y_scroll().px_4().flex().flex_col().gap_3()
-                .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(format!("{} · tab {} · revision {} · {} catalog tables",dbide_ui_spike::workbench_model::engine_name(self.engine()),self.active_document,revision,self.schema.len())))
-                .child(div().text_size(px(11.)).text_color(rgb(MUTED)).child(self.schema.iter().take(12).map(|o|format!("{}.{}",o.schema,o.name)).collect::<Vec<_>>().join(" · ")))
+                .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(format!("{} · tab {} · revision {} · {} catalog tables",dbide_ui_spike::workbench_model::engine_name(self.engine()),self.active_document,revision,self.console().schema.len())))
+                .child(div().text_size(px(11.)).text_color(rgb(MUTED)).child(self.console().schema.iter().take(12).map(|o|format!("{}.{}",o.schema,o.name)).collect::<Vec<_>>().join(" · ")))
                 .child(div().font_weight(FontWeight::MEDIUM).child("Completions · ⌘Space"))
                 .when(self.completions.is_empty(),|el|el.child(div().text_color(rgb(MUTED)).text_size(px(11.)).child("Place the cursor in SQL and request completion. Refresh database objects to supply table and column names.")))
                 .children(self.completions.iter().take(100).enumerate().map(|(ix,c)|{
@@ -266,7 +280,7 @@ impl Workbench {
                 div()
                     .text_size(px(11.))
                     .text_color(rgb(MUTED))
-                    .child("Engine"),
+                    .child(self.ui_label("Engine")),
             )
             .child(
                 div().flex().gap_1().children(
@@ -290,31 +304,31 @@ impl Workbench {
                     }),
                 ),
             )
-            .child(form.field(0, "Connection name", busy));
+            .child(form.field(0, self.ui_label("Connection name"), busy));
         if sqlite {
-            fields=fields.child(form.field(8,"SQLite database file",busy))
+            fields=fields.child(form.field(8,self.ui_label("SQLite database file"),busy))
                 .child(div().flex().gap_2()
                     .child(self.button("choose-sqlite-file","Open file…").disabled(busy).on_click(cx.listener(|s,_,w,cx|s.choose_sqlite_path(false,w,cx))))
                     .child(self.button("choose-new-sqlite","New path…").disabled(busy).on_click(cx.listener(|s,_,w,cx|s.choose_sqlite_path(true,w,cx)))))
-                .child(Checkbox::new("create-sqlite").label("Allow file creation on Test / Connect").checked(form.sqlite_create).disabled(busy||form.read_only).on_click(cx.listener(|s,value,_,cx|{if let Some(f)=&mut s.form {f.sqlite_create = *value;}cx.notify();})))
-                .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child("Choosing a path creates nothing. With file creation enabled, Test or Connect may create a missing database file."));
+                .child(Checkbox::new("create-sqlite").label(self.ui_label("Allow file creation on Test / Connect")).checked(form.sqlite_create).disabled(busy||form.read_only).on_click(cx.listener(|s,value,_,cx|{if let Some(f)=&mut s.form {f.sqlite_create = *value;}cx.notify();})))
+                .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(self.ui_label("Choosing a path creates nothing. With file creation enabled, Test or Connect may create a missing database file.")));
         } else {
-            fields=fields.child(div().flex().gap_3().child(div().flex_1().min_w_0().child(form.field(1,"Host",busy))).child(div().w(px(76.)).child(form.field(2,"Port",busy))))
-                .child(form.field(3,"Database",busy)).child(form.field(4,"Username",busy)).child(form.field(5,"Password",busy))
-                .child(Checkbox::new("remember-password").label("Remember password in Keychain on Save").checked(form.remember_password).disabled(busy).on_click(cx.listener(|s,value,_,cx|{if let Some(f)=&mut s.form {f.remember_password = *value;}cx.notify();})))
+            fields=fields.child(div().flex().gap_3().child(div().flex_1().min_w_0().child(form.field(1,self.ui_label("Host"),busy))).child(div().w(px(76.)).child(form.field(2,self.ui_label("Port"),busy))))
+                .child(form.field(3,self.ui_label("Database"),busy)).child(form.field(4,self.ui_label("Username"),busy)).child(form.field(5,self.ui_label("Password"),busy))
+                .child(Checkbox::new("remember-password").label(self.ui_label("Remember password in Keychain on Save")).checked(form.remember_password).disabled(busy).on_click(cx.listener(|s,value,_,cx|{if let Some(f)=&mut s.form {f.remember_password = *value;}cx.notify();})))
                 .child(div().flex().gap_2()
                     .child(self.button("load-password","Load Keychain").disabled(busy||self.credential_busy).on_click(cx.listener(|s,_,w,cx|s.load_credential(false,w,cx))))
                     .child(self.button("forget-password","Forget stored password").disabled(busy||self.credential_busy).on_click(cx.listener(|s,_,w,cx|s.load_credential(true,w,cx)))))
-                .child(div().flex().flex_col().gap_1().child(div().text_size(px(11.)).text_color(rgb(MUTED)).child("TLS mode"))
+                .child(div().flex().flex_col().gap_1().child(div().text_size(px(11.)).text_color(rgb(MUTED)).child(self.ui_label("TLS mode")))
                     .child(div().flex().gap_1().children([(TlsMode::Disable,"Disable"),(TlsMode::Require,"Require"),(TlsMode::VerifyFull,"Verify full")].into_iter().map(|(tls,label)|{
                         self.button(label,label).when(form.tls==tls,|b|b.primary()).disabled(busy).on_click(cx.listener(move|s,_,_,cx|{if let Some(f)=&mut s.form{f.tls=tls;}cx.notify();}))
                     }))))
-                .when(form.tls!=TlsMode::Disable,|el|el.child(form.field(7,"CA certificate path (optional)",busy)))
-                .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child("Require and Verify full both validate the server certificate and hostname. Passwords stay in this session unless Remember is explicitly checked on Save."));
+                .when(form.tls!=TlsMode::Disable,|el|el.child(form.field(7,self.ui_label("CA certificate path (optional)"),busy)))
+                .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(self.ui_label("Require and Verify full both validate the server certificate and hostname. Passwords stay in this session unless Remember is explicitly checked on Save.")));
         }
-        fields=fields.child(form.field(6,"Connection timeout (seconds)",busy))
-            .child(Checkbox::new("read-only-profile").label(if sqlite{"Open SQLite read-only"}else{"Read-only session default"}).checked(form.read_only).disabled(busy).on_click(cx.listener(|s,value,_,cx|{if let Some(f)=&mut s.form{f.read_only = *value;if *value&&f.engine==DatabaseEngine::Sqlite{f.sqlite_create=false;}}cx.notify();})))
-            .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(if sqlite{"SQLite opens the file in enforced read-only mode; file creation is disabled."}else{"Advisory session default. Database privileges remain the permission boundary; this is not an authorization restriction."}))
+        fields=fields.child(form.field(6,self.ui_label("Connection timeout (seconds)"),busy))
+            .child(Checkbox::new("read-only-profile").label(self.ui_label(if sqlite{"Open SQLite read-only"}else{"Read-only session default"})).checked(form.read_only).disabled(busy).on_click(cx.listener(|s,value,_,cx|{if let Some(f)=&mut s.form{f.read_only = *value;if *value&&f.engine==DatabaseEngine::Sqlite{f.sqlite_create=false;}}cx.notify();})))
+            .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(self.ui_label(if sqlite{"SQLite opens the file in enforced read-only mode; file creation is disabled."}else{"Advisory session default. Database privileges remain the permission boundary; this is not an authorization restriction."})))
             .when_some(self.form_error.clone(),|el,error|el.child(div().id("form-feedback").role(Role::Status).aria_label(error.clone()).text_color(rgb(0xf0b797)).child(error)));
         let footer = div()
             .px_5()
@@ -373,7 +387,7 @@ impl Workbench {
                         div()
                             .text_size(px(15.))
                             .font_weight(FontWeight::SEMIBOLD)
-                            .child("Connection settings"),
+                            .child(self.ui_label("Connection settings")),
                     )
                     .child(self.button("close-form", "Close").disabled(busy).on_click(
                         cx.listener(|s, _, _, cx| {
@@ -483,7 +497,7 @@ impl Workbench {
                             .on_click(cx.listener(|s, _, _, cx| s.finish_transaction(false, cx))),
                     )
             }
-            DiagnosticContext::Other => controls.child(
+            DiagnosticContext::Other | DiagnosticContext::Capacity => controls.child(
                 self.button("dismiss-diagnostic", "Dismiss")
                     .on_click(cx.listener(|s, _, _, cx| {
                         s.diagnostic = None;

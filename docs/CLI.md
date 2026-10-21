@@ -50,11 +50,22 @@ dbide --config ./profiles.json profiles remove local-pg
 dbide --config ./profiles.json config show
 dbide --config ./profiles.json config set persist_history true
 dbide --config ./profiles.json config set persist_history false
+
+# GUI와 공유하는 언어 설정. get/set 모두 ko 또는 en 한 줄 출력.
+dbide --config ./profiles.json config language get
+dbide --config ./profiles.json config language set ko
+dbide --config ./profiles.json config language set en
 ```
 
 `profiles list`와 `config show`는 JSON. `config show`는 실제 shared schema 전체를 반환한다.
 현재 `config set` 대상은 실제 존재하는 `persist_history` 하나다. 연결 기본값은
 프로필의 host/port/database/username/TLS/timeout 필드로 편집한다.
+`config language`는 공통 `dbide-settings` store로 선택한 profiles 파일의 부모 디렉터리
+`app-settings.json`을 읽고 쓴다. `--config`를 생략하면 기본 profiles 경로의 같은 부모를 쓴다.
+설정 파일이 없을 때 `get`은 파일 생성 없이 `ko`를 반환한다. `set`은 `ko`/`en`만 허용하며
+다른 설정 필드를 보존하고 atomic 저장한다. malformed/future 설정은 원본을 보존하고 exit 2.
+언어 명령은 profiles JSON을 읽거나 DB에 연결하지 않으며 `persist_history` 값을 바꾸지 않는다.
+설정한 locale은 GUI와 공유한다. 현재 CLI의 help/diagnostic/SQL 데이터는 영어/원문을 유지한다.
 
 add/edit는 공통 validator를 사용하며 duplicate ID·잘못된 port·engine·TLS·timeout을 거절한다.
 edit의 boolean은 `--read-only=false`, `--sqlite-create=false`로 끌 수 있다.
@@ -88,6 +99,10 @@ SQL 문장 자체에 적힌 민감 정보는 SQL 결과나 사용자가 opt-in�
 SQL 완료 후 history 저장만 실패하면 결과와 원래 execution exit code를 유지하고 stderr에
 `SQL already executed; history persistence failed` 경고를 낸다. history를 복구하려고 SQL을
 다시 실행하지 않는다.
+history의 `execution_target`은 실제 제출한 profile ID·engine·database와 endpoint fingerprint를
+보존한다. SQLite database는 `main`, 서버 엔진은 제출 당시 프로필의 database다.
+`--read-only`를 포함한 실제 session 설정으로 capture하며, 이후 프로필 선택·endpoint 편집이
+과거 실행 대상을 바꾸지 않는다. SQL script 안의 `USE` 등으로 바뀐 실행 중 상태를 추론하지 않는다.
 
 ## SQL 실행과 결과
 
@@ -178,7 +193,7 @@ DBIDE_CLI_LIVE_FIXTURE=owned-loopback cargo test -p dbide-cli mysql_owned_fixtur
 ignored 테스트는 127.0.0.1:55439 / :55441의 프로젝트 fixture와 고정 fixture 계정만 사용한다.
 기본 suite 통과는 live PG/MySQL 테스트를 실행했다는 뜻이 아니다.
 
-이번 구현 검증: 기본 suite **11 passed / 2 ignored**, 별도 명시 실행한 PostgreSQL fixture
+이번 구현 검증: 기본 suite **14 passed / 2 ignored**, 별도 명시 실행한 PostgreSQL fixture
 **1 passed**, MySQL fixture **1 passed**. 두 native 엔진 모두 JSON의 두 result set과
 positional NULL/empty string, `--result-index 1` CSV 원문을 검사했다. 기본 suite에는
 8개 CLI child process의 동시 profile 추가 보존, timeout/Ctrl+C와 export 실패 전후의

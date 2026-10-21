@@ -251,6 +251,50 @@ impl AdapterSession {
             Self::Sqlite(_) => "SELECT 'main','true','true'",
         }
     }
+    fn literal(&self, value: &str) -> String {
+        match self {
+            Self::PostgreSql(_) => {
+                format!("E'{}'", value.replace('\\', "\\\\").replace('\'', "''"))
+            }
+            Self::Sqlite(_) => format!("'{}'", value.replace('\'', "''")),
+            Self::MySql(_) => {
+                use std::fmt::Write;
+                let mut literal = String::from("CONVERT(X'");
+                for byte in value.as_bytes() {
+                    write!(&mut literal, "{byte:02x}").expect("writing String succeeds");
+                }
+                literal.push_str("' USING utf8mb4)");
+                literal
+            }
+        }
+    }
+    pub fn catalog_sql(&self, request: &CatalogRequest) -> String {
+        match request {
+            CatalogRequest::Schemas=>match self {
+                Self::PostgreSql(_)=>"SELECT nspname FROM pg_catalog.pg_namespace WHERE left(nspname,3)<>'pg_' AND nspname<>'information_schema' AND has_schema_privilege(oid,'USAGE') ORDER BY nspname LIMIT 257".into(),
+                Self::MySql(_)=>"SELECT DATABASE() WHERE DATABASE() IS NOT NULL LIMIT 257".into(),
+                Self::Sqlite(_)=>"SELECT 'main' LIMIT 257".into(),
+            },
+            CatalogRequest::Objects(schema)=>{
+                let schema=self.literal(schema);
+                match self {
+                    Self::PostgreSql(_)=>format!("SELECT n.nspname,c.relname,c.relkind::text FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname={schema} AND c.relkind IN ('r','p','v','m','f') ORDER BY c.relname LIMIT 2049"),
+                    Self::MySql(_)=>format!("SELECT TABLE_SCHEMA,TABLE_NAME,CASE WHEN TABLE_TYPE='VIEW' THEN 'v' ELSE 'r' END FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_SCHEMA={schema} ORDER BY TABLE_NAME LIMIT 2049"),
+                    Self::Sqlite(_)=>format!("SELECT 'main',name,CASE type WHEN 'view' THEN 'v' ELSE 'r' END FROM main.sqlite_schema WHERE {schema}='main' AND type IN ('table','view') AND lower(substr(name,1,7))<>'sqlite_' ORDER BY name LIMIT 2049"),
+                }
+            }
+            CatalogRequest::Columns(relation)=>{
+                let schema=self.literal(&relation.schema);let name=self.literal(&relation.name);
+                let predicate=match self {
+                    Self::PostgreSql(_)=>format!("AND n.nspname={schema} AND c.relname={name} "),
+                    Self::MySql(_)=>format!("AND t.TABLE_SCHEMA={schema} AND t.TABLE_NAME={name} "),
+                    Self::Sqlite(_)=>format!("AND {schema}='main' AND s.name={name} "),
+                };
+                let (query,order)=self.metadata_sql().rsplit_once("ORDER BY").expect("static catalog query has final ordering");
+                format!("{query} {predicate} ORDER BY {order}")
+            }
+        }
+    }
     pub fn metadata_sql(&self) -> &'static str {
         match self {
             Self::PostgreSql(_) => {

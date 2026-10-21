@@ -9,7 +9,7 @@ use std::{
 };
 use uuid::Uuid;
 
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 pub const MAX_FILE_BYTES: usize = 1024 * 1024;
 pub const MAX_PROFILES: usize = 100;
 pub const MAX_HISTORY: usize = 100;
@@ -188,6 +188,120 @@ impl fmt::Display for ProfileValidationError {
 }
 impl std::error::Error for ProfileValidationError {}
 
+/// Password-free identity of the exact endpoint and explicit database chosen by a console.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct StoredExecutionTarget {
+    pub profile_id: String,
+    pub engine: DatabaseEngine,
+    pub database: String,
+    pub endpoint_fingerprint: String,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionTargetError {
+    InvalidTarget,
+    InvalidProfile,
+    ProfileMismatch,
+    EndpointChanged,
+}
+impl fmt::Display for ExecutionTargetError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::InvalidTarget => {
+                "Stored execution target is invalid; explicitly select a connection and database"
+            }
+            Self::InvalidProfile => {
+                "Connection profile is invalid; explicitly select a valid connection"
+            }
+            Self::ProfileMismatch => {
+                "Stored target profile ID or engine does not match; explicitly select a connection"
+            }
+            Self::EndpointChanged => {
+                "Connection endpoint changed; explicitly select the target again"
+            }
+        })
+    }
+}
+impl std::error::Error for ExecutionTargetError {}
+impl StoredExecutionTarget {
+    pub fn capture(
+        profile: &ConnectionProfile,
+        database: &str,
+    ) -> Result<Self, ExecutionTargetError> {
+        profile
+            .validate()
+            .map_err(|_| ExecutionTargetError::InvalidProfile)?;
+        let target = Self {
+            profile_id: profile.id.clone(),
+            engine: profile.engine,
+            database: database.into(),
+            endpoint_fingerprint: endpoint_fingerprint(profile),
+        };
+        target.validate()?;
+        Ok(target)
+    }
+    pub fn validate(&self) -> Result<(), ExecutionTargetError> {
+        if validate_text("profile_id", &self.profile_id, 128).is_err()
+            || validate_text("database", &self.database, 256).is_err()
+            || (self.engine == DatabaseEngine::Sqlite && self.database != "main")
+            || self.endpoint_fingerprint.len() != 67
+            || !self.endpoint_fingerprint.starts_with("v1:")
+            || !self.endpoint_fingerprint[3..]
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        {
+            return Err(ExecutionTargetError::InvalidTarget);
+        }
+        Ok(())
+    }
+    /// Restores configuration only; never performs authentication, I/O, or connection.
+    pub fn resolve(
+        &self,
+        profile: &ConnectionProfile,
+    ) -> Result<ConnectionProfile, ExecutionTargetError> {
+        self.validate()?;
+        if self.profile_id != profile.id || self.engine != profile.engine {
+            return Err(ExecutionTargetError::ProfileMismatch);
+        }
+        profile
+            .validate()
+            .map_err(|_| ExecutionTargetError::InvalidProfile)?;
+        if self.endpoint_fingerprint != endpoint_fingerprint(profile) {
+            return Err(ExecutionTargetError::EndpointChanged);
+        }
+        let mut effective = profile.clone();
+        effective.database = self.database.clone();
+        effective
+            .validate()
+            .map_err(|_| ExecutionTargetError::InvalidProfile)?;
+        Ok(effective)
+    }
+}
+fn endpoint_fingerprint(profile: &ConnectionProfile) -> String {
+    use sha2::{Digest, Sha256};
+    // Canonical ordered tuple, scoped by engine: irrelevant SQLite/network controls
+    // do not invalidate a target. Database is deliberately stored separately.
+    let network = profile.engine != DatabaseEngine::Sqlite;
+    let encoded = serde_json::to_vec(&(
+        profile.engine,
+        network.then_some(profile.host.as_str()),
+        network.then_some(profile.port),
+        network.then_some(profile.username.as_str()),
+        network.then_some(profile.tls_mode),
+        (network && profile.tls_mode != TlsMode::Disable)
+            .then_some(profile.root_cert_path.as_deref())
+            .flatten(),
+        (!network)
+            .then_some(profile.sqlite_path.as_deref())
+            .flatten(),
+        !network && profile.sqlite_create,
+        profile.read_only,
+        profile.connect_timeout_secs,
+    ))
+    .expect("connection fingerprint tuple contains only infallibly serializable primitives");
+    format!("v1:{:x}", Sha256::digest(encoded))
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct HistoryEntry {
@@ -196,6 +310,8 @@ pub struct HistoryEntry {
     pub executed_at_unix_ms: u64,
     pub outcome: String,
     pub row_count: Option<u64>,
+    #[serde(default)]
+    pub execution_target: Option<StoredExecutionTarget>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -294,6 +410,17 @@ impl WorkspaceState {
     }
 }
 fn validate_entry(entry: &HistoryEntry) -> Result<(), StoreError> {
+    if let Some(target) = &entry.execution_target {
+        target
+            .validate()
+            .map_err(|_| StoreError::InvalidState("history execution target is invalid".into()))?;
+        if target.profile_id != entry.profile_id {
+            return Err(StoreError::InvalidState(
+                "history profile and target IDs differ".into(),
+            ));
+        }
+    }
+
     if entry.sql.len() > MAX_SQL_BYTES
         || entry.profile_id.is_empty()
         || entry.profile_id.len() > 128
@@ -441,6 +568,9 @@ impl ProfileStore {
             return Err(StoreError::TooLarge);
         }
         let mut state: WorkspaceState = serde_json::from_slice(&bytes)?;
+        if state.schema_version == 1 {
+            state.schema_version = SCHEMA_VERSION;
+        }
         state.validate()?;
         if !state.persist_history {
             state.history.clear();
@@ -565,6 +695,7 @@ mod tests {
             executed_at_unix_ms: 1,
             outcome: "completed".into(),
             row_count: Some(1),
+            execution_target: None,
         }
     }
     fn state() -> WorkspaceState {
@@ -668,7 +799,7 @@ mod tests {
         let store = ProfileStore::open(&path).unwrap();
         for bytes in [b"not json".to_vec(), {
             let mut s = state();
-            s.schema_version = 2;
+            s.schema_version = SCHEMA_VERSION + 1;
             serde_json::to_vec(&s).unwrap()
         }] {
             fs::write(&path, &bytes).unwrap();

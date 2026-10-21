@@ -3,7 +3,11 @@ use dbide_credentials::CredentialStore;
 
 impl Workbench {
     pub(super) fn current_owner(&self) -> Option<ResultOwner> {
-        let profile = &self.configured.as_ref()?.profile;
+        let profile = if self.fixture_smoke {
+            &self.configured.as_ref()?.profile
+        } else {
+            self.console().target()?
+        };
         let document = self
             .documents
             .iter()
@@ -49,13 +53,34 @@ impl Workbench {
         self.sql_diagnostics.clear();
         cx.notify();
     }
-    fn restore_results(&mut self, results: ResultSnapshot, cx: &mut Context<Self>) {
+    pub(super) fn restore_results(&mut self, results: ResultSnapshot, cx: &mut Context<Self>) {
         self.pages = results.pages;
         self.selected_page = results.selected_page;
         self.summary = results.summary;
         self.details = results.details;
         self.result_owner = results.owner;
         self.set_mode(false, cx);
+    }
+    pub(super) fn show_sql_tab_limit(&mut self, cx: &mut Context<Self>) {
+        let body = if self.locale == Locale::Ko {
+            (
+                "SQL 탭 한도에 도달했습니다",
+                "SQL 탭은 최대 32개까지 열 수 있습니다. 기존 콘솔의 연결·데이터베이스·SQL은 바꾸지 않았습니다.",
+                "SQL 탭 하나를 닫은 후 다시 시도하세요. SQL은 실행하지 않았습니다.",
+            )
+        } else {
+            (
+                "SQL tab limit reached",
+                "At most 32 SQL tabs can be open. The existing console target and SQL are unchanged.",
+                "Close a SQL tab and retry. No SQL was executed.",
+            )
+        };
+        self.diagnostic = Some(Diagnostic {
+            body: (body.0.into(), body.1.into(), body.2.into()),
+            context: DiagnosticContext::Capacity,
+            owner: None,
+        });
+        cx.notify();
     }
     pub(super) fn new_document(
         &mut self,
@@ -66,9 +91,15 @@ impl Workbench {
         cx: &mut Context<Self>,
     ) {
         if self.documents.len() >= 32 {
-            self.status = "Close a SQL tab before opening more (maximum32)".into();
-            cx.notify();
+            self.show_sql_tab_limit(cx);
             return;
+        }
+        if self
+            .diagnostic
+            .as_ref()
+            .is_some_and(|d| d.context == DiagnosticContext::Capacity)
+        {
+            self.diagnostic = None;
         }
         while self
             .documents
@@ -103,7 +134,46 @@ impl Workbench {
         if !saved && !source.is_empty() {
             model.changed();
         }
+        let mut session = ConsoleSession::new(id);
+        if let Some(request) = self
+            .documents
+            .iter()
+            .find(|d| d.model.id == self.active_document)
+            .and_then(|d| d.session.request())
+        {
+            let _ = session.bind(session.route(), request);
+        }
+        let request = session.request();
+        let password_draft = cx.new(|cx| {
+            let mut input = InputState::new(window, cx)
+                .masked(true)
+                .placeholder("Session password");
+            input.set_value(
+                request
+                    .as_ref()
+                    .map(|r| r.password.clone())
+                    .unwrap_or_default(),
+                window,
+                cx,
+            );
+            input
+        });
+        let database_draft = cx.new(|cx| {
+            let mut input = InputState::new(window, cx).placeholder("Database name");
+            input.set_value(
+                request
+                    .as_ref()
+                    .map(|r| r.profile.database.clone())
+                    .unwrap_or_default(),
+                window,
+                cx,
+            );
+            input
+        });
         self.documents.push(SqlDocument {
+            password_draft,
+            database_draft,
+            session,
             required_profile_id: None,
             model,
             editor,
@@ -113,6 +183,18 @@ impl Workbench {
         self.editor.update(cx, |e, cx| e.focus(window, cx));
     }
     pub(super) fn close_document(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
+        if self
+            .documents
+            .iter()
+            .find(|d| d.model.id == id)
+            .is_some_and(|d| d.session.busy() || d.session.may_have_transaction())
+        {
+            self.status =
+                "Finish/Cancel or explicitly Disconnect this console before closing its tab."
+                    .into();
+            cx.notify();
+            return;
+        }
         if self
             .pending_owner
             .as_ref()
@@ -132,9 +214,13 @@ impl Workbench {
         }
         let prompt = window.prompt(
             PromptLevel::Warning,
-            "Save changes before closing this SQL tab?",
+            tr(self.locale, Message::UnsavedChanges),
             Some(&doc.model.title),
-            &["Save…", "Keep open", "Discard changes"],
+            &[
+                tr(self.locale, Message::Save),
+                tr(self.locale, Message::KeepEditing),
+                tr(self.locale, Message::DiscardChanges),
+            ],
             cx,
         );
         cx.spawn_in(window, async move |view, cx| {
@@ -200,7 +286,7 @@ impl Workbench {
         self.status = "Opening dropped/selected SQL files · existing tabs preserved".into();
         cx.notify();
         cx.spawn_in(window,async move|view,cx|{
-            let mut feedback=vec![];let mut opened=0usize;let mut focused=0usize;
+            let mut feedback=vec![];let mut opened=0usize;let mut focused=0usize;let mut capacity_rejected=false;
             if ignored>0 {feedback.push(format!("Skipped {ignored} additional paths: at most16 files per open/drop"));}
             for path in paths.into_iter().take(16) {
                 let label=path.display().to_string();
@@ -209,7 +295,7 @@ impl Workbench {
                     match result {
                         Ok(file)=>{
                             if let Some(id)=s.documents.iter().find(|d|d.model.path.as_ref()==Some(&file.path)).map(|d|d.model.id) {s.switch_document(id,cx);focused+=1;}
-                            else if s.documents.len()>=32 {feedback.push(format!("{label}: maximum32 open SQL tabs reached"));}
+                            else if s.documents.len()>=32 {capacity_rejected=true;feedback.push(format!("{label}: maximum32 open SQL tabs reached"));}
                             else {s.new_document(file.sql,file.title,true,w,cx);if let Some(doc)=s.documents.iter_mut().find(|d|d.model.id==s.active_document){doc.model.path=Some(file.path);}opened+=1;}
                         },Err(error)=>feedback.push(error.to_string()),
                     }cx.notify();
@@ -218,6 +304,7 @@ impl Workbench {
             let _=view.update_in(cx,|s,_,cx|{
                 s.status=format!("SQL files · opened {opened} · focused {focused} existing · {} rejected/skipped · no SQL executed",feedback.len());
                 if !feedback.is_empty(){s.diagnostic=Some(Diagnostic::new(("Some SQL files were not opened".into(),feedback.join("\n"),"Drop regular UTF-8 .sql files up to64 KiB each. Symlinks resolve to the canonical regular file; existing dirty tabs are focused unchanged.".into())));}
+                if capacity_rejected {s.show_sql_tab_limit(cx);if let Some(diagnostic)=&mut s.diagnostic{diagnostic.body.1.push('\n');diagnostic.body.1.push_str(&feedback.join("\n"));}}
                 cx.notify();
             });
         }).detach();
@@ -353,6 +440,7 @@ impl Workbench {
         );
         if let (Some(sql), Some(owner)) = (self.pending_sql.take(), owner.as_ref()) {
             let entry = HistoryEntry {
+                execution_target: None,
                 profile_id: owner.profile_id.clone(),
                 sql,
                 executed_at_unix_ms: std::time::SystemTime::now()
@@ -427,6 +515,7 @@ impl Workbench {
     fn catalog(&self) -> dbide_sql::Catalog {
         dbide_sql::Catalog {
             tables: self
+                .console()
                 .schema
                 .iter()
                 .map(|o| dbide_sql::CatalogTable {
@@ -498,7 +587,7 @@ impl Workbench {
         self.status = format!(
             "{} completion candidates · catalog contains {} tables",
             self.completions.len(),
-            self.schema.len()
+            self.console().schema.len()
         );
         cx.notify();
     }
@@ -548,7 +637,7 @@ impl Workbench {
         self.status = format!(
             "{} SQL diagnostics · {} catalog tables",
             self.sql_diagnostics.len(),
-            self.schema.len()
+            self.console().schema.len()
         );
         cx.notify();
     }
@@ -608,6 +697,10 @@ impl Workbench {
         cx.notify();
     }
     pub(super) fn change_policy(&mut self, policy: CommitPolicy, cx: &mut Context<Self>) {
+        if self.table_editor.is_none() && !self.fixture_smoke {
+            self.console_policy(policy, cx);
+            return;
+        }
         if self.busy()
             || self.transaction_may_be_open()
             || self.connection != ConnectionState::Connected
@@ -623,6 +716,10 @@ impl Workbench {
         cx.notify();
     }
     pub(super) fn finish_transaction(&mut self, commit: bool, cx: &mut Context<Self>) {
+        if self.table_editor.is_none() && !self.fixture_smoke {
+            self.console_transaction(commit, cx);
+            return;
+        }
         if self.busy()
             || self.connection != ConnectionState::Connected
             || !self.transaction_may_be_open()
@@ -802,6 +899,10 @@ impl Workbench {
             && !staged_rows
             && !self.transaction_may_be_open()
             && self.active_operation.is_none()
+            && !self
+                .documents
+                .iter()
+                .any(|d| d.session.busy() || d.session.may_have_transaction())
         {
             if self.recovery.enabled {
                 self.flush_recovery_and_close(window, cx);
@@ -814,19 +915,26 @@ impl Workbench {
         }
         self.close_prompt_open = true;
         let detail = if self.recovery.enabled {
-            "SQL drafts will be retained locally without modifying source files. Open transactions are disconnected without committing. No staged row edit is applied by closing."
+            self.ui_label("SQL drafts will be retained locally without modifying source files. Open transactions are disconnected without committing. No staged row edit is applied by closing.")
         } else {
-            "Unsaved SQL and staged table edits will be discarded. Open transactions are disconnected without committing. No staged row edit is applied by closing."
+            self.ui_label("Unsaved SQL and staged table edits will be discarded. Open transactions are disconnected without committing. No staged row edit is applied by closing.")
         };
         let answers = if changed.is_some() {
-            vec!["Save a changed tab…", "Keep open", "Discard and close"]
+            vec![
+                tr(self.locale, Message::Save),
+                tr(self.locale, Message::KeepEditing),
+                self.ui_label("Discard and close"),
+            ]
         } else {
-            vec!["Keep open", "Discard and close"]
+            vec![
+                tr(self.locale, Message::KeepEditing),
+                self.ui_label("Discard and close"),
+            ]
         };
         let discard = answers.len() - 1;
         let receiver = window.prompt(
             PromptLevel::Warning,
-            "Close this database workspace?",
+            self.ui_label("Close this database workspace?"),
             Some(detail),
             &answers,
             cx,
@@ -861,17 +969,17 @@ impl Workbench {
 }
 impl Workbench {
     pub(super) fn engine(&self) -> DatabaseEngine {
-        self.configured
-            .as_ref()
-            .map(|r| r.profile.engine)
-            .or_else(|| self.form.as_ref().map(|f| f.engine))
+        self.console()
+            .target()
+            .map(|p| p.engine)
+            .or_else(|| self.configured.as_ref().map(|r| r.profile.engine))
             .unwrap_or_default()
     }
     pub(super) fn dialect(&self) -> dbide_sql::Dialect {
         dbide_ui_spike::workbench_model::engine_dialect(self.engine())
     }
     pub(super) fn open_tools(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let request = self.configured.clone();
+        let request = self.console().request();
         self.tools_label = request
             .as_ref()
             .map(|r| {
@@ -888,7 +996,7 @@ impl Workbench {
             if s.tools.as_ref().is_none_or(|current|current.entity_id()!=source.entity_id()){return;}
             let dbide_tools_ui::ToolsEvent::OpenSqlDraft{profile,sql}=event;
             s.tools=None;
-            if s.configured.as_ref().is_some_and(|r|r.profile==*profile){s.new_document(sql.clone(),"object-draft.sql".into(),false,w,cx);s.status="Captured-profile SQL draft opened · review before explicit Run".into();}
+            if s.console().target().is_some_and(|p|p==profile){s.new_document(sql.clone(),"object-draft.sql".into(),false,w,cx);s.status="Captured-profile SQL draft opened · review before explicit Run".into();}
             else{s.diagnostic=Some(Diagnostic::new(("SQL draft profile changed".into(),"The captured table/index/view draft was not opened under another connection.".into(),"Select the original profile, reopen Tools, and generate a new draft. Nothing was executed.".into())));}
             cx.notify();
         }));
