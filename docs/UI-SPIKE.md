@@ -451,3 +451,32 @@ labels. SQL, identifiers, profile names and original database diagnostics remain
 verbatim. Some specialized tools and upstream component fallback messages are
 still English; this is not a claim of complete translation or physical Korean
 IME acceptance. See [preferences](PREFERENCES.md) and [catalog](I18N.md).
+
+## Workspace polish and disk metadata checkpoint (2026-10-22)
+
+SQL and up to16 table views share a horizontally scrolling document strip. The
+visible table and the shared reader owner are separate; pending operations retain
+their captured owner. Activating another target uses Configure/Connect/Idle before
+re-binding its read-only view, retaining filters, sort and page. SQL sessions and
+buffers stay independent. Table tabs have in-process retention, not restart
+recovery. Row Apply stays disabled.
+
+Completion uses typed GPUI Input-action capture because raw key listeners run
+after matching editor actions. Cmd+J is the macOS-friendly trigger; Ctrl+Space is
+optional when the OS input-source shortcut does not consume it. Arrows choose,
+Enter/Tab insert, Esc dismisses, Undo restores. Hidden SQL actions are rejected
+while a table/tool view is active. Explicit New/Open can activate a SQL document.
+
+Catalog width and editor/results height are resizable and persisted. Editor
+height is additionally clamped for the current viewport. Preferences share font,
+tab width, page-size default, locale and existing opt-in SQL recovery. Structure
+uses aligned fields with key/default/type information and separate index/key/view
+sections. Result import/export actions live in an overflow menu so the toolbar
+remains accessible beside a wide structure panel.
+
+Private metadata shards are historical on reload and read only on branch expansion.
+Details include typed indexes/constraints/views; inspection does not connect to
+the DB. Live table execution still resolves a current profile and captures fresh
+metadata separately. See [cache contracts](CATALOG-CACHE.md),
+[native QA](../evidence/ui-workspace-polish-qa.json) and
+[validation](../evidence/workspace-polish-validation.json).

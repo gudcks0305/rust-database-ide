@@ -128,3 +128,82 @@ and LRU preservation.
 throughput or RSS measurement was performed. End-to-end explorer reuse, refresh
 routing and memory behavior must be verified after integration before claiming
 app-level metadata indexing or a measured memory reduction.
+
+## Local catalog shards (2026-10-22)
+
+`dbide-catalog-store` adds an optional **historical metadata** disk layer to the
+Navigator. The app passes the selected profiles file's parent directory plus
+`catalog-cache/` to `Navigator::with_store`; `Navigator::new` remains memory-only.
+Constructing either `Navigator` or `Store` performs no filesystem reads or writes.
+Expanding a missing memory branch queues a bounded manifest lookup and exactly
+that branch's payload file lookup on one
+dedicated disk worker. A miss or rejected shard falls back to the existing bounded
+live metadata queue; a disk hit remains visibly historical until explicit refresh.
+There is no startup directory scan, full catalog preload, or database connection
+from a cache lookup. GPUI rendering/polling only enqueues work and consumes replies.
+
+Layout is deliberately inspectable:
+
+```text
+<selected-profiles-parent>/catalog-cache/
+  .dbide-catalog-v1           # ownership marker
+  .writer.lock               # private advisory lock shared by app instances
+  index-v1.json              # bounded branch identities, sizes and capture times
+  <sha256-stable-key>.json   # version + exact stable key + one metadata snapshot
+```
+
+The stable key includes profile ID, endpoint fingerprint, database and typed scope
+(database/schema/object/columns/details); column/detail scopes also capture schema, object name
+and kind. It excludes the process-local generation, which changes across restarts.
+Every read validates the full stored key and scope, not just the hashed filename.
+The manifest gates lookup, so invalidation can unlist an unsupported shard while
+preserving its file; a direct key cannot revive an unlisted file. A shard records format version, UNIX capture time in milliseconds, truncated and
+partial flags, and database/schema/object/column descriptors. Column defaults and
+extra descriptors round-trip as metadata strings. Dedicated detail shards preserve complete typed table columns, primary/foreign keys,
+indexes (expressions, predicates, includes and unsupported descriptors) and view
+names, definitions and materialized status. Schema definition SQL is local metadata;
+it is never executed by the cache. Credentials, SQL editor/query buffers, query
+result rows and table data are not persisted.
+
+Restored snapshots set `historical = true`; `stale()` remains true regardless of
+capture age. They describe a prior observation and cannot establish current table
+identity, authorize SQL execution, or satisfy current editable-grid identity checks.
+Live SQL targets continue to come from the independently validated profile/session
+path. Refreshing a branch invalidates its disk descendants; connection refresh or
+profile replacement/removal invalidates matching endpoint branches. Clear removes
+all indexed cache branches. In-flight obsolete live results fail the existing
+profile-generation/ticket check before any save. The serial disk queue places
+invalidation after earlier saves, so an older queued save cannot resurrect a
+refreshed branch. If control work fills the queue, pending writes are dropped and
+invalidation coalesces to an all-cache clear. Unrelated valid branches otherwise
+remain available.
+
+Limits: **1 MiB per JSON shard**, **128 MiB indexed shard payload**, **2,048 shards**,
+**2 MiB manifest**, **16 KiB stable identity**, **32 queued disk commands** and
+**64 reply slots**. A save evicts oldest captured indexed shards until it fits;
+manifest listing reads identities only. Eviction/invalidation validates bounded
+ownership headers rather than loading every metadata payload. A single atomic
+write can temporarily add one shard's size above the steady-state payload budget;
+manifest/ownership files are separately bounded. Manifest byte counts reserve the
+larger of prior/current payloads across failed replacements, so they may
+conservatively exceed current file sizes. JSON serialization and all file
+operations execute on the disk worker. Cache budgets do not measure process RSS.
+
+Directories are created as `0700`; owned marker, manifest, shard and temporary files
+as `0600`. Reads reject non-private files, symlinks, non-regular files, oversize
+payloads, corrupt/truncated JSON, future versions and mismatched identity. Writes
+use exclusive private temporary files, flush and atomic rename. Save and
+invalidation hold a private advisory writer lock across manifest re-read, eviction
+and complete publication, serializing independent app instances sharing this
+cache. Initial manifest creation uses the same lock; read-only lookups never
+create or acquire it. The manifest is published before the payload and reserves
+both prior/new payload sizes, leaving at worst a budgeted missing/older shard
+after a failure or crash, rather than an unindexed published payload. Unknown directories/files and unsupported replacement shards are preserved;
+errors become diagnostics/cache misses. No cleanup scans user directories. Tests
+use newly created, canonicalized temporary roots only.
+
+For a read-only inspector, `Store::list()` returns bounded manifest summaries
+(`shard_id`, full stable key, bytes, capture time). `Store::read_by_id(id)` reads
+one exact manifest-listed shard and returns `(Key, Snapshot)`; arbitrary paths and
+unknown IDs return no entry. Both methods leave missing directories missing and
+perform no database I/O. Human-readable shard JSON can also be inspected directly.

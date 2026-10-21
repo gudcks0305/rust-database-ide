@@ -3,12 +3,14 @@
 mod diff;
 mod edit;
 mod pg_values;
+mod table_query;
 mod transfer;
 
 pub use diff::*;
 pub use edit::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+pub use table_query::*;
 pub use transfer::*;
 
 /// Decimal is a validated exact decimal lexeme, never a floating point number.

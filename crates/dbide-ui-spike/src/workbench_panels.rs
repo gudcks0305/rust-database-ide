@@ -1,21 +1,99 @@
 use super::*;
 impl Workbench {
     pub(super) fn document_tabs(&self, cx: &mut Context<Self>) -> Div {
-        div().h(px(42.)).flex_shrink_0().flex().items_center().bg(rgb(PANEL)).border_b_1().border_color(rgb(BORDER))
-        .child(div().id("sql-tabs").flex_1().min_w_0().overflow_x_scroll().flex().gap_1().px_2().children(self.documents.iter().map(|doc|{
-            let id=doc.model.id;let title=format!("{}{}",doc.model.title,if doc.model.dirty(&doc.editor.read(cx).value()){" ●"}else{""});
-            div().flex().items_center().border_b_2().border_color(rgb(if id==self.active_document{ACCENT}else{PANEL}))
-                .child(Button::new(("document",id as usize)).label(title).small().when(id==self.active_document,|b|b.primary()).on_click(cx.listener(move|s,_,_,cx|s.switch_document(id,cx))))
-                .child(Button::new(("close-document",id as usize)).label("×").small().disabled(doc.session.busy()||doc.session.may_have_transaction()).on_click(cx.listener(move|s,_,w,cx|s.close_document(id,w,cx))))
-        })))
-        .child(div().px_2().flex().gap_1()
-            .child(self.button("new-sql","New").on_click(cx.listener(|s,_,w,cx|s.new_document(String::new(),"untitled.sql".into(),true,w,cx))))
-            .child(self.button("open-sql","Open…").on_click(cx.listener(|s,_,w,cx|s.open_sql(w,cx))))
-            .child(self.button("save-current-sql","Save").on_click(cx.listener(|s,_,w,cx|s.save_document(s.active_document,false,w,cx))))
-            .child(self.button("save-sql","Save as…").on_click(cx.listener(|s,_,w,cx|s.save_document_as(s.active_document,false,w,cx))))
-            .child(self.button("sql-recovery",if self.recovery.enabled{"Recovery: On"}else{"Recovery: Off"})
-                .tooltip("SQL recovery saves local drafts (may contain sensitive values) in a private file. It never auto-saves source .sql files, connects, or runs SQL.")
-                .disabled(self.recovery.loading||self.recovery.preference_busy||(self.recovery.blocked&&!self.recovery.enabled)).on_click(cx.listener(|s,_,w,cx|s.toggle_recovery(w,cx)))))
+        div()
+            .h(px(38.))
+            .flex_shrink_0()
+            .flex()
+            .items_center()
+            .bg(rgb(PANEL))
+            .border_b_1()
+            .border_color(rgb(BORDER))
+            .child(
+                div()
+                    .id("workspace-tabs")
+                    .track_scroll(&self.tab_scroll)
+                    .flex_1()
+                    .min_w_0()
+                    .overflow_x_scroll()
+                    .flex()
+                    .items_center()
+                    .gap_1()
+                    .px_2()
+                    .children(self.documents.iter().map(|doc| {
+                        let id = doc.model.id;
+                        let active = self.active_table_tab.is_none()
+                            && self.tools.is_none()
+                            && id == self.active_document;
+                        let title = format!(
+                            "{}{}",
+                            doc.model.title,
+                            if doc.model.dirty(&doc.editor.read(cx).value()) {
+                                " ●"
+                            } else {
+                                ""
+                            }
+                        );
+                        div()
+                            .h(px(36.))
+                            .flex_shrink_0()
+                            .flex()
+                            .items_center()
+                            .border_b_2()
+                            .border_color(rgb(if active { ACCENT } else { PANEL }))
+                            .when(active, |el| el.bg(rgb(BG)))
+                            .child(
+                                Button::new(("document", id as usize))
+                                    .label(title)
+                                    .small()
+                                    .ghost()
+                                    .on_click(
+                                        cx.listener(move |s, _, _, cx| s.switch_document(id, cx)),
+                                    ),
+                            )
+                            .child(
+                                Button::new(("close-document", id as usize))
+                                    .label("×")
+                                    .small()
+                                    .ghost()
+                                    .disabled(
+                                        doc.session.busy() || doc.session.may_have_transaction(),
+                                    )
+                                    .on_click(
+                                        cx.listener(move |s, _, w, cx| s.close_document(id, w, cx)),
+                                    ),
+                            )
+                    }))
+                    .children(self.table_tab_entries(cx)),
+            )
+            .child(
+                div()
+                    .px_2()
+                    .flex()
+                    .gap_1()
+                    .child(
+                        self.button("new-sql", "+")
+                            .tooltip(if self.locale == Locale::Ko {
+                                "새 SQL 콘솔 · ⌘T"
+                            } else {
+                                "New SQL console · ⌘T"
+                            })
+                            .on_click(cx.listener(|s, _, w, cx| {
+                                s.new_document(String::new(), "untitled.sql".into(), true, w, cx)
+                            })),
+                    )
+                    .child(
+                        self.button("open-sql", "Open…")
+                            .on_click(cx.listener(|s, _, w, cx| s.open_sql(w, cx))),
+                    )
+                    .child(
+                        self.button("save-current-sql", "Save")
+                            .disabled(!self.sql_view_active())
+                            .on_click(
+                                cx.listener(|s, _, w, cx| s.save_sql_action(&SaveSqlFile, w, cx)),
+                            ),
+                    ),
+            )
     }
     pub(super) fn query_toolbar(&self, cx: &mut Context<Self>) -> Div {
         let session = self.console();
@@ -33,14 +111,17 @@ impl Workbench {
             .border_b_1()
             .border_color(rgb(BORDER))
             .px_3()
-            .py_2()
+            .py_1()
             .flex()
-            .flex_col()
+            .flex_wrap()
             .gap_2()
             .child(
                 div()
                     .flex()
                     .items_center()
+                    .flex_wrap()
+                    .min_w_0()
+                    .max_w_full()
                     .gap_2()
                     .child(
                         self.button(
@@ -75,9 +156,27 @@ impl Workbench {
                     .child(self.button("format-sql", "Format").on_click(
                         cx.listener(|s, _, w, cx| s.format_sql_action(&FormatSql, w, cx)),
                     ))
-                    .child(self.button("complete-sql", "Complete").on_click(
-                        cx.listener(|s, _, w, cx| s.complete_sql_action(&CompleteSql, w, cx)),
-                    ))
+                    .child(
+                        self.button("complete-sql", "Complete")
+                            .tooltip("⌘J · Ctrl+Space · ↑↓ · Enter / Tab · Esc")
+                            .on_click(cx.listener(|s, _, w, cx| {
+                                s.complete_sql_action(&CompleteSql, w, cx)
+                            })),
+                    )
+                    .child(
+                        self.button(
+                            "refresh-completion-metadata",
+                            if self.locale == Locale::Ko {
+                                "메타데이터 ↻"
+                            } else {
+                                "Metadata ↻"
+                            },
+                        )
+                        .disabled(busy || session.target().is_none())
+                        .on_click(cx.listener(|s, _, w, cx| {
+                            s.refresh_completion_metadata_action(&RefreshCompletionMetadata, w, cx)
+                        })),
+                    )
                     .child(
                         self.button("analyze-sql", "Inspect SQL")
                             .on_click(cx.listener(|s, _, _, cx| s.analyze_sql(cx))),
@@ -87,10 +186,13 @@ impl Workbench {
                 div()
                     .flex()
                     .items_center()
+                    .flex_wrap()
+                    .min_w_0()
+                    .max_w_full()
                     .gap_2()
                     .child(
                         self.button("auto-policy", "Auto")
-                            .when(policy == CommitPolicy::Auto, |b| b.primary())
+                            .when(policy == CommitPolicy::Auto, |b| b.outline())
                             .disabled(busy || may_tx || phase != SessionPhase::Connected)
                             .on_click(
                                 cx.listener(|s, _, _, cx| s.change_policy(CommitPolicy::Auto, cx)),
@@ -98,7 +200,7 @@ impl Workbench {
                     )
                     .child(
                         self.button("manual-policy", "Manual")
-                            .when(policy == CommitPolicy::Manual, |b| b.primary())
+                            .when(policy == CommitPolicy::Manual, |b| b.outline())
                             .disabled(busy || may_tx || phase != SessionPhase::Connected)
                             .on_click(
                                 cx.listener(|s, _, _, cx| {
@@ -143,23 +245,6 @@ impl Workbench {
                                 },
                                 self.tx_label(wire)
                             )),
-                    )
-                    .child(
-                        div()
-                            .id("document-connection-binding")
-                            .role(Role::Label)
-                            .aria_label(self.document_connection_label())
-                            .ml_2()
-                            .flex_1()
-                            .min_w_0()
-                            .text_ellipsis()
-                            .text_size(px(10.))
-                            .text_color(rgb(if self.document_profile_matches() {
-                                MUTED
-                            } else {
-                                0xf0b797
-                            }))
-                            .child(self.document_connection_label()),
                     ),
             )
     }
@@ -211,51 +296,94 @@ impl Workbench {
     }
 }
 impl Workbench {
-    pub(super) fn completion_popup(&self, cx: &mut Context<Self>) -> Stateful<Div> {
-        div()
-            .id("completion-popup")
-            .role(Role::ListBox)
-            .aria_label("SQL completion candidates")
-            .absolute()
-            .top(px(40.))
-            .left(px(48.))
-            .w(px(350.))
-            .max_h(px(168.))
-            .overflow_y_scroll()
-            .bg(rgb(PANEL))
-            .border_1()
-            .border_color(rgb(0x465675))
-            .rounded_md()
-            .shadow_lg()
-            .p_2()
-            .flex()
-            .flex_col()
-            .gap_1()
-            .child(
-                div()
-                    .flex()
-                    .justify_between()
-                    .items_center()
-                    .child(
+    pub(super) fn completion_popup(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let ko = self.locale == Locale::Ko;
+        let first = self.completion_selected.saturating_sub(3);
+        let freshness = self.completion_freshness_label();
+        let panel =
+            div()
+                .id("completion-popup")
+                .role(Role::ListBox)
+                .aria_label(if ko {
+                    "SQL 자동 완성 후보"
+                } else {
+                    "SQL completion candidates"
+                })
+                .w(px(430.))
+                .bg(rgb(PANEL))
+                .border_1()
+                .border_color(rgb(0x465675))
+                .rounded_md()
+                .shadow_lg()
+                .p_2()
+                .flex()
+                .flex_col()
+                .gap_1()
+                .child(
+                    div()
+                        .flex()
+                        .justify_between()
+                        .items_center()
+                        .child(
+                            div()
+                                .text_color(rgb(MUTED))
+                                .text_size(px(10.))
+                                .child(if ko {
+                                    "SQL 자동 완성 · ↑↓ 선택 · Enter / Tab 적용 · Esc 닫기"
+                                } else {
+                                    "SQL completion · ↑↓ select · Enter / Tab accept · Esc dismiss"
+                                }),
+                        )
+                        .child(
+                            self.button("dismiss-completions", "×")
+                                .on_click(cx.listener(|s, _, _, cx| {
+                                    s.dismiss_completion(cx);
+                                })),
+                        ),
+                )
+                .child(
+                    div()
+                        .text_color(rgb(MUTED))
+                        .text_size(px(10.))
+                        .child(format!(
+                            "{} · {} / {}",
+                            freshness,
+                            self.completion_selected + 1,
+                            self.completions.len()
+                        )),
+                )
+                .children(self.completions.iter().enumerate().skip(first).take(6).map(
+                    |(ix, c)| {
+                        let kind = match (&c.kind, ko) {
+                            (dbide_sql::CompletionKind::Keyword, true) => "키워드",
+                            (dbide_sql::CompletionKind::Schema, true) => "스키마",
+                            (dbide_sql::CompletionKind::Table, true) => "테이블",
+                            (dbide_sql::CompletionKind::Column, true) => "컬럼",
+                            (dbide_sql::CompletionKind::Keyword, false) => "Keyword",
+                            (dbide_sql::CompletionKind::Schema, false) => "Schema",
+                            (dbide_sql::CompletionKind::Table, false) => "Table",
+                            (dbide_sql::CompletionKind::Column, false) => "Column",
+                        };
                         div()
-                            .text_color(rgb(MUTED))
-                            .text_size(px(10.))
-                            .child("SQL completion · catalog / scope"),
-                    )
-                    .child(
-                        self.button("dismiss-completions", "×")
-                            .on_click(cx.listener(|s, _, _, cx| {
-                                s.completions.clear();
-                                cx.notify();
-                            })),
-                    ),
-            )
-            .children(self.completions.iter().take(20).enumerate().map(|(ix, c)| {
-                Button::new(("popup-completion", ix))
-                    .label(format!("{} · {:?}", c.label, c.kind))
-                    .small()
-                    .on_click(cx.listener(move |s, _, w, cx| s.apply_completion(ix, w, cx)))
-            }))
+                            .id(("completion-option", ix))
+                            .role(Role::ListBoxOption)
+                            .aria_selected(ix == self.completion_selected)
+                            .child(
+                                Button::new(("popup-completion", ix))
+                                    .label(format!("{} · {}", c.label, kind))
+                                    .small()
+                                    .when(ix == self.completion_selected, |b| b.primary())
+                                    .on_click(cx.listener(move |s, _, w, cx| {
+                                        s.apply_completion(ix, w, cx)
+                                    })),
+                            )
+                    },
+                ));
+        deferred(completion_model::CaretPopup::new(
+            self.editor.downgrade(),
+            panel,
+        ))
+        .with_priority(2)
     }
 }
 impl Workbench {
@@ -442,10 +570,7 @@ impl Workbench {
                     .flex_1()
                     .min_h_0()
                     .flex()
-                    .child(div().flex_1().min_w_0().child(tools.clone()))
-                    .when_some(self.preferences.as_ref(), |el, prefs| {
-                        el.child(self.preferences_panel(prefs, cx))
-                    }),
+                    .child(div().flex_1().min_w_0().child(tools.clone())),
             )
     }
 }

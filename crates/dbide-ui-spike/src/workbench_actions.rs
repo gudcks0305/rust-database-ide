@@ -2,6 +2,9 @@ use super::*;
 use dbide_credentials::CredentialStore;
 
 impl Workbench {
+    pub(super) fn sql_view_active(&self) -> bool {
+        completion_model::sql_view_active(self.active_table_tab.is_some(), self.tools.is_some())
+    }
     pub(super) fn current_owner(&self) -> Option<ResultOwner> {
         let profile = if self.fixture_smoke {
             &self.configured.as_ref()?.profile
@@ -30,7 +33,10 @@ impl Workbench {
         }
     }
     pub(super) fn switch_document(&mut self, id: u64, cx: &mut Context<Self>) {
+        self.active_table_tab = None;
+        self.tools = None;
         if self.active_document == id {
+            cx.notify();
             return;
         }
         let snapshot = self.snapshot();
@@ -112,6 +118,13 @@ impl Workbench {
         self.next_document = self.next_document.checked_add(1).unwrap_or(1);
         let editor = cx.new(|cx| {
             let mut state = EditorState::new(window, cx).language("sql");
+            state.set_tab_size(
+                gpui_component::input::TabSize {
+                    tab_size: self.app_settings.editor_tab_width as usize,
+                    hard_tabs: false,
+                },
+                cx,
+            );
             state.set_value(source.clone(), window, cx);
             state
         });
@@ -538,6 +551,9 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.sql_view_active() {
+            return;
+        }
         let sql = self.editor.read(cx).value().to_string();
         match dbide_sql::format_sql(&sql, self.dialect()) {
             Ok(formatted) => {
@@ -560,6 +576,9 @@ impl Workbench {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.sql_view_active() {
+            return;
+        }
         let editor = self.editor.read(cx);
         let sql = editor.value().to_string();
         let cursor = editor.cursor();
@@ -574,21 +593,273 @@ impl Workbench {
     pub(super) fn complete_sql_action(
         &mut self,
         _: &CompleteSql,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.sql_view_active() {
+            self.trace_completion("trigger", "hidden");
+            return;
+        }
+        if self.editor.update(cx, |editor, cx| {
+            editor.marked_text_range(window, cx).is_some()
+        }) {
+            self.dismiss_completion(cx);
+            self.status = if self.locale == Locale::Ko {
+                "문자 조합을 마친 후 자동 완성을 요청하세요."
+            } else {
+                "Finish text composition before requesting completion."
+            }
+            .into();
+            return;
+        }
         let editor = self.editor.read(cx);
         let sql = editor.value().to_string();
         self.completions =
             dbide_sql::completions(&sql, editor.cursor(), self.dialect(), &self.catalog());
+        self.completion_cursor = editor.cursor();
+        self.completion_selected = 0;
+        self.completion_route = Some(self.console().route());
+        self.completion_schema_revision = self.console().schema_revision();
         self.completion_source = Some((self.active_document, self.current_revision(), sql));
         self.show_sql_tools = false;
         self.transfer_preview = None;
         self.status = format!(
-            "{} completion candidates · catalog contains {} tables",
-            self.completions.len(),
-            self.console().schema.len()
+            "{} · {} · {}",
+            if self.locale == Locale::Ko {
+                format!("자동 완성 후보 {}개", self.completions.len())
+            } else {
+                format!("{} completion candidates", self.completions.len())
+            },
+            if self.locale == Locale::Ko {
+                format!("카탈로그 테이블 {}개", self.console().schema.len())
+            } else {
+                format!("{} catalog tables", self.console().schema.len())
+            },
+            self.completion_freshness_label(),
         );
+        self.editor
+            .update(cx, |editor, cx| editor.focus(window, cx));
+        self.trace_completion("trigger", "opened");
+        cx.notify();
+    }
+    pub(super) fn completion_freshness_label(&self) -> &'static str {
+        let freshness = self.console().metadata_freshness();
+        match (self.locale == Locale::Ko, freshness) {
+            (true, "Refreshing") => "새로고침 중",
+            (true, "Not loaded") => "메타데이터 없음",
+            (true, "May be stale") => "오래된 메타데이터 가능",
+            (true, "Partial snapshot") => "일부 메타데이터",
+            (true, _) => "메타데이터 스냅샷",
+            (false, value) => value,
+        }
+    }
+    pub(super) fn dismiss_completion(&mut self, cx: &mut Context<Self>) {
+        self.completions.clear();
+        self.completion_source = None;
+        self.completion_route = None;
+        self.completion_selected = 0;
+        cx.notify();
+    }
+    fn completion_is_current(&self, cx: &App) -> bool {
+        if !self.sql_view_active() {
+            return false;
+        }
+        let (Some((id, revision, source)), Some(route)) =
+            (&self.completion_source, self.completion_route)
+        else {
+            return false;
+        };
+        let editor = self.editor.read(cx);
+        completion_model::snapshot_matches(
+            (
+                *id,
+                *revision,
+                source.as_str(),
+                self.completion_cursor,
+                route,
+                self.completion_schema_revision,
+            ),
+            (
+                self.active_document,
+                self.current_revision(),
+                editor.value().as_str(),
+                editor.cursor(),
+                self.console().route(),
+                self.console().schema_revision(),
+            ),
+        )
+    }
+    pub(super) fn completion_key_down(
+        &mut self,
+        event: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.sql_view_active() {
+            if !self.completions.is_empty() {
+                self.dismiss_completion(cx);
+            }
+            return;
+        }
+        if self.completions.is_empty() {
+            return;
+        }
+        if !self.editor.read(cx).focus_handle(cx).is_focused(window) {
+            self.dismiss_completion(cx);
+            return;
+        }
+        if !self.completion_is_current(cx) {
+            self.dismiss_completion(cx);
+            return;
+        }
+        let key = event.keystroke.key.as_str();
+        let modifiers = event.keystroke.modifiers;
+        // Modified keys remain available to editor/OS commands.
+        if modifiers.control || modifiers.platform || modifiers.alt || modifiers.shift {
+            return;
+        }
+        match key {
+            "up" | "down" => {
+                self.completion_selected = completion_model::next_selection(
+                    self.completion_selected,
+                    self.completions.len(),
+                    key == "down",
+                );
+                cx.notify();
+            }
+            "enter" | "tab" => self.apply_completion(self.completion_selected, window, cx),
+            "escape" => self.dismiss_completion(cx),
+            _ => {
+                self.dismiss_completion(cx);
+                return;
+            }
+        }
+        window.prevent_default();
+        cx.stop_propagation();
+    }
+    fn trace_completion(&self, action: &str, status: &str) {
+        if std::env::var_os("DBIDE_COMPLETION_TRACE").is_some() {
+            // No source, profile, target, credentials, or candidate labels.
+            eprintln!(
+                "dbide-completion action={action} status={status} candidates={} selected={}",
+                self.completions.len(),
+                self.completion_selected
+            );
+        }
+    }
+    /// GPUI dispatches Input keybindings before raw key listeners. Capture the
+    /// resulting actions before the editor consumes them or moves its cursor.
+    fn capture_completion_action(
+        &mut self,
+        action: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.sql_view_active() || self.completions.is_empty() {
+            self.trace_completion(action, "inactive");
+            return;
+        }
+        if !self.editor.read(cx).focus_handle(cx).is_focused(window) {
+            self.trace_completion(action, "blurred");
+            self.dismiss_completion(cx);
+            return;
+        }
+        if !self.completion_is_current(cx) {
+            self.trace_completion(action, "stale");
+            self.dismiss_completion(cx);
+            return;
+        }
+        match action {
+            "up" | "down" => {
+                self.completion_selected = completion_model::next_selection(
+                    self.completion_selected,
+                    self.completions.len(),
+                    action == "down",
+                );
+                cx.notify();
+            }
+            "enter" | "tab" => self.apply_completion(self.completion_selected, window, cx),
+            "escape" => self.dismiss_completion(cx),
+            _ => return,
+        }
+        self.trace_completion(action, "handled");
+        window.prevent_default();
+        cx.stop_propagation();
+    }
+    pub(super) fn completion_move_up(
+        &mut self,
+        _: &gpui_component::input::MoveUp,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.capture_completion_action("up", window, cx);
+    }
+    pub(super) fn completion_move_down(
+        &mut self,
+        _: &gpui_component::input::MoveDown,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.capture_completion_action("down", window, cx);
+    }
+    pub(super) fn completion_enter(
+        &mut self,
+        action: &gpui_component::input::Enter,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !action.secondary && !action.shift {
+            self.capture_completion_action("enter", window, cx);
+        }
+    }
+    pub(super) fn completion_tab(
+        &mut self,
+        _: &gpui_component::input::IndentInline,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.capture_completion_action("tab", window, cx);
+    }
+    pub(super) fn completion_escape(
+        &mut self,
+        _: &gpui_component::input::Escape,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.capture_completion_action("escape", window, cx);
+    }
+    pub(super) fn refresh_completion_metadata_action(
+        &mut self,
+        _: &RefreshCompletionMetadata,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.sql_view_active() {
+            return;
+        }
+        self.dismiss_completion(cx);
+        if let Err(error) = self.prepare_console_password(cx) {
+            self.status = error;
+            cx.notify();
+            return;
+        }
+        let slot = self.console_slot_available();
+        let route = self.console().route();
+        let session = &mut self
+            .documents
+            .iter_mut()
+            .find(|d| d.model.id == self.active_document)
+            .expect("active console")
+            .session;
+        self.status = match session.refresh_completion_metadata(route, slot) {
+            Ok(()) => if self.locale == Locale::Ko {
+                "현재 콘솔의 자동 완성 메타데이터 새로고침 중…"
+            } else {
+                "Refreshing completion metadata for the current console…"
+            }
+            .into(),
+            Err(error) => error,
+        };
         cx.notify();
     }
     pub(super) fn apply_completion(
@@ -597,36 +868,37 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some((id, revision, source)) = &self.completion_source else {
-            return;
-        };
-        if *id != self.active_document
-            || *revision != self.current_revision()
-            || *source != self.editor.read(cx).value().as_str()
-        {
-            self.status = "Completion snapshot is stale. Request completion again.".into();
-            self.completions.clear();
-            cx.notify();
+        if !self.completion_is_current(cx) {
+            self.status = if self.locale == Locale::Ko {
+                "자동 완성 정보가 변경됨. 자동 완성을 다시 요청하세요."
+            } else {
+                "Completion snapshot is stale. Request completion again."
+            }
+            .into();
+            self.dismiss_completion(cx);
             return;
         }
+        let Some((_, _, source)) = &self.completion_source else {
+            return;
+        };
         let Some(item) = self.completions.get(index) else {
             return;
         };
-        let mut sql = source.clone();
-        if sql.get(item.replace.clone()).is_none() {
+        let Some((sql, end)) = completion_model::insert(source, item) else {
             return;
-        }
-        let end = item.replace.start + item.insert_text.len();
-        sql.replace_range(item.replace.clone(), &item.insert_text);
+        };
         self.editor.update(cx, |e, cx| {
             e.replace_all(sql, window, cx);
             let position = e.text().offset_to_position(end);
             e.set_cursor_position(position, window, cx);
+            e.focus(window, cx);
         });
-        self.completions.clear();
-        cx.notify();
+        self.dismiss_completion(cx);
     }
     pub(super) fn analyze_sql(&mut self, cx: &mut Context<Self>) {
+        if !self.sql_view_active() {
+            return;
+        }
         self.sql_diagnostics = dbide_sql::diagnostics(
             &self.editor.read(cx).value(),
             self.dialect(),
@@ -642,6 +914,9 @@ impl Workbench {
         cx.notify();
     }
     pub(super) fn preview_rename(&mut self, cx: &mut Context<Self>) {
+        if !self.sql_view_active() {
+            return;
+        }
         let editor = self.editor.read(cx);
         let sql = editor.value().to_string();
         let name = self.rename_name.read(cx).value();
@@ -672,6 +947,9 @@ impl Workbench {
         cx.notify();
     }
     pub(super) fn apply_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.sql_view_active() {
+            return;
+        }
         let Some(preview) = &self.rename_preview else {
             return;
         };
@@ -697,7 +975,7 @@ impl Workbench {
         cx.notify();
     }
     pub(super) fn change_policy(&mut self, policy: CommitPolicy, cx: &mut Context<Self>) {
-        if self.table_editor.is_none() && !self.fixture_smoke {
+        if self.active_table_tab.is_none() && !self.fixture_smoke {
             self.console_policy(policy, cx);
             return;
         }
@@ -716,7 +994,7 @@ impl Workbench {
         cx.notify();
     }
     pub(super) fn finish_transaction(&mut self, commit: bool, cx: &mut Context<Self>) {
-        if self.table_editor.is_none() && !self.fixture_smoke {
+        if self.active_table_tab.is_none() && !self.fixture_smoke {
             self.console_transaction(commit, cx);
             return;
         }
@@ -984,6 +1262,7 @@ impl Workbench {
         if self.pending_table_open.is_some() {
             return;
         }
+        self.dismiss_completion(cx);
         let request = self.console().request();
         self.tools_label = request
             .as_ref()
@@ -1062,6 +1341,9 @@ impl Workbench {
         w: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.sql_view_active() {
+            return;
+        }
         self.save_document(self.active_document, false, w, cx);
     }
     pub(super) fn save_sql_as_action(
@@ -1070,6 +1352,9 @@ impl Workbench {
         w: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.sql_view_active() {
+            return;
+        }
         self.save_document_as(self.active_document, false, w, cx);
     }
     pub(super) fn close_sql_action(
@@ -1082,8 +1367,8 @@ impl Workbench {
             cx.notify();
             return;
         }
-        if self.table_editor.is_some() {
-            self.close_table_editor(w, cx);
+        if let Some(id) = self.active_table_tab {
+            self.close_table_tab(id, w, cx);
             return;
         }
         if self.tools.is_some() {

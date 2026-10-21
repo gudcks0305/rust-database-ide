@@ -8,6 +8,7 @@ use dbide_profiles::{ConnectionProfile, ConnectionRequest, DatabaseEngine, Store
 use std::{
     collections::{HashMap, VecDeque},
     mem::size_of,
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -85,13 +86,22 @@ pub struct Snapshot {
     pub data: Data,
     pub truncated: bool,
     pub fetched_at: Instant,
+    /// Historical disk snapshots never establish current metadata identity.
+    pub historical: bool,
+    pub captured_unix_ms: u64,
 }
 impl Snapshot {
     pub fn age(&self) -> Duration {
-        self.fetched_at.elapsed()
+        if self.historical {
+            Duration::from_millis(
+                dbide_catalog_store::now_unix_ms().saturating_sub(self.captured_unix_ms),
+            )
+        } else {
+            self.fetched_at.elapsed()
+        }
     }
     pub fn stale(&self) -> bool {
-        self.age() >= TTL
+        self.historical || self.age() >= TTL
     }
     pub fn len(&self) -> usize {
         match &self.data {
@@ -139,6 +149,8 @@ pub struct Navigator {
     targets: HashMap<String, Target>,
     branches: HashMap<Key, Branch>,
     queue: VecDeque<Task>,
+    disk_waiting: HashMap<u64, Task>,
+    disk: Option<dbide_catalog_store::Worker>,
     workers: [Option<Worker>; WORKERS],
     cache: MetadataCache<Key, Snapshot>,
     sequence: u64,
@@ -156,11 +168,36 @@ impl Navigator {
             targets: HashMap::new(),
             branches: HashMap::new(),
             queue: VecDeque::new(),
+            disk_waiting: HashMap::new(),
+            disk: None,
             workers: std::array::from_fn(|_| None),
             cache: MetadataCache::new(config).expect("positive metadata budget"),
             sequence: 0,
             last_tick: Instant::now(),
             notice: None,
+        }
+    }
+    /// Starts one bounded disk worker; filesystem access stays off the UI thread.
+    pub fn with_store(config: CacheConfig, root: PathBuf) -> Self {
+        let mut navigator = Self::new(config);
+        match dbide_catalog_store::Worker::start(root) {
+            Ok(worker) => navigator.disk = Some(worker),
+            Err(error) => navigator.notice = Some(error),
+        }
+        navigator
+    }
+    fn invalidate_disk(&self, key: Option<&Key>) {
+        if let Some(disk) = &self.disk {
+            let parent = match key {
+                Some(key) => {
+                    let Some(key) = stored_key(key) else {
+                        return;
+                    };
+                    Some(key)
+                }
+                None => None,
+            };
+            disk.invalidate(parent);
         }
     }
     fn next_id(&mut self) -> Result<u64, String> {
@@ -179,6 +216,15 @@ impl Navigator {
                 .all(|p| self.targets.get(&p.id).is_some_and(|t| t.profile == *p))
         {
             return;
+        }
+        let removed: Vec<_> = self
+            .targets
+            .keys()
+            .filter(|id| !profiles.iter().any(|p| &p.id == *id))
+            .filter_map(|id| self.root(id))
+            .collect();
+        for key in &removed {
+            self.invalidate_disk(Some(key));
         }
         self.targets
             .retain(|id, _| profiles.iter().any(|p| &p.id == id));
@@ -201,6 +247,9 @@ impl Navigator {
                     target.profile.name = profile.name.clone();
                 }
                 continue;
+            }
+            if let Some(old) = self.root(&profile.id) {
+                self.invalidate_disk(Some(&old));
             }
             let database = if profile.engine == DatabaseEngine::Sqlite {
                 "main"
@@ -227,11 +276,16 @@ impl Navigator {
         let targets = &self.targets;
         self.branches.retain(|key, _| authorized(targets, key));
         self.queue.retain(|task| authorized(targets, &task.key));
+        self.disk_waiting
+            .retain(|_, task| authorized(targets, &task.key));
         self.cache.invalidate_where(|key| !authorized(targets, key));
         // In-flight obsolete probes still occupy their slot until terminal, so rapid
         // profile edits cannot exceed the two concurrent metadata requests.
     }
     pub fn refresh_connection(&mut self, profile_id: &str) -> Result<Key, String> {
+        if let Some(key) = self.root(profile_id) {
+            self.invalidate_disk(Some(&key));
+        }
         let generation = self.next_id()?;
         let target = self
             .targets
@@ -240,6 +294,8 @@ impl Navigator {
         target.generation = generation;
         self.branches.retain(|key, _| key.profile_id != profile_id);
         self.queue.retain(|task| task.key.profile_id != profile_id);
+        self.disk_waiting
+            .retain(|_, task| task.key.profile_id != profile_id);
         self.cache
             .invalidate_where(|key| key.profile_id == profile_id);
         self.root(profile_id)
@@ -281,7 +337,7 @@ impl Navigator {
         self.cache.stats()
     }
     pub fn pending(&self) -> usize {
-        self.queue.len()
+        self.queue.len() + self.disk_waiting.len()
     }
     pub fn running(&self) -> usize {
         self.workers
@@ -296,8 +352,11 @@ impl Navigator {
     pub fn collapse(&mut self, key: &Key) {
         self.branches.retain(|k, _| !k.inside(key));
         self.queue.retain(|t| !t.key.inside(key));
+        self.disk_waiting.retain(|_, t| !t.key.inside(key));
     }
     pub fn clear(&mut self) {
+        self.invalidate_disk(None);
+        self.disk_waiting.clear();
         self.branches.clear();
         self.queue.clear();
         self.cache.clear();
@@ -340,11 +399,12 @@ impl Navigator {
             );
             return Ok(());
         }
-        if self.queue.len() >= MAX_PENDING {
+        if self.pending() >= MAX_PENDING {
             return Err("Metadata queue full (16). Wait for a probe to finish, then retry.".into());
         }
         let ticket = self.next_id()?;
         if refresh {
+            self.invalidate_disk(Some(&key));
             self.collapse(&key);
             self.cache.invalidate_where(|cached| cached.inside(&key));
         }
@@ -363,11 +423,20 @@ impl Navigator {
         if refresh {
             self.cache.invalidate(&key);
         }
-        self.queue.push_back(Task {
+        let task = Task {
             key,
             ticket,
             request: Arc::new(request),
-        });
+        };
+        if !refresh
+            && let Some(disk) = &self.disk
+            && let Some(key) = stored_key(&task.key)
+            && disk.load(ticket, key)
+        {
+            self.disk_waiting.insert(ticket, task);
+        } else {
+            self.queue.push_back(task);
+        }
         Ok(())
     }
     fn current(&self, task: &Task) -> bool {
@@ -400,6 +469,8 @@ impl Navigator {
                         data,
                         truncated,
                         fetched_at: Instant::now(),
+                        historical: false,
+                        captured_unix_ms: dbide_catalog_store::now_unix_ms(),
                     },
                     weight,
                     TTL,
@@ -410,6 +481,20 @@ impl Navigator {
             branch.loading = false;
             match result {
                 Ok(snapshot) => {
+                    if self.disk.is_some()
+                        && snapshot.accounted_bytes() > dbide_catalog_store::MAX_SHARD_BYTES
+                    {
+                        self.notice = Some(
+                            "Catalog snapshot exceeds disk admission budget; memory only.".into(),
+                        );
+                    } else if let Some(disk) = &self.disk
+                        && let Some(key) = stored_key(&task.key)
+                        && let Some(value) = stored_snapshot(&snapshot)
+                        && !disk.save(key, value)
+                    {
+                        self.notice =
+                            Some("Catalog disk queue full; snapshot retained in memory.".into());
+                    }
                     branch.snapshot = Some(snapshot);
                     branch.error = None;
                 }
@@ -423,6 +508,68 @@ impl Navigator {
     /// Called by one UI timer. Only two slots and 32 events total are serviced.
     pub fn poll(&mut self) -> bool {
         let mut changed = false;
+        for _ in 0..64 {
+            let Some(reply) = self.disk.as_ref().and_then(|disk| disk.try_next()) else {
+                break;
+            };
+            match reply {
+                dbide_catalog_store::Reply::Diagnostic(error) => {
+                    self.notice = Some(error);
+                    changed = true;
+                }
+                dbide_catalog_store::Reply::Loaded {
+                    ticket,
+                    key,
+                    snapshot,
+                } => {
+                    let Some(task) = self.disk_waiting.remove(&ticket) else {
+                        continue;
+                    };
+                    if !self.current(&task) || stored_key(&task.key).as_ref() != Some(&key) {
+                        continue;
+                    }
+                    match snapshot {
+                        Ok(Some(stored)) => {
+                            let captured_unix_ms = stored.captured_unix_ms;
+                            let truncated = stored.truncated || stored.fields_partial;
+                            let data = restored_data(stored.data);
+                            let weight = owned_bytes(&task.key, &data);
+                            let result = self.cache.insert(
+                                task.key.clone(),
+                                Snapshot {
+                                    data,
+                                    truncated,
+                                    fetched_at: Instant::now(),
+                                    historical: true,
+                                    captured_unix_ms,
+                                },
+                                weight,
+                                TTL,
+                            );
+                            match result {
+                                Ok(snapshot) => {
+                                    if let Some(branch) = self.branches.get_mut(&task.key) {
+                                        branch.snapshot = Some(snapshot);
+                                        branch.loading = false;
+                                        branch.error = None;
+                                    }
+                                }
+                                Err(error) => {
+                                    self.notice = Some(error.to_string());
+                                    self.queue.push_back(task);
+                                }
+                            }
+                        }
+                        Ok(None) => self.queue.push_back(task),
+                        Err(error) => {
+                            self.notice = Some(error);
+                            self.queue.push_back(task);
+                        }
+                    }
+                    changed = true;
+                }
+            }
+        }
         for ix in 0..WORKERS {
             if self.workers[ix].as_ref().is_none_or(|w| w.task.is_none())
                 && let Some(task) = self.queue.pop_front()
@@ -622,6 +769,116 @@ impl Navigator {
         changed
     }
 }
+fn stored_key(key: &Key) -> Option<dbide_catalog_store::Key> {
+    use dbide_catalog_store as store;
+    let scope = match &key.scope {
+        Scope::Databases => store::Scope::Databases,
+        Scope::Schemas => store::Scope::Schemas,
+        Scope::Objects(schema) => store::Scope::Objects(schema.clone()),
+        Scope::Columns(r) => store::Scope::Columns(store::Relation {
+            schema: r.schema.clone(),
+            name: r.name.clone(),
+            kind: r.kind.clone(),
+        }),
+        Scope::Details(r) => store::Scope::Details(store::Relation {
+            schema: r.schema.clone(),
+            name: r.name.clone(),
+            kind: r.kind.clone(),
+        }),
+    };
+    Some(store::Key {
+        profile_id: key.profile_id.clone(),
+        fingerprint: key.fingerprint.clone(),
+        database: key.database.clone(),
+        scope,
+    })
+}
+fn stored_snapshot(snapshot: &Snapshot) -> Option<dbide_catalog_store::Snapshot> {
+    use dbide_catalog_store as s;
+    let data = match &snapshot.data {
+        Data::Databases(v) => s::Data::Databases(
+            v.iter()
+                .map(|d| s::Database {
+                    name: d.name.clone(),
+                    accessible: d.accessible,
+                    current: d.current,
+                })
+                .collect(),
+        ),
+        Data::Schemas(v) => s::Data::Schemas(v.iter().map(|d| d.name.clone()).collect()),
+        Data::Objects(v) => s::Data::Objects(
+            v.iter()
+                .map(|d| s::Object {
+                    schema: d.schema.clone(),
+                    name: d.name.clone(),
+                    kind: d.kind.clone(),
+                })
+                .collect(),
+        ),
+        Data::Columns(v) => s::Data::Columns(
+            v.iter()
+                .map(|d| s::Column {
+                    name: d.name.clone(),
+                    data_type: d.data_type.clone(),
+                    nullable: d.nullable,
+                    primary_key_ordinal: d.primary_key_ordinal,
+                    foreign_key: d.foreign_key,
+                    default: d.default.clone(),
+                    extra: d.extra.clone(),
+                })
+                .collect(),
+        ),
+        Data::Details { table, view } => s::Data::Details {
+            table: table.clone(),
+            view: view.clone(),
+        },
+    };
+    Some(s::Snapshot {
+        captured_unix_ms: snapshot.captured_unix_ms,
+        truncated: snapshot.truncated,
+        fields_partial: false,
+        data,
+    })
+}
+fn restored_data(data: dbide_catalog_store::Data) -> Data {
+    use dbide_catalog_store::Data as S;
+    match data {
+        S::Details { table, view } => Data::Details { table, view },
+        S::Databases(v) => Data::Databases(
+            v.into_iter()
+                .map(|d| DatabaseInfo {
+                    name: d.name,
+                    accessible: d.accessible,
+                    current: d.current,
+                })
+                .collect(),
+        ),
+        S::Schemas(v) => Data::Schemas(v.into_iter().map(|name| SchemaInfo { name }).collect()),
+        S::Objects(v) => Data::Objects(
+            v.into_iter()
+                .map(|d| SchemaObjectInfo {
+                    schema: d.schema,
+                    name: d.name,
+                    kind: d.kind,
+                })
+                .collect(),
+        ),
+        S::Columns(v) => Data::Columns(
+            v.into_iter()
+                .map(|d| SchemaColumn {
+                    name: d.name,
+                    data_type: d.data_type,
+                    nullable: d.nullable,
+                    primary_key_ordinal: d.primary_key_ordinal,
+                    foreign_key: d.foreign_key,
+                    default: d.default,
+                    extra: d.extra,
+                })
+                .collect(),
+        ),
+    }
+}
+
 fn authorized(targets: &HashMap<String, Target>, key: &Key) -> bool {
     targets
         .get(&key.profile_id)
@@ -1013,6 +1270,8 @@ mod tests {
             data: databases("x"),
             truncated: true,
             fetched_at: Instant::now() - TTL - Duration::from_secs(1),
+            historical: false,
+            captured_unix_ms: 0,
         };
         assert!(snapshot.stale());
         assert!(snapshot.truncated);
@@ -1110,5 +1369,213 @@ mod tests {
         assert!(n.snapshot(&root).is_some());
         assert!(n.snapshot(&other).is_some());
         assert!(n.branch(&database).unwrap().loading);
+    }
+    fn disk_roundtrip(n: &Navigator, key: &Key) -> Option<dbide_catalog_store::Snapshot> {
+        let disk = n.disk.as_ref().unwrap();
+        assert!(disk.load(u64::MAX, stored_key(key).unwrap()));
+        let start = Instant::now();
+        loop {
+            if let Some(reply) = disk.try_next() {
+                match reply {
+                    dbide_catalog_store::Reply::Loaded {
+                        ticket, snapshot, ..
+                    } => {
+                        assert_eq!(ticket, u64::MAX);
+                        return snapshot.unwrap();
+                    }
+                    dbide_catalog_store::Reply::Diagnostic(error) => panic!("{error}"),
+                }
+            }
+            assert!(start.elapsed() < Duration::from_secs(3));
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+    #[test]
+    fn disk_restore_is_lazy_historical_and_does_not_start_database_workers() {
+        let temporary = tempfile::tempdir().unwrap();
+        let path = temporary
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("catalog-cache");
+        let mut n = Navigator::with_store(CacheConfig::default(), path.clone());
+        let p = ConnectionProfile::fixture();
+        n.sync_profiles(std::slice::from_ref(&p));
+        assert!(!path.exists());
+        let root = n.root(&p.id).unwrap();
+        let key = root.child(&root.database, Scope::Objects("public".into()));
+        let task = enqueue(&mut n, &p, &key);
+        n.finish(
+            task,
+            Ok((
+                Data::Objects(vec![SchemaObjectInfo {
+                    schema: "public".into(),
+                    name: "owned_table".into(),
+                    kind: "table".into(),
+                }]),
+                true,
+            )),
+        );
+        assert!(disk_roundtrip(&n, &key).is_some());
+        drop(n);
+        let mut restored = Navigator::with_store(CacheConfig::default(), path);
+        restored.next_id().unwrap(); // Persistence deliberately excludes ephemeral generation.
+        restored.sync_profiles(std::slice::from_ref(&p));
+        assert_eq!(restored.stats().resident_entries, 0);
+        let root = restored.root(&p.id).unwrap();
+        let key = root.child(&root.database, Scope::Objects("public".into()));
+        restored
+            .expand(key.clone(), request(&p, &key), false)
+            .unwrap();
+        let start = Instant::now();
+        while restored.snapshot(&key).is_none() {
+            restored.poll();
+            assert_eq!(
+                restored.running(),
+                0,
+                "historical hit must not open a database"
+            );
+            assert!(start.elapsed() < Duration::from_secs(3));
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let snapshot = restored.snapshot(&key).unwrap();
+        assert!(snapshot.historical && snapshot.stale() && snapshot.truncated);
+        assert!(snapshot.captured_unix_ms > 0);
+        assert_eq!(snapshot.len(), 1);
+    }
+    #[test]
+    fn disk_clear_and_refresh_reject_obsolete_results_and_preserve_other_branches() {
+        let temporary = tempfile::tempdir().unwrap();
+        let path = temporary
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("catalog-cache");
+        let mut n = Navigator::with_store(CacheConfig::default(), path);
+        let p = ConnectionProfile::fixture();
+        n.sync_profiles(std::slice::from_ref(&p));
+        let root = n.root(&p.id).unwrap();
+        let a = root.child("a", Scope::Schemas);
+        let b = root.child("b", Scope::Schemas);
+        for key in [&a, &b] {
+            let task = enqueue(&mut n, &p, key);
+            n.finish(task, Ok((Data::Schemas(vec![]), false)));
+        }
+        assert!(disk_roundtrip(&n, &a).is_some());
+        let old = enqueue(&mut n, &p, &a);
+        let _new = enqueue(&mut n, &p, &a);
+        n.finish(old, Ok((Data::Schemas(vec![]), false)));
+        assert!(disk_roundtrip(&n, &a).is_none());
+        assert!(disk_roundtrip(&n, &b).is_some());
+        n.clear();
+        assert!(disk_roundtrip(&n, &b).is_none());
+    }
+    #[test]
+    fn persisted_columns_preserve_default_and_identity_descriptors() {
+        let column = SchemaColumn {
+            name: "id".into(),
+            data_type: "bigint".into(),
+            nullable: false,
+            primary_key_ordinal: Some(1),
+            foreign_key: true,
+            default: Some("nextval('owned_sequence')".into()),
+            extra: Some("generated identity".into()),
+        };
+        let snapshot = Snapshot {
+            data: Data::Columns(vec![column.clone()]),
+            truncated: false,
+            fetched_at: Instant::now(),
+            historical: false,
+            captured_unix_ms: 42,
+        };
+        let stored = stored_snapshot(&snapshot).unwrap();
+        assert!(!stored.fields_partial);
+        let Data::Columns(columns) = restored_data(stored.data) else {
+            panic!("columns expected");
+        };
+        assert_eq!(columns, vec![column]);
+        let details = Snapshot {
+            data: Data::Details {
+                table: None,
+                view: None,
+            },
+            ..snapshot
+        };
+        assert!(matches!(
+            stored_snapshot(&details).unwrap().data,
+            dbide_catalog_store::Data::Details { .. }
+        ));
+    }
+    #[test]
+    fn persisted_detail_shard_restores_historical_indexes_without_database_io() {
+        let temporary = tempfile::tempdir().unwrap();
+        let path = temporary
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("catalog-cache");
+        let mut n = Navigator::with_store(CacheConfig::default(), path);
+        let p = ConnectionProfile::fixture();
+        n.sync_profiles(std::slice::from_ref(&p));
+        let root = n.root(&p.id).unwrap();
+        let key = root.child(
+            &root.database,
+            Scope::Details(Relation {
+                schema: "public".into(),
+                name: "owned_table".into(),
+                kind: "table".into(),
+            }),
+        );
+        let table = dbide_schema::Table {
+            name: "owned_table".into(),
+            columns: vec![],
+            primary_key: None,
+            foreign_keys: vec![],
+            indexes: vec![dbide_schema::Index {
+                name: "owned_idx".into(),
+                columns: vec!["id".into()],
+                unique: true,
+                method: "btree".into(),
+                predicate: Some("id > 0".into()),
+                expressions: vec![],
+                include: vec![],
+                constraint_owned: false,
+                unsupported_features: vec![],
+            }],
+            unsupported_features: vec![],
+        };
+        let expected = table.clone();
+        let task = enqueue(&mut n, &p, &key);
+        n.finish(
+            task,
+            Ok((
+                Data::Details {
+                    table: Some(Box::new(table)),
+                    view: None,
+                },
+                false,
+            )),
+        );
+        assert!(disk_roundtrip(&n, &key).is_some());
+        n.collapse(&key);
+        n.cache.clear();
+        n.expand(key.clone(), request(&p, &key), false).unwrap();
+        let start = Instant::now();
+        while n.snapshot(&key).is_none() {
+            n.poll();
+            assert_eq!(n.running(), 0);
+            assert!(start.elapsed() < Duration::from_secs(3));
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let snapshot = n.snapshot(&key).unwrap();
+        assert!(snapshot.historical && snapshot.stale());
+        let Data::Details {
+            table: Some(table),
+            view: None,
+        } = &snapshot.data
+        else {
+            panic!("table detail expected");
+        };
+        assert_eq!(**table, expected);
     }
 }

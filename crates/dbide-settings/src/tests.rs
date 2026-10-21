@@ -9,7 +9,12 @@ fn default_no_side_effects_then_private_save_reload() {
     store.set_locale(Locale::En).unwrap();
     assert_eq!(store.load().unwrap().locale, Locale::En);
     assert_eq!(SettingsStore::new(&path).load().unwrap().locale, Locale::En);
-    store.save(&AppSettings { locale: Locale::Ko }).unwrap();
+    store
+        .save(&AppSettings {
+            locale: Locale::Ko,
+            ..AppSettings::default()
+        })
+        .unwrap();
     assert_eq!(store.load().unwrap().locale, Locale::Ko);
     #[cfg(unix)]
     {
@@ -159,4 +164,121 @@ fn stale_settings_snapshot_does_not_drop_newer_unknown_fields() {
     let result: Value = serde_json::from_slice(&fs::read(store.path()).unwrap()).unwrap();
     assert_eq!(result["locale"], "en");
     assert_eq!(result["added_later"], latest["added_later"]);
+}
+
+#[test]
+fn language_only_document_migrates_defaults_and_new_settings_round_trip() {
+    let temp = tempfile::tempdir().unwrap();
+    let store = SettingsStore::new(temp.path().join("app-settings.json"));
+    fs::write(
+        store.path(),
+        br#"{"schema_version":1,"locale":"en","future":{"keep":7}}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        store.load().unwrap(),
+        AppSettings {
+            locale: Locale::En,
+            ..AppSettings::default()
+        }
+    );
+    store.apply(SettingsChange::EditorFontSize(18)).unwrap();
+    store.apply(SettingsChange::EditorTabWidth(8)).unwrap();
+    store.apply(SettingsChange::TablePageSize(250)).unwrap();
+    store.set_layout(320, 420).unwrap();
+    // CLI language changes patch the latest document, including GUI preferences.
+    let actual = store.set_locale(Locale::Ko).unwrap();
+    assert_eq!(
+        actual,
+        AppSettings {
+            locale: Locale::Ko,
+            editor_font_size: 18,
+            editor_tab_width: 8,
+            table_page_size: 250,
+            sidebar_width: 320,
+            editor_height: 420
+        }
+    );
+    assert_eq!(store.load().unwrap(), actual);
+    let value: Value = serde_json::from_slice(&fs::read(store.path()).unwrap()).unwrap();
+    assert_eq!(value["future"]["keep"], 7);
+}
+
+#[test]
+fn invalid_bounds_never_replace_existing_settings() {
+    let temp = tempfile::tempdir().unwrap();
+    let store = SettingsStore::new(temp.path().join("app-settings.json"));
+    store.set_locale(Locale::En).unwrap();
+    let original = fs::read(store.path()).unwrap();
+    for change in [
+        SettingsChange::EditorFontSize(9),
+        SettingsChange::EditorFontSize(25),
+        SettingsChange::EditorTabWidth(1),
+        SettingsChange::EditorTabWidth(9),
+        SettingsChange::TablePageSize(49),
+        SettingsChange::TablePageSize(501),
+        SettingsChange::Layout {
+            sidebar_width: 179,
+            editor_height: 300,
+        },
+        SettingsChange::Layout {
+            sidebar_width: 280,
+            editor_height: 721,
+        },
+    ] {
+        assert!(matches!(store.apply(change), Err(StoreError::InvalidData)));
+        assert_eq!(fs::read(store.path()).unwrap(), original);
+    }
+    fs::write(
+        store.path(),
+        br#"{"schema_version":1,"locale":"en","table_page_size":65535}"#,
+    )
+    .unwrap();
+    let invalid = fs::read(store.path()).unwrap();
+    assert!(store.load().is_err());
+    assert!(store.set_locale(Locale::Ko).is_err());
+    assert_eq!(fs::read(store.path()).unwrap(), invalid);
+}
+
+#[test]
+fn independent_concurrent_patches_preserve_each_other_and_unknown_fields() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("app-settings.json");
+    fs::write(
+        &path,
+        br#"{"schema_version":1,"locale":"ko","future":{"keep":true}}"#,
+    )
+    .unwrap();
+    std::thread::scope(|scope| {
+        for change in [
+            SettingsChange::Locale(Locale::En),
+            SettingsChange::EditorFontSize(20),
+            SettingsChange::EditorTabWidth(2),
+            SettingsChange::TablePageSize(500),
+            SettingsChange::Layout {
+                sidebar_width: 400,
+                editor_height: 500,
+            },
+        ] {
+            let path = path.clone();
+            scope.spawn(move || {
+                for _ in 0..8 {
+                    SettingsStore::new(&path).apply(change).unwrap();
+                }
+            });
+        }
+    });
+    assert_eq!(
+        SettingsStore::new(&path).load().unwrap(),
+        AppSettings {
+            locale: Locale::En,
+            editor_font_size: 20,
+            editor_tab_width: 2,
+            table_page_size: 500,
+            sidebar_width: 400,
+            editor_height: 500
+        }
+    );
+    let value: Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+    assert_eq!(value["future"]["keep"], true);
 }

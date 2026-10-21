@@ -57,6 +57,7 @@ pub enum ConsoleEffect {
 }
 enum Intent {
     Databases,
+    CompletionMetadata,
     Connect,
     Run { sql: String, owner: ResultOwner },
 }
@@ -87,6 +88,8 @@ pub struct ConsoleSession {
     pub active_execution: Option<ExecutionKey>,
     pub schema: Vec<SchemaObject>,
     pub schema_truncated: bool,
+    schema_revision: u64,
+    metadata_stale: bool,
     pub diagnostic: Option<SessionDiagnostic>,
     pub status: String,
 }
@@ -121,6 +124,8 @@ impl ConsoleSession {
             active_execution: None,
             schema: vec![],
             schema_truncated: false,
+            schema_revision: 0,
+            metadata_stale: true,
             diagnostic: None,
             status: "Select a connection and database for this console".into(),
         }
@@ -148,6 +153,32 @@ impl ConsoleSession {
     }
     pub fn has_worker(&self) -> bool {
         self.bridge.is_some()
+    }
+    pub fn schema_revision(&self) -> u64 {
+        self.schema_revision
+    }
+    pub fn metadata_freshness(&self) -> &'static str {
+        if self.schema_operation.is_some()
+            || matches!(self.intent, Some(Intent::CompletionMetadata))
+        {
+            "Refreshing"
+        } else if self.schema_revision == 0 {
+            "Not loaded"
+        } else if self.metadata_stale {
+            "May be stale"
+        } else if self.schema_truncated {
+            "Partial snapshot"
+        } else {
+            "Snapshot loaded"
+        }
+    }
+    /// A separate bounded metadata probe; never connects the SQL session or replays SQL.
+    pub fn refresh_completion_metadata(
+        &mut self,
+        route: ConsoleRoute,
+        slot_available: bool,
+    ) -> Result<(), String> {
+        self.start(route, Intent::CompletionMetadata, slot_available)
     }
     pub fn busy(&self) -> bool {
         self.config_operation.is_some()
@@ -187,6 +218,8 @@ impl ConsoleSession {
         self.phase = SessionPhase::Disconnected;
         self.transaction_state = ServerTransactionState::Unknown;
         self.schema.clear();
+        self.schema_revision = 0;
+        self.metadata_stale = true;
         self.databases.clear();
         self.database_operation = None;
         self.schema_truncated = false;
@@ -248,6 +281,17 @@ impl ConsoleSession {
             .as_ref()
             .ok_or("Console worker is unavailable")?;
         match intent {
+            Intent::CompletionMetadata => {
+                self.schema_operation = Some(bridge.inspect_schema().map_err(|e| {
+                    format!("Completion metadata refresh was not submitted: {e:?}")
+                })?);
+                self.metadata_stale = true;
+                if self.phase == SessionPhase::Connecting {
+                    self.phase = SessionPhase::Disconnected;
+                }
+                self.status =
+                    "Refreshing this console's completion metadata (separate probe)…".into();
+            }
             Intent::Databases => {
                 self.database_operation = Some(
                     bridge
@@ -275,6 +319,9 @@ impl ConsoleSession {
                     .execute(sql.clone())
                     .map_err(|e| format!("Query was not submitted: {e:?}"))?;
                 self.active_operation = Some(operation);
+                // Even a SELECT may call a DDL function. A catalog snapshot cannot
+                // promise freshness after arbitrary user SQL.
+                self.metadata_stale = true;
                 self.pending_target = self.stored_target();
                 self.pending_owner = Some(owner);
                 self.pending_sql = Some(sql);
@@ -423,6 +470,7 @@ impl ConsoleSession {
             && let Some(bridge) = &self.bridge
         {
             self.schema_operation = bridge.inspect_schema().ok();
+            self.metadata_stale = true;
         }
     }
     pub fn poll_one(&mut self) -> Option<Vec<ConsoleEffect>> {
@@ -565,6 +613,8 @@ impl ConsoleSession {
                 self.schema_operation = None;
                 self.schema = objects;
                 self.schema_truncated = truncated;
+                self.schema_revision = self.schema_revision.saturating_add(1);
+                self.metadata_stale = false;
             }
             BridgeEvent::ConnectionFailed {
                 operation,
@@ -680,6 +730,63 @@ mod tests {
             profile: ConnectionProfile::fixture(),
             password: "not-persisted".into(),
         }
+    }
+    #[test]
+    fn completion_metadata_has_distinct_not_loaded_refreshing_partial_and_stale_states() {
+        let mut session = ConsoleSession::new(1);
+        assert_eq!(session.metadata_freshness(), "Not loaded");
+        session.phase = SessionPhase::Connected;
+        session.transaction_state = ServerTransactionState::Active;
+        session.schema_operation = Some(OperationId(8));
+        assert_eq!(session.metadata_freshness(), "Refreshing");
+        session.handle_event(
+            session.route(),
+            BridgeEvent::SchemaLoaded {
+                operation: OperationId(8),
+                objects: vec![],
+                truncated: true,
+            },
+        );
+        assert_eq!(session.schema_revision(), 1);
+        assert_eq!(session.metadata_freshness(), "Partial snapshot");
+        assert_eq!(session.phase, SessionPhase::Connected);
+        assert_eq!(session.transaction_state, ServerTransactionState::Active);
+        session.metadata_stale = true;
+        assert_eq!(session.metadata_freshness(), "May be stale");
+        // A refresh failure must preserve the prior snapshot and live transaction.
+        session.schema_operation = Some(OperationId(9));
+        session.handle_event(
+            session.route(),
+            BridgeEvent::Error {
+                operation: Some(OperationId(9)),
+                message: "metadata unavailable".into(),
+            },
+        );
+        assert_eq!(session.schema_revision(), 1);
+        assert_eq!(session.metadata_freshness(), "May be stale");
+        assert_eq!(session.phase, SessionPhase::Connected);
+        assert_eq!(session.transaction_state, ServerTransactionState::Active);
+        assert!(session.active_operation.is_none());
+        assert!(session.pending_sql.is_none());
+    }
+    #[test]
+    fn completion_metadata_obeys_route_and_worker_limits_without_sql_submission() {
+        let mut session = ConsoleSession::new(1);
+        session.bind(session.route(), request()).unwrap();
+        let stale = ConsoleRoute {
+            console_id: 1,
+            generation: 1,
+        };
+        assert!(session.refresh_completion_metadata(stale, true).is_err());
+        assert!(
+            session
+                .refresh_completion_metadata(session.route(), false)
+                .is_err()
+        );
+        assert!(!session.has_worker());
+        assert!(session.pending_sql.is_none());
+        assert!(session.active_operation.is_none());
+        assert_eq!(session.phase, SessionPhase::Disconnected);
     }
     #[test]
     fn bindings_are_snapshots_and_other_console_transactions_are_independent() {

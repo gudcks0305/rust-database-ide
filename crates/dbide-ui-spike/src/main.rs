@@ -1,6 +1,9 @@
+mod completion_model;
 mod documents;
 mod native_menus;
 mod preferences;
+mod table_tabs;
+mod workbench_shell;
 use dbide_i18n::{Locale, Message, tr};
 mod object_inspector;
 mod profile_form;
@@ -62,6 +65,13 @@ actions!(
         OpenPreferences,
         FormatSql,
         CompleteSql,
+        RefreshCompletionMetadata,
+        NextWorkspaceTab,
+        PreviousWorkspaceTab,
+        FocusCatalog,
+        FocusResults,
+        ToggleResults,
+        ToggleCatalog,
         NewSqlFile,
         OpenSqlFile,
         SaveSqlFile,
@@ -69,12 +79,12 @@ actions!(
         CloseSqlTab
     ]
 );
-const BG: u32 = 0x15171c;
-const PANEL: u32 = 0x1b1e24;
-const BORDER: u32 = 0x2b3039;
+const BG: u32 = 0x111820;
+const PANEL: u32 = 0x18212b;
+const BORDER: u32 = 0x2a3644;
 const TEXT: u32 = 0xdce1e9;
 const MUTED: u32 = 0x8b95a5;
-const ACCENT: u32 = 0x81a9ff;
+const ACCENT: u32 = 0x79b5ee;
 const INITIAL_SQL: &str = "-- Write a query, then press ⌘Enter to run.\nSELECT 1 AS result;";
 const FIXTURE_SQL: &str = "SELECT id, name, email, status, balance, display_name FROM dbide_benchmark.customers ORDER BY id LIMIT 1000;";
 
@@ -302,12 +312,19 @@ struct Workbench {
     editor: Entity<EditorState>,
     documents: Vec<SqlDocument>,
     active_document: u64,
+    tab_scroll: ScrollHandle,
+    last_visible_tab: Option<(bool, u64)>,
+    last_tab_space: Option<(u16, u16, bool, bool, bool)>,
     next_document: u64,
     pending_owner: Option<ResultOwner>,
     result_owner: Option<ResultOwner>,
     show_sql_tools: bool,
     completions: Vec<dbide_sql::Completion>,
     completion_source: Option<(u64, u64, String)>,
+    completion_selected: usize,
+    completion_cursor: usize,
+    completion_route: Option<ConsoleRoute>,
+    completion_schema_revision: u64,
     sql_diagnostics: Vec<dbide_sql::Diagnostic>,
     rename_name: Entity<InputState>,
     rename_preview: Option<OwnedRenamePreview>,
@@ -321,7 +338,11 @@ struct Workbench {
     locale: Locale,
     settings_store: Option<dbide_settings::SettingsStore>,
     settings_busy: bool,
-    settings_pending: Option<Locale>,
+    settings_pending: VecDeque<dbide_settings::SettingsChange>,
+    app_settings: dbide_settings::AppSettings,
+    resize_drag: Option<(bool, Point<Pixels>, f32)>,
+    results_collapsed: bool,
+    catalog_collapsed: bool,
     settings_error: Option<String>,
     preferences: Option<Entity<dbide_preferences_ui::PreferencesPanel>>,
     transfer_preview: Option<dbide_data::DataPreview>,
@@ -352,6 +373,10 @@ struct Workbench {
     tools: Option<Entity<dbide_tools_ui::ToolsPanel>>,
     tools_label: String,
     table_editor: Option<Entity<table_editor::TableEditor>>,
+    table_tabs: Vec<table_tabs::TableTab>,
+    active_table_tab: Option<u64>,
+    next_table_tab_id: u64,
+    pending_table_tab: Option<u64>,
     table_operation: Option<TableOperation>,
     pending_table_open: Option<dbide_ui_spike::table_open_model::PendingTableOpen>,
     table_open_feedback: Option<table_open::TableOpenFeedback>,
@@ -476,6 +501,16 @@ impl Workbench {
             },
             Err(e) => (None, WorkspaceState::default(), Some(e.to_string())),
         };
+        let navigator = store
+            .as_ref()
+            .and_then(|store| store.path().parent())
+            .map(|root| {
+                dbide_ui_spike::navigator::Navigator::with_store(
+                    Default::default(),
+                    root.join("catalog-cache"),
+                )
+            })
+            .unwrap_or_default();
         let initial_source = editor.read(cx).value().to_string();
         let rename_name =
             cx.new(|cx| InputState::new(window, cx).placeholder("New alias or CTE name"));
@@ -496,12 +531,19 @@ impl Workbench {
                 results: ResultSnapshot::default(),
             }],
             active_document: 1,
+            tab_scroll: ScrollHandle::new(),
+            last_visible_tab: None,
+            last_tab_space: None,
             next_document: 2,
             pending_owner: None,
             result_owner: None,
             show_sql_tools: false,
             completions: vec![],
             completion_source: None,
+            completion_selected: 0,
+            completion_cursor: 0,
+            completion_route: None,
+            completion_schema_revision: 0,
             sql_diagnostics: vec![],
             rename_name,
             rename_preview: None,
@@ -515,7 +557,11 @@ impl Workbench {
             locale: Locale::default(),
             settings_store: None,
             settings_busy: false,
-            settings_pending: None,
+            settings_pending: VecDeque::new(),
+            app_settings: dbide_settings::AppSettings::default(),
+            resize_drag: None,
+            results_collapsed: false,
+            catalog_collapsed: false,
             settings_error: None,
             preferences: None,
             transfer_preview: None,
@@ -538,7 +584,7 @@ impl Workbench {
                 ))
             }),
             schema: vec![],
-            navigator: dbide_ui_spike::navigator::Navigator::default(),
+            navigator,
             object_search,
             expanded_schemas: HashSet::new(),
             expanded_objects: HashSet::new(),
@@ -552,6 +598,10 @@ impl Workbench {
             tools: None,
             tools_label: String::new(),
             table_editor: None,
+            table_tabs: vec![],
+            active_table_tab: None,
+            next_table_tab_id: 1,
+            pending_table_tab: None,
             table_operation: None,
             pending_table_open: None,
             table_open_feedback: None,
@@ -671,7 +721,7 @@ impl Workbench {
         cx.notify();
     }
     fn cancel_query_action(&mut self, _: &CancelQuery, _: &mut Window, cx: &mut Context<Self>) {
-        if self.table_editor.is_none() && !self.fixture_smoke {
+        if self.active_table_tab.is_none() && !self.fixture_smoke {
             let route = self.console().route();
             if let Some(target) = self.console().cancel_target() {
                 self.cancel_console(route, target, cx);
@@ -694,6 +744,9 @@ impl Workbench {
         self.submit_sql(sql, cx);
     }
     fn submit_sql(&mut self, sql: String, cx: &mut Context<Self>) {
+        if !self.sql_view_active() {
+            return;
+        }
         if !self.fixture_smoke {
             self.submit_console_sql(sql, cx);
             return;
@@ -1314,7 +1367,7 @@ impl Workbench {
                 && !self.console().busy()
                 && !self.recovery.close_after
                 && self.tools.is_none()
-                && self.table_editor.is_none()
+                && self.active_table_tab.is_none()
                 && !self.editor.read(cx).value().trim().is_empty();
         }
         dbide_ui_spike::can_submit_query(
@@ -1325,7 +1378,7 @@ impl Workbench {
         )
     }
     fn button(&self, id: &'static str, label: &'static str) -> Button {
-        Button::new(id).label(self.ui_label(label)).small()
+        Button::new(id).label(self.ui_label(label)).small().ghost()
     }
     fn transaction_may_be_open(&self) -> bool {
         dbide_ui_spike::workbench_model::transaction_may_be_open(
@@ -1474,12 +1527,39 @@ impl Workbench {
 }
 impl Render for Workbench {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let visible = self
+            .active_table_tab
+            .map(|id| (true, id))
+            .unwrap_or((false, self.active_document));
+        let tab_space = (
+            f32::from(window.viewport_size().width) as u16,
+            self.app_settings.sidebar_width,
+            self.preferences.is_some(),
+            self.structure.is_some(),
+            self.catalog_collapsed,
+        );
+        if self.last_visible_tab != Some(visible) || self.last_tab_space != Some(tab_space) {
+            let index = if visible.0 {
+                self.table_tabs
+                    .iter()
+                    .position(|t| t.id == visible.1)
+                    .map(|i| i + self.documents.len())
+            } else {
+                self.documents.iter().position(|d| d.model.id == visible.1)
+            };
+            if let Some(index) = index {
+                self.tab_scroll.scroll_to_item(index);
+            }
+            self.last_visible_tab = Some(visible);
+            self.last_tab_space = Some(tab_space);
+        }
+
         self.refresh_core_placeholders(window, cx);
-        let normal = self.table_editor.is_none() && self.tools.is_none();
+        let normal = self.active_table_tab.is_none() && self.tools.is_none();
         let menu_state = (
             normal,
             normal && self.can_run(cx),
-            if self.table_editor.is_some() {
+            if self.active_table_tab.is_some() {
                 self.active_operation.is_some()
             } else {
                 self.console().active_operation.is_some()
@@ -1507,12 +1587,6 @@ impl Render for Workbench {
                     .push_back((now - last).as_secs_f64() * 1000.);
             }
             window.request_animation_frame();
-        }
-        if let Some(editor) = &self.table_editor {
-            return self.table_editor_view(editor, cx).into_any_element();
-        }
-        if let Some(tools) = &self.tools {
-            return self.captured_tools_view(tools, cx).into_any_element();
         }
         let table = self.grid.read(cx);
         let grid = table.delegate();
@@ -1581,7 +1655,7 @@ impl Render for Workbench {
         let query_configured = self.console().target().is_some();
         let sidebar =
             div()
-                .w(px(230.))
+                .w(px(self.app_settings.sidebar_width as f32))
                 .flex_shrink_0()
                 .bg(rgb(PANEL))
                 .border_r_1()
@@ -1735,7 +1809,6 @@ impl Render for Workbench {
             .min_h_0()
             .flex()
             .flex_col()
-            .child(self.document_tabs(cx))
             .child(self.console_context_bar(cx))
             .child(self.query_toolbar(cx))
             .when(
@@ -1744,7 +1817,14 @@ impl Render for Workbench {
             )
             .child(
                 div()
-                    .h(px(235.))
+                    .when(!self.results_collapsed, |el| {
+                        el.h(px(workbench_shell::editor_panel_height(
+                            self.app_settings.editor_height,
+                            f32::from(window.viewport_size().height),
+                        ) as f32))
+                            .flex_shrink_0()
+                    })
+                    .when(self.results_collapsed, |el| el.flex_1())
                     .relative()
                     .min_h_0()
                     .p_3()
@@ -1752,6 +1832,7 @@ impl Render for Workbench {
                     .child(
                         Editor::new(&self.editor)
                             .aria_label("SQL query editor")
+                            .text_size(px(self.app_settings.editor_font_size as f32))
                             .h(relative(1.))
                             .appearance(false)
                             .bordered(false),
@@ -1760,9 +1841,12 @@ impl Render for Workbench {
                         el.child(self.completion_popup(cx))
                     }),
             )
+            .when(!self.results_collapsed, |el| {
+                el.child(self.split_handle(false, cx))
+            })
             .child(
                 div()
-                    .h(px(42.))
+                    .h(px(34.))
                     .flex_shrink_0()
                     .px_3()
                     .border_y_1()
@@ -1782,8 +1866,26 @@ impl Render for Workbench {
                     )
                     .child(
                         div()
+                            .id("result-actions")
+                            .min_w_0()
+                            .max_w(relative(0.8))
+                            .overflow_x_scroll()
                             .flex()
                             .gap_1()
+                            .child(
+                                self.button(
+                                    "toggle-results",
+                                    if self.results_collapsed { "▴" } else { "▾" },
+                                )
+                                .tooltip(if self.locale == Locale::Ko {
+                                    "결과 영역 접기/펼치기 · ⌘⌥J"
+                                } else {
+                                    "Toggle results · ⌘⌥J"
+                                })
+                                .on_click(cx.listener(
+                                    |s, _, w, cx| s.toggle_results(&ToggleResults, w, cx),
+                                )),
+                            )
                             .child(
                                 self.button("prev-result", "‹")
                                     .disabled(self.selected_page == 0)
@@ -1801,37 +1903,10 @@ impl Render for Workbench {
                                         cx.listener(|s, _, w, cx| s.copy_cell(&CopyCell, w, cx)),
                                     ),
                             )
-                            .child(
-                                self.button("import-preview", "Import preview…")
-                                    .on_click(cx.listener(|s, _, w, cx| s.import_preview(w, cx))),
-                            )
-                            .child(
-                                self.button("export-json", "JSON…")
-                                    .disabled(
-                                        self.logical_mode
-                                            || self
-                                                .pages
-                                                .get(self.selected_page)
-                                                .is_none_or(|p| p.command_only),
-                                    )
-                                    .on_click(
-                                        cx.listener(|s, _, w, cx| s.export_result(true, w, cx)),
-                                    ),
-                            )
-                            .child(
-                                self.button("export-csv", "Export CSV…")
-                                    .disabled(
-                                        self.logical_mode
-                                            || self
-                                                .pages
-                                                .get(self.selected_page)
-                                                .is_none_or(|p| p.command_only),
-                                    )
-                                    .on_click(cx.listener(|s, _, w, cx| s.save_file(true, w, cx))),
-                            ),
+                            .child(self.result_more_menu(cx)),
                     ),
             )
-            .child(result_body);
+            .when(!self.results_collapsed, |el| el.child(result_body));
         if self.console().diagnostic.is_some()
             && !self.fixture_smoke
             && !self
@@ -1939,11 +2014,35 @@ impl Render for Workbench {
                     ),
             );
         }
+        if let Some(editor) = self.active_table_entity() {
+            content = div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .when(
+                    self.pending_table_open.is_some() || self.table_open_feedback.is_some(),
+                    |el| el.child(self.table_open_banner(cx)),
+                )
+                .child(self.table_editor_view(&editor, cx));
+        } else if let Some(tools) = &self.tools {
+            content = self.captured_tools_view(tools, cx);
+        }
+        let content = div()
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .child(self.document_tabs(cx))
+            .child(content);
         let mut body = div()
             .flex()
             .flex_1()
             .min_h_0()
-            .child(sidebar)
+            .when(!self.catalog_collapsed, |el| {
+                el.child(sidebar).child(self.split_handle(true, cx))
+            })
             .child(content);
         if let Some(preferences) = &self.preferences {
             body = body.child(self.preferences_panel(preferences, cx));
@@ -1952,7 +2051,8 @@ impl Render for Workbench {
         } else if let Some(inspector) = &self.structure {
             body = body.child(
                 div()
-                    .w(px(380.))
+                    .w(px(760.))
+                    .max_w(relative(0.58))
                     .flex_shrink_0()
                     .flex()
                     .flex_col()
@@ -1966,7 +2066,11 @@ impl Render for Workbench {
                             .flex()
                             .justify_between()
                             .items_center()
-                            .child("Object structure")
+                            .child(if self.locale == Locale::Ko {
+                                "테이블 구조"
+                            } else {
+                                "Object structure"
+                            })
                             .child(
                                 self.button("close-structure", "Close")
                                     .on_click(cx.listener(|s, _, _, cx| {
@@ -2107,9 +2211,25 @@ impl Render for Workbench {
             .on_action(cx.listener(Self::run_current_action))
             .on_action(cx.listener(Self::format_sql_action))
             .on_action(cx.listener(Self::complete_sql_action))
+            .on_action(cx.listener(Self::refresh_completion_metadata_action))
+            .on_action(cx.listener(Self::next_workspace_tab))
+            .on_action(cx.listener(Self::previous_workspace_tab))
+            .on_action(cx.listener(Self::focus_catalog))
+            .on_action(cx.listener(Self::focus_results))
+            .on_action(cx.listener(Self::toggle_results))
+            .on_action(cx.listener(Self::toggle_catalog))
+            .capture_key_down(cx.listener(Self::completion_key_down))
+            .capture_action(cx.listener(Self::completion_move_up))
+            .capture_action(cx.listener(Self::completion_move_down))
+            .capture_action(cx.listener(Self::completion_enter))
+            .capture_action(cx.listener(Self::completion_tab))
+            .capture_action(cx.listener(Self::completion_escape))
+            .on_mouse_move(cx.listener(Self::resize_move))
+            .on_mouse_up(MouseButton::Left, cx.listener(Self::resize_end))
+            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::resize_end))
             .child(
                 div()
-                    .h(px(43.))
+                    .h(px(34.))
                     .flex_shrink_0()
                     .px_4()
                     .flex()
@@ -2122,7 +2242,17 @@ impl Render for Workbench {
                             .flex()
                             .items_center()
                             .gap_3()
-                            .child(div().text_color(rgb(ACCENT)).text_size(px(19.)).child("◈"))
+                            .child(
+                                self.button("toggle-catalog", "☰")
+                                    .tooltip(if self.locale == Locale::Ko {
+                                        "탐색기 표시 · ⌘B"
+                                    } else {
+                                        "Toggle catalog · ⌘B"
+                                    })
+                                    .on_click(cx.listener(|s, _, w, cx| {
+                                        s.toggle_catalog(&ToggleCatalog, w, cx)
+                                    })),
+                            )
                             .child(
                                 div()
                                     .font_weight(FontWeight::SEMIBOLD)
@@ -2171,20 +2301,13 @@ impl Render for Workbench {
                             .text_color(rgb(MUTED))
                             .child(self.recovery_status_label()),
                     )
-                    .child(
-                        div()
-                            .text_size(px(10.))
-                            .text_color(rgb(if self.connection == ConnectionState::Connected {
-                                0x80c7a2
-                            } else {
-                                MUTED
-                            }))
-                            .child(format!(
-                                "{}: {}",
-                                tr(self.locale, Message::Explorer),
-                                self.ui_label(self.connection.label())
-                            )),
-                    ),
+                    .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(
+                        if self.locale == Locale::Ko {
+                            "탐색기: 펼칠 때 조회 · 캐시 사용"
+                        } else {
+                            "Catalog: on-demand · cached"
+                        },
+                    )),
             )
             .into_any_element()
     }
@@ -2215,6 +2338,14 @@ fn main() {
         });
         cx.bind_keys([
             KeyBinding::new("cmd-q", Quit, None),
+            KeyBinding::new("ctrl-tab", NextWorkspaceTab, None),
+            KeyBinding::new("ctrl-shift-tab", PreviousWorkspaceTab, None),
+            KeyBinding::new("cmd-shift-l", FocusCatalog, None),
+            KeyBinding::new("cmd-alt-r", FocusResults, None),
+            KeyBinding::new("cmd-alt-j", ToggleResults, None),
+            KeyBinding::new("cmd-b", ToggleCatalog, None),
+            KeyBinding::new("cmd-.", CancelQuery, None),
+            KeyBinding::new("cmd-.", CancelQuery, Some("Input")),
             KeyBinding::new("cmd-,", OpenPreferences, None),
             KeyBinding::new("cmd-,", OpenPreferences, Some("Input")),
             KeyBinding::new("cmd-shift-m", ReportMetrics, None),
@@ -2223,8 +2354,10 @@ fn main() {
             KeyBinding::new("cmd-enter", RunQuery, Some("Input")),
             KeyBinding::new("cmd-shift-enter", RunCurrent, None),
             KeyBinding::new("cmd-shift-enter", RunCurrent, Some("Input")),
-            KeyBinding::new("cmd-space", CompleteSql, None),
-            KeyBinding::new("cmd-space", CompleteSql, Some("Input")),
+            KeyBinding::new("cmd-j", CompleteSql, None),
+            KeyBinding::new("cmd-j", CompleteSql, Some("Input")),
+            KeyBinding::new("ctrl-space", CompleteSql, None),
+            KeyBinding::new("ctrl-space", CompleteSql, Some("Input")),
             KeyBinding::new("cmd-shift-f", FormatSql, None),
             KeyBinding::new("cmd-o", OpenSqlFile, None),
             KeyBinding::new("cmd-o", OpenSqlFile, Some("Input")),
@@ -2272,7 +2405,8 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                                     let _ = global_window.update(cx, |_, w, cx| {
                                         let _ = weak.update(cx, |s, cx| {
                                             if !$normal_only
-                                                || (s.table_editor.is_none() && s.tools.is_none())
+                                                || (s.active_table_tab.is_none()
+                                                    && s.tools.is_none())
                                             {
                                                 s.$handler(&action, w, cx);
                                             }
@@ -2294,6 +2428,17 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                 fallback_action!(RunCurrent, run_current_action, true);
                 fallback_action!(FormatSql, format_sql_action, true);
                 fallback_action!(CompleteSql, complete_sql_action, true);
+                fallback_action!(
+                    RefreshCompletionMetadata,
+                    refresh_completion_metadata_action,
+                    true
+                );
+                fallback_action!(NextWorkspaceTab, next_workspace_tab, false);
+                fallback_action!(PreviousWorkspaceTab, previous_workspace_tab, false);
+                fallback_action!(FocusCatalog, focus_catalog, false);
+                fallback_action!(FocusResults, focus_results, false);
+                fallback_action!(ToggleResults, toggle_results, true);
+                fallback_action!(ToggleCatalog, toggle_catalog, false);
                 fallback_action!(CancelQuery, cancel_query_action, false);
                 let close_view = view.downgrade();
                 window.on_window_should_close(cx, move |window, cx| {

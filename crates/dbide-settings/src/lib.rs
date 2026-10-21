@@ -14,14 +14,62 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub const MAX_SETTINGS_BYTES: usize = 64 * 1024;
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppSettings {
     pub locale: Locale,
+    pub editor_font_size: u16,
+    pub editor_tab_width: u8,
+    pub table_page_size: u16,
+    pub sidebar_width: u16,
+    pub editor_height: u16,
+}
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            locale: Locale::Ko,
+            editor_font_size: 14,
+            editor_tab_width: 4,
+            table_page_size: 100,
+            sidebar_width: 280,
+            editor_height: 300,
+        }
+    }
+}
+impl AppSettings {
+    pub fn is_valid(&self) -> bool {
+        (10..=24).contains(&self.editor_font_size)
+            && (2..=8).contains(&self.editor_tab_width)
+            && matches!(self.table_page_size, 50 | 100 | 250 | 500)
+            && (180..=480).contains(&self.sidebar_width)
+            && (120..=720).contains(&self.editor_height)
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SettingsChange {
+    Locale(Locale),
+    EditorFontSize(u16),
+    EditorTabWidth(u8),
+    TablePageSize(u16),
+    Layout {
+        sidebar_width: u16,
+        editor_height: u16,
+    },
 }
 #[derive(Serialize, Deserialize)]
 struct Document {
     schema_version: u32,
     locale: Locale,
+    #[serde(default = "default_font_size")]
+    editor_font_size: u16,
+    #[serde(default = "default_tab_width")]
+    editor_tab_width: u8,
+    #[serde(default = "default_page_size")]
+    table_page_size: u16,
+    #[serde(default = "default_sidebar_width")]
+    sidebar_width: u16,
+    #[serde(default = "default_editor_height")]
+    editor_height: u16,
     #[serde(flatten)]
     extra: Map<String, Value>,
 }
@@ -30,8 +78,48 @@ impl Default for Document {
         Self {
             schema_version: SCHEMA_VERSION,
             locale: Locale::Ko,
+            editor_font_size: default_font_size(),
+            editor_tab_width: default_tab_width(),
+            table_page_size: default_page_size(),
+            sidebar_width: default_sidebar_width(),
+            editor_height: default_editor_height(),
             extra: Map::new(),
         }
+    }
+}
+fn default_font_size() -> u16 {
+    AppSettings::default().editor_font_size
+}
+fn default_tab_width() -> u8 {
+    AppSettings::default().editor_tab_width
+}
+fn default_page_size() -> u16 {
+    AppSettings::default().table_page_size
+}
+fn default_sidebar_width() -> u16 {
+    AppSettings::default().sidebar_width
+}
+fn default_editor_height() -> u16 {
+    AppSettings::default().editor_height
+}
+impl Document {
+    fn settings(&self) -> AppSettings {
+        AppSettings {
+            locale: self.locale,
+            editor_font_size: self.editor_font_size,
+            editor_tab_width: self.editor_tab_width,
+            table_page_size: self.table_page_size,
+            sidebar_width: self.sidebar_width,
+            editor_height: self.editor_height,
+        }
+    }
+    fn apply(&mut self, settings: AppSettings) {
+        self.locale = settings.locale;
+        self.editor_font_size = settings.editor_font_size;
+        self.editor_tab_width = settings.editor_tab_width;
+        self.table_page_size = settings.table_page_size;
+        self.sidebar_width = settings.sidebar_width;
+        self.editor_height = settings.editor_height;
     }
 }
 #[derive(Debug)]
@@ -76,25 +164,65 @@ impl SettingsStore {
         &self.path
     }
     pub fn load(&self) -> Result<AppSettings, StoreError> {
-        Ok(AppSettings {
-            locale: self.read_document()?.locale,
-        })
+        Ok(self.read_document()?.settings())
     }
     pub fn save(&self, settings: &AppSettings) -> Result<(), StoreError> {
+        self.update(|current| *current = *settings).map(|_| ())
+    }
+    /// Patch under the writer lock; unrelated settings and unknown JSON survive.
+    pub fn update(&self, patch: impl FnOnce(&mut AppSettings)) -> Result<AppSettings, StoreError> {
         let _lock = self.lock_writer()?;
         // Re-read under the lock: never overwrite a later corrupt/future file or drop unknowns.
         let mut document = self.read_document()?;
-        document.locale = settings.locale;
+        let mut settings = document.settings();
+        patch(&mut settings);
+        if !settings.is_valid() {
+            return Err(StoreError::InvalidData);
+        }
+        document.apply(settings);
         let bytes = serde_json::to_vec(&document).map_err(|_| StoreError::InvalidData)?;
         if bytes.len() > MAX_SETTINGS_BYTES {
             return Err(StoreError::TooLarge);
         }
-        self.write_atomic(&bytes)
+        self.write_atomic(&bytes)?;
+        Ok(settings)
     }
     pub fn set_locale(&self, locale: Locale) -> Result<AppSettings, StoreError> {
-        let settings = AppSettings { locale };
-        self.save(&settings)?;
-        Ok(settings)
+        self.update(|settings| settings.locale = locale)
+    }
+    pub fn apply(&self, change: SettingsChange) -> Result<AppSettings, StoreError> {
+        self.update(|settings| match change {
+            SettingsChange::Locale(value) => settings.locale = value,
+            SettingsChange::EditorFontSize(value) => settings.editor_font_size = value,
+            SettingsChange::EditorTabWidth(value) => settings.editor_tab_width = value,
+            SettingsChange::TablePageSize(value) => settings.table_page_size = value,
+            SettingsChange::Layout {
+                sidebar_width,
+                editor_height,
+            } => {
+                settings.sidebar_width = sidebar_width;
+                settings.editor_height = editor_height;
+            }
+        })
+    }
+    pub fn set_layout(
+        &self,
+        sidebar_width: u16,
+        editor_height: u16,
+    ) -> Result<AppSettings, StoreError> {
+        self.apply(SettingsChange::Layout {
+            sidebar_width,
+            editor_height,
+        })
+    }
+    pub fn set_editor_font_size(&self, value: u16) -> Result<AppSettings, StoreError> {
+        self.update(|settings| settings.editor_font_size = value)
+    }
+    pub fn set_editor_tab_width(&self, value: u8) -> Result<AppSettings, StoreError> {
+        self.update(|settings| settings.editor_tab_width = value)
+    }
+    pub fn set_table_page_size(&self, value: u16) -> Result<AppSettings, StoreError> {
+        self.update(|settings| settings.table_page_size = value)
     }
     fn parent(&self) -> &Path {
         self.path
@@ -125,6 +253,9 @@ impl SettingsStore {
             serde_json::from_slice(&bytes).map_err(|_| StoreError::InvalidData)?;
         if document.schema_version != SCHEMA_VERSION {
             return Err(StoreError::UnsupportedVersion(document.schema_version));
+        }
+        if !document.settings().is_valid() {
+            return Err(StoreError::InvalidData);
         }
         Ok(document)
     }

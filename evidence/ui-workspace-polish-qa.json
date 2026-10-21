@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-22",
+  "base_commit": "f33d522555280ac1eea5554f2a6ea8e8fa07e70f",
+  "scope": "Project-owned profiles, SQLite files and loopback PostgreSQL fixtures only.",
+  "runs": [
+    {
+      "binary_sha256": "a456d6c39120301a2c39d8321c9f0270735a4eb495e50f64b5c104c3cbe9f83a",
+      "passed": [
+        "Aligned field/default/PK grid and targeted items_pkey details rendered.",
+        "PostgreSQL filter id>=101 returned5rows; id DESC returned105..101.",
+        "Two retained table tabs preserved filter and sort; SQL dbide_console_b source/target/result stayed intact."
+      ],
+      "found_for_correction": [
+        "Raw key capture ran after Input actions; completion Down/Enter did not insert.",
+        "Preferences appeared twice inside the table view. Both corrected in later runs."
+      ]
+    },
+    {
+      "binary_sha256": "11ce271d809d5e6d6ad949e8a70ab3013b74468c2405ed3ec6726154c70c6ae7",
+      "passed": [
+        "Cmd+J opened completion at the caret; Down/Enter insertedSELECT; Undo restoredSEL; Esc dismissed without inserting; Tab insertedSELECT. Trace logged handled Input actions without SQL text.",
+        "Startup restored metadata database/schema/table/columns from separate historical file shards without a password. Owned PostgreSQL reported0other client backends.",
+        "Preferences applied font16/tab8/default page50; pressingTab inserted8spaces. Recovery off/on wrotefalse/true; ko/en labels switched.",
+        "Dragged catalog280->350 and editor300->229; both values persisted in app-settings.json.",
+        "New table honored50-row default and paged105rows as50+50+5.",
+        "Opened dbide_fixture.items and dbide_console_b.public.dbide_ui_tabs_b in separate retained tabs; B marker rows were exact, returning to A retained page3 with ids101..105.",
+        "Table-active CmdShiftF/CmdS did not mutate/save hiddenSQL. Returning toSQL preserved exact source and configured target.",
+        "Only one Preferences panel rendered in the table workspace.",
+        "CLI catalog list returned7manifest entries; selected Columns show read2251bytes; subsequent Details shard containeditems_pkey andhistorical:true."
+      ]
+    },
+    {
+      "binary_sha256": "f65d0f597b2eb70ca50e9d48bf47c1967ac6efc164913d24516ed4fa224d5ecd",
+      "passed": [
+        "Restart retained ko/font16/tab8/page50/sidebar350/editor229 and exactSQL without connecting.",
+        "Opening cached fields and then cached index details restoreditems_pkey with historical provenance; owned PostgreSQL again reported0otherclientbackends.",
+        "Existing structure headings and cached detail status switched Korean/English without changing metadata."
+      ],
+      "found_for_correction": [
+        "Narrow SQL result toolbar clipped export actions; later result overflow menu addresses this."
+      ]
+    },
+    {
+      "binary_sha256": "6c7a47afeeb0f52bc004c5566053e1bbe7995e5dd0e3b7f010988a8831406678",
+      "unsigned_release_sha256": "a52109806b9eeb41d014c445c49aaf48f22cf38c16fb5accd171ca0580501fb3",
+      "scope": "Final overflow-menu build after the full interaction runs above.",
+      "passed": [
+        "Restored database/schema/table/column/index metadata from private file shards without entering credentials.",
+        "A narrow SQL result toolbar exposes Import preview, JSON and CSV through one overflow menu; all three entries were visible.",
+        "Saved final native screenshot includes structured fields, identity/default values, index and PK details with historical provenance."
+      ]
+    }
+  ],
+  "fixture_note": "Cross-database marker setup is fixtures/postgres/ui-table-tabs-b.sql applied only to dbide_console_b. No production databases accessed.",
+  "limits": [
+    "Row Apply remains disabled.",
+    "Physical Korean IME, full VoiceOver and every viewport remain unverified.",
+    "Native in-flight table-to-table cancellation timing was not separately exercised; operation ownership and stale rejection have pure tests and source review.",
+    "PostgreSQL server filter/sort does not imply equivalent generic-query/MySQL/SQLite features.",
+    "Historical metadata is browsing data, never current edit identity or a connection credential.",
+    "Table tabs retain in-process view state; only SQL documents have restart recovery in this checkpoint."
+  ],
+  "final_screenshot": {
+    "local_path": "outputs/ux-polish-2026-10-22/05-final-workspace.png",
+    "sha256": "0d0a3f702d2f6ba229134da465c2f9354101467ecd026fc32434f21da53fc9ca",
+    "distribution": "Local-only screenshot of project-owned fixture metadata."
+  }
+}

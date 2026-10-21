@@ -66,11 +66,26 @@ enum Command {
     Query(Query),
     /// Read server catalogs as JSON using a temporary connection.
     Schema(Schema),
+    /// Read saved catalog metadata from disk. No database connection or authentication.
+    #[command(
+        after_help = "Examples:\n  dbide --config ./profiles.json catalog list\n  dbide --config ./profiles.json catalog show SHARD_ID\n\nCopy an exact shard_id from list. Reads only historical files in the selected profiles directory's catalog-cache; it never refreshes the database."
+    )]
+    Catalog {
+        #[command(subcommand)]
+        command: CatalogCommand,
+    },
     /// Offline SQL tools; no database connection or profile access.
     Sql {
         #[command(subcommand)]
         command: SqlCommand,
     },
+}
+#[derive(Subcommand)]
+enum CatalogCommand {
+    /// Print bounded manifest summaries without reading shard payloads.
+    List,
+    /// Print one manifest-listed historical snapshot; use an exact ID from catalog list.
+    Show { shard_id: String },
 }
 #[derive(Subcommand)]
 enum ProfileCommand {
@@ -489,6 +504,13 @@ fn run(cli: Cli, cancelled: &AtomicBool) -> Result<()> {
         println!("{}", value.locale.code());
         return Ok(());
     }
+    if let Command::Catalog { command } = cli.command {
+        let profile_path = match cli.config {
+            Some(path) => path,
+            None => ProfileStore::default_path().map_err(config)?,
+        };
+        return catalog(profile_path, command);
+    }
     let store = store(cli.config)?;
     match cli.command {
         Command::Profiles { command } => match command {
@@ -566,8 +588,50 @@ fn run(cli: Cli, cancelled: &AtomicBool) -> Result<()> {
         },
         Command::Query(q) => query(&store, q, cancelled),
         Command::Schema(s) => schema(&store, s, cancelled),
+        Command::Catalog { .. } => unreachable!(),
         Command::Sql { .. } => unreachable!(),
     }
+}
+fn catalog(profile_path: PathBuf, command: CatalogCommand) -> Result<()> {
+    let parent = profile_path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut store = dbide_catalog_store::Store::new(parent.join("catalog-cache"));
+    let value = match command {
+        CatalogCommand::List => {
+            serde_json::to_value(store.list().map_err(config)?).map_err(config)?
+        }
+        CatalogCommand::Show { shard_id } => {
+            let valid = shard_id.strip_suffix(".json").is_some_and(|hash| {
+                hash.len() == 64
+                    && hash
+                        .bytes()
+                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+            });
+            if !valid {
+                return Err(config(
+                    "invalid catalog shard ID; use the exact ID from catalog list, not a path",
+                ));
+            }
+            let (key, snapshot) =
+                store
+                    .read_by_id(&shard_id)
+                    .map_err(config)?
+                    .ok_or_else(|| {
+                        config("catalog shard unavailable; use catalog list to check its exact ID")
+                    })?;
+            serde_json::json!({"shard_id":shard_id,"historical":true,"key":key,"snapshot":snapshot})
+        }
+    };
+    let bytes = serde_json::to_vec_pretty(&value).map_err(config)?;
+    output::publish(
+        &Destination {
+            output: None,
+            force: false,
+        },
+        &bytes,
+    )
 }
 fn submit(e: dbide_bridge::BridgeSubmitError) -> Failure {
     Failure::new(4, format!("bridge rejected request: {e:?}"))

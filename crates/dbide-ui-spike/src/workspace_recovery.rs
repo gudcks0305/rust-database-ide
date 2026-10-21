@@ -196,6 +196,13 @@ impl Workbench {
             let id = model.id;
             let editor = cx.new(|cx| {
                 let mut e = EditorState::new(window, cx).language("sql");
+                e.set_tab_size(
+                    gpui_component::input::TabSize {
+                        tab_size: self.app_settings.editor_tab_width as usize,
+                        hard_tabs: false,
+                    },
+                    cx,
+                );
                 e.set_value(sql, window, cx);
                 e
             });
@@ -281,7 +288,7 @@ impl Workbench {
         self.recovery.preference_busy = true;
         cx.spawn_in(window,async move|view,cx|{
             let result=cx.background_executor().spawn(async move{{if let Some(parent)=path.parent(){let mut builder=std::fs::DirBuilder::new();builder.recursive(true);#[cfg(unix)]{use std::os::unix::fs::DirBuilderExt;builder.mode(0o700);}builder.create(parent)?;}dbide_ui_spike::write_atomic(&path,|out|{serde_json::to_writer(out,&Preferences{enabled}).map_err(std::io::Error::other)})}}).await;
-            let _=view.update_in(cx,|s,w,cx|{s.recovery.busy=false;s.recovery.preference_busy=false;match result{Ok(())=>{s.recovery.enabled=enabled;s.recovery.saved=None;s.recovery.status=if enabled{"SQL drafts are saved locally in a 0600 file. SQL may contain sensitive values; source .sql files are not auto-saved."}else{"SQL recovery disabled. The prior recovery snapshot remains local and is not restored while disabled."}.into();s.recovery_tick(true,w,cx);},Err(error)=>s.diagnostic=Some(Diagnostic::new(("Recovery setting was not saved".into(),error.to_string(),"Current recovery preference remains unchanged.".into())))}cx.notify();});
+            let _=view.update_in(cx,|s,w,cx|{s.recovery.busy=false;s.recovery.preference_busy=false;match result{Ok(())=>{s.recovery.enabled=enabled;s.recovery.saved=None;s.recovery.status=if enabled{"SQL drafts are saved locally in a 0600 file. SQL may contain sensitive values; source .sql files are not auto-saved."}else{"SQL recovery disabled. The prior recovery snapshot remains local and is not restored while disabled."}.into();s.recovery_tick(true,w,cx);},Err(error)=>s.diagnostic=Some(Diagnostic::new(("Recovery setting was not saved".into(),error.to_string(),"Current recovery preference remains unchanged.".into())))}s.sync_preferences(cx);cx.notify();});
         }).detach();
     }
     pub(super) fn flush_recovery_and_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {

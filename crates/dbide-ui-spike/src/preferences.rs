@@ -282,6 +282,59 @@ impl Workbench {
             }
         }
     }
+    fn apply_app_settings(
+        &mut self,
+        settings: dbide_settings::AppSettings,
+        cx: &mut Context<Self>,
+    ) {
+        self.locale = settings.locale;
+        let dragging_layout = self.resize_drag.map(|_| {
+            (
+                self.app_settings.sidebar_width,
+                self.app_settings.editor_height,
+            )
+        });
+        self.app_settings = settings;
+        if let Some((width, height)) = dragging_layout {
+            self.app_settings.sidebar_width = width;
+            self.app_settings.editor_height = height;
+        }
+        for doc in &self.documents {
+            doc.editor.update(cx, |editor, cx| {
+                editor.set_tab_size(
+                    gpui_component::input::TabSize {
+                        tab_size: settings.editor_tab_width as usize,
+                        hard_tabs: false,
+                    },
+                    cx,
+                )
+            });
+        }
+        for tab in &self.table_tabs {
+            tab.editor
+                .update(cx, |editor, cx| editor.set_locale(settings.locale, cx));
+        }
+        if let Some(tools) = &self.tools {
+            tools.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+        }
+        if let Some(inspector) = &self.structure {
+            inspector.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+        }
+        self.menu_state = None;
+        self.settings_error = None;
+        self.sync_preferences(cx);
+    }
+    pub(super) fn sync_preferences(&self, cx: &mut Context<Self>) {
+        if let Some(panel) = &self.preferences {
+            let available = !self.recovery.loading
+                && !self.recovery.preference_busy
+                && (!self.recovery.blocked || self.recovery.enabled);
+            panel.update(cx, |panel, cx| {
+                panel.set_settings(self.app_settings, cx);
+                panel.set_recovery_state(self.recovery.enabled, available, cx);
+            });
+        }
+    }
     pub(super) fn init_settings(&mut self, cx: &mut Context<Self>) {
         let path = self
             .store
@@ -303,19 +356,7 @@ impl Workbench {
             let _ = view.update(cx, |s, cx| {
                 s.settings_busy = false;
                 match result {
-                    Ok(settings) => {
-                        s.locale = settings.locale;
-                        if let Some(editor) = &s.table_editor {
-                            editor.update(cx, |editor, cx| editor.set_locale(settings.locale, cx));
-                        }
-                        if let Some(tools) = &s.tools {
-                            tools.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
-                        }
-                        s.menu_state = None;
-                        if let Some(panel) = &s.preferences {
-                            panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
-                        }
-                    }
+                    Ok(settings) => s.apply_app_settings(settings, cx),
                     Err(error) => s.settings_error = Some(error.to_string()),
                 }
                 s.start_settings_write(cx);
@@ -330,29 +371,54 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let locale = self.locale;
-        let panel = cx.new(|cx| dbide_preferences_ui::PreferencesPanel::new(locale, window, cx));
+        let panel =
+            cx.new(|cx| dbide_preferences_ui::PreferencesPanel::new(self.locale, window, cx));
         self._subscriptions
-            .push(cx.subscribe(&panel, |s, source, event, cx| {
+            .push(cx.subscribe_in(&panel, window, |s, source, event, w, cx| {
                 if s.preferences
                     .as_ref()
                     .is_none_or(|p| p.entity_id() != source.entity_id())
                 {
                     return;
                 }
-                let dbide_preferences_ui::PreferencesEvent::LocaleChosen(locale) = event;
-                s.settings_pending = Some(*locale);
-                s.start_settings_write(cx);
-                cx.notify();
+                use dbide_preferences_ui::PreferencesEvent as E;
+                use dbide_settings::SettingsChange as C;
+                let change = match event {
+                    E::LocaleChosen(locale) => C::Locale(*locale),
+                    E::FontSizeChosen(size) => C::EditorFontSize(*size),
+                    E::TabWidthChosen(width) => C::EditorTabWidth(*width),
+                    E::PageSizeChosen(size) => C::TablePageSize(*size),
+                    E::RecoveryChosen(enabled) => {
+                        if *enabled != s.recovery.enabled {
+                            s.toggle_recovery(w, cx);
+                        }
+                        s.sync_preferences(cx);
+                        return;
+                    }
+                };
+                s.queue_settings_change(change, cx);
             }));
         self.preferences = Some(panel);
+        self.sync_preferences(cx);
+        cx.notify();
+    }
+    pub(super) fn queue_settings_change(
+        &mut self,
+        change: dbide_settings::SettingsChange,
+        cx: &mut Context<Self>,
+    ) {
+        // Keep at most the newest queued mutation of each kind while I/O runs.
+        self.settings_pending
+            .retain(|old| std::mem::discriminant(old) != std::mem::discriminant(&change));
+        self.settings_pending.push_back(change);
+        self.start_settings_write(cx);
         cx.notify();
     }
     fn start_settings_write(&mut self, cx: &mut Context<Self>) {
         if self.settings_busy {
             return;
         }
-        let Some(locale) = self.settings_pending.take() else {
+        let Some(change) = self.settings_pending.pop_front() else {
             return;
         };
         let Some(store) = self.settings_store.clone() else {
@@ -363,25 +429,12 @@ impl Workbench {
         cx.spawn(async move |view, cx| {
             let result = cx
                 .background_executor()
-                .spawn(async move { store.set_locale(locale) })
+                .spawn(async move { store.apply(change) })
                 .await;
             let _ = view.update(cx, |s, cx| {
                 s.settings_busy = false;
                 match result {
-                    Ok(settings) => {
-                        s.locale = settings.locale;
-                        if let Some(editor) = &s.table_editor {
-                            editor.update(cx, |editor, cx| editor.set_locale(settings.locale, cx));
-                        }
-                        if let Some(tools) = &s.tools {
-                            tools.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
-                        }
-                        s.menu_state = None;
-                        s.settings_error = None;
-                        if let Some(panel) = &s.preferences {
-                            panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
-                        }
-                    }
+                    Ok(settings) => s.apply_app_settings(settings, cx),
                     Err(error) => s.settings_error = Some(error.to_string()),
                 }
                 s.start_settings_write(cx);

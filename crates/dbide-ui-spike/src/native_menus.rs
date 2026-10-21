@@ -14,8 +14,8 @@ pub(super) fn menus(locale: Locale, normal: bool, can_run: bool, cancellable: bo
             ),
         ]),
         Menu::new(tr(locale, Message::MenuFile)).items([
-            MenuItem::action(tr(locale, Message::NewConsole), NewSqlFile).disabled(!normal),
-            MenuItem::action(tr(locale, Message::Open), OpenSqlFile).disabled(!normal),
+            MenuItem::action(tr(locale, Message::NewConsole), NewSqlFile),
+            MenuItem::action(tr(locale, Message::Open), OpenSqlFile),
             MenuItem::separator(),
             MenuItem::action(tr(locale, Message::Save), SaveSqlFile).disabled(!normal),
             MenuItem::action(
@@ -60,6 +60,78 @@ pub(super) fn menus(locale: Locale, normal: bool, can_run: bool, cancellable: bo
                 CompleteSql,
             )
             .disabled(!normal),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "현재 콘솔 완성 메타데이터 새로고침"
+                } else {
+                    "Refresh current console completion metadata"
+                },
+                RefreshCompletionMetadata,
+            )
+            .disabled(!normal),
+        ]),
+        Menu::new(if locale == Locale::Ko {
+            "이동"
+        } else {
+            "Navigate"
+        })
+        .items([
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "다음 탭"
+                } else {
+                    "Next tab"
+                },
+                NextWorkspaceTab,
+            ),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "이전 탭"
+                } else {
+                    "Previous tab"
+                },
+                PreviousWorkspaceTab,
+            ),
+            MenuItem::separator(),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "탐색기로 이동"
+                } else {
+                    "Focus database explorer"
+                },
+                FocusCatalog,
+            ),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "결과로 이동"
+                } else {
+                    "Focus results"
+                },
+                FocusResults,
+            ),
+        ]),
+        Menu::new(if locale == Locale::Ko {
+            "보기"
+        } else {
+            "View"
+        })
+        .items([
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "탐색기 표시 전환"
+                } else {
+                    "Toggle database explorer"
+                },
+                ToggleCatalog,
+            ),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "결과 표시 전환"
+                } else {
+                    "Toggle results"
+                },
+                ToggleResults,
+            ),
         ]),
     ]
 }
@@ -68,8 +140,24 @@ mod tests {
     use super::*;
     #[::core::prelude::v1::test]
     fn native_query_menu_never_admits_run_or_cancel_when_unavailable() {
+        let table_view = menus(Locale::En, false, false, false);
+        for item in table_view[1].items.iter().take(2) {
+            assert!(matches!(
+                item,
+                MenuItem::Action {
+                    disabled: false,
+                    ..
+                }
+            ));
+        }
+        for index in [3, 4] {
+            assert!(matches!(
+                table_view[1].items[index],
+                MenuItem::Action { disabled: true, .. }
+            ));
+        }
         let menus = menus(Locale::En, true, false, false);
-        assert_eq!(menus.len(), 3);
+        assert_eq!(menus.len(), 5);
         for item in menus[2].items.iter().take(3) {
             assert!(matches!(item, MenuItem::Action { disabled: true, .. }));
         }

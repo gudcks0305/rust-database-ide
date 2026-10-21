@@ -1307,12 +1307,25 @@ name = "dbide-catalog-cache"
 version = "0.1.0"
 
 [[package]]
+name = "dbide-catalog-store"
+version = "0.1.0"
+dependencies = [
+ "dbide-schema",
+ "libc",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+]
+
+[[package]]
 name = "dbide-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
  "ctrlc",
  "dbide-bridge",
+ "dbide-catalog-store",
  "dbide-credentials",
  "dbide-data",
  "dbide-driver-api",
@@ -1424,6 +1437,7 @@ name = "dbide-preferences-ui"
 version = "0.1.0"
 dependencies = [
  "dbide-i18n",
+ "dbide-settings",
  "gpui-component",
  "gpui-pre",
 ]
@@ -1527,6 +1541,7 @@ version = "0.1.0"
 dependencies = [
  "dbide-bridge",
  "dbide-catalog-cache",
+ "dbide-catalog-store",
  "dbide-credentials",
  "dbide-data",
  "dbide-i18n",

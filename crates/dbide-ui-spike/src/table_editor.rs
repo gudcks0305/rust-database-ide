@@ -1,7 +1,11 @@
 use super::*;
-use dbide_data::{Cell, Edit, InsertValue};
-use dbide_ui_spike::table_edit_model::{PAGE_ROWS, Staging, VerifiedTable, cell_text};
+use dbide_data::{
+    Cell, Edit, FilterOperator, InsertValue, SortDirection, TABLE_PAGE_SIZES, TableFilter,
+    TableQuery, TableSort,
+};
+use dbide_ui_spike::table_edit_model::{Staging, VerifiedTable, cell_text};
 use gpui_component::input::{Textarea, TextareaState};
+use gpui_component::menu::{DropdownMenu, PopupMenuItem};
 
 // Keep application captions separate from backend data so locale changes can redraw
 // existing statuses without rewriting SQL, cell contents, identifiers or diagnostics.
@@ -86,6 +90,15 @@ struct Field {
     null: bool,
     default: bool,
 }
+struct QueryField {
+    column: Option<usize>,
+    operator: FilterOperator,
+    input: Entity<InputState>,
+    _subscription: Subscription,
+}
+fn query_text(locale: Locale, ko: &'static str, en: &'static str) -> &'static str {
+    if locale == Locale::Ko { ko } else { en }
+}
 pub struct TableEditor {
     locale: Locale,
     request: ConnectionRequest,
@@ -105,6 +118,12 @@ pub struct TableEditor {
     capture_id: u64,
     form_revision: u64,
     page: usize,
+    query: TableQuery,
+    query_fields: Vec<QueryField>,
+    query_sort: Option<TableSort>,
+    query_page_size: usize,
+    query_pending: bool,
+    read_controls_enabled: bool,
     error: Option<TableText>,
     status: TableText,
     search: Entity<InputState>,
@@ -114,6 +133,10 @@ pub struct TableEditor {
 }
 impl EventEmitter<TableEditorEvent> for TableEditor {}
 impl TableEditor {
+    pub(super) fn focus_results(&self, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus(&self.grid.focus_handle(cx), cx);
+    }
+
     #[allow(dead_code)] // Compatibility constructor; the locale-aware host uses new_with_locale.
     pub fn new(
         request: ConnectionRequest,
@@ -185,6 +208,12 @@ impl TableEditor {
             capture_id: 0,
             form_revision: 0,
             page: 0,
+            query: TableQuery::default(),
+            query_fields: vec![],
+            query_sort: None,
+            query_page_size: 100,
+            query_pending: false,
+            read_controls_enabled: true,
             error: None,
             status: Message::CapturingTableMetadata.into(),
             search: cx.new(|cx| {
@@ -196,6 +225,37 @@ impl TableEditor {
         };
         state.capture(false, window, cx);
         state
+    }
+    pub fn set_read_controls_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.read_controls_enabled = enabled;
+        cx.notify();
+    }
+    pub fn rebind_readonly(
+        &mut self,
+        request: ConnectionRequest,
+        revision: u64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.token = TableToken {
+            profile: request.profile.clone(),
+            connection_revision: revision,
+            row_execution: None,
+        };
+        self.request = request;
+        self.read_controls_enabled = true;
+        self.capture(false, window, cx);
+    }
+    /// Call immediately after construction to choose the initial bounded read size.
+    pub fn set_page_size_default(&mut self, size: usize, cx: &mut Context<Self>) {
+        if self.phase == Phase::Capturing
+            && self.metadata.is_none()
+            && TABLE_PAGE_SIZES.contains(&size)
+        {
+            self.query.page_size = size;
+            self.query_page_size = size;
+            cx.notify();
+        }
     }
     pub fn set_locale(&mut self, locale: Locale, cx: &mut Context<Self>) {
         self.locale = locale;
@@ -392,7 +452,29 @@ impl TableEditor {
                                 },
                             ));
                         }
-                        let sql = metadata.select_sql(s.page);
+                        // Filter indices belong to this exact capture. Never silently rebind
+                        // them when a column is dropped, reordered or changes type.
+                        if s.metadata
+                            .as_ref()
+                            .is_some_and(|old| old.table.columns != metadata.table.columns)
+                        {
+                            s.query = TableQuery {
+                                page_size: s.query.page_size,
+                                ..TableQuery::default()
+                            };
+                            s.query_fields.clear();
+                            s.query_sort = None;
+                            s.query_page_size = s.query.page_size;
+                            s.query_pending = false;
+                            s.page = 0;
+                        }
+                        let sql = match metadata.select_sql_with_query(s.page, &s.query) {
+                            Ok(sql) => sql,
+                            Err(error) => {
+                                s.fail(error, cx);
+                                return;
+                            }
+                        };
                         s.metadata = Some(metadata);
                         s.phase = Phase::Reading;
                         s.status = Message::ReadingTablePage.into();
@@ -770,8 +852,73 @@ impl TableEditor {
         }
         cx.notify();
     }
+    fn add_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.read_controls_enabled
+            || self.busy()
+            || self.query_fields.len() >= dbide_data::MAX_TABLE_FILTERS
+        {
+            return;
+        }
+        let input = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(query_text(self.locale, "값", "Value"))
+        });
+        let subscription = cx.subscribe(&input, |s, _, event, cx| {
+            if matches!(event, InputEvent::Change) {
+                s.query_pending = true;
+                cx.notify();
+            }
+        });
+        self.query_fields.push(QueryField {
+            column: Some(0),
+            operator: FilterOperator::Equal,
+            input,
+            _subscription: subscription,
+        });
+        self.query_pending = true;
+        cx.notify();
+    }
+    fn apply_query(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.read_controls_enabled || self.busy() {
+            return;
+        }
+        let Some(metadata) = self.metadata.as_ref() else {
+            return;
+        };
+        let filters = self
+            .query_fields
+            .iter()
+            .filter_map(|field| field.column.map(|column| (field, column)))
+            .map(|(field, column)| {
+                Ok(TableFilter {
+                    column,
+                    operator: field.operator,
+                    value: if field.operator.needs_value() {
+                        metadata.cell_from_input(column, &field.input.read(cx).value(), false)?
+                    } else {
+                        Cell::Null
+                    },
+                })
+            })
+            .collect::<Result<Vec<_>, String>>();
+        let candidate = filters.map(|filters| TableQuery {
+            filters,
+            sort: self.query_sort,
+            page_size: self.query_page_size,
+        });
+        match candidate.and_then(|query| metadata.select_sql_with_query(0, &query).map(|_| query)) {
+            Ok(query) => {
+                self.query = query;
+                self.query_pending = false;
+                self.reload(0, window, cx);
+            }
+            Err(error) => {
+                self.error = Some(error.into());
+                cx.notify();
+            }
+        }
+    }
     fn reload(&mut self, page: usize, window: &mut Window, cx: &mut Context<Self>) {
-        if self.busy() || window.has_active_prompt() {
+        if !self.read_controls_enabled || self.busy() || window.has_active_prompt() {
             return;
         }
         if self.has_unsaved(cx) {
@@ -847,6 +994,281 @@ impl TableEditor {
         }
         cx.notify();
     }
+    fn query_toolbar(&self, cx: &mut Context<Self>) -> Div {
+        let locale = self.locale;
+        let busy = self.busy() || !self.read_controls_enabled;
+        let columns = self
+            .metadata
+            .as_ref()
+            .map(|m| {
+                m.table
+                    .columns
+                    .iter()
+                    .map(|c| (c.name.clone(), c.data_type.clone()))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let sort_label = self
+            .query_sort
+            .and_then(|sort| {
+                columns.get(sort.column).map(|c| {
+                    format!(
+                        "{} {}",
+                        c.0,
+                        if sort.direction == SortDirection::Ascending {
+                            "↑"
+                        } else {
+                            "↓"
+                        }
+                    )
+                })
+            })
+            .unwrap_or_else(|| query_text(locale, "기본 정렬", "Default order").into());
+        let weak = cx.weak_entity();
+        let sort_columns = columns.clone();
+        let sort = Button::new("table-sort-column")
+            .small()
+            .label(format!("{sort_label} ▾"))
+            .disabled(busy || columns.is_empty())
+            .dropdown_menu(move |mut menu, _, _| {
+                let reset = weak.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(query_text(locale, "기본 정렬", "Default order")).on_click(
+                        move |_, _, cx| {
+                            let _ = reset.update(cx, |s, cx| {
+                                s.query_sort = None;
+                                s.query_pending = true;
+                                cx.notify();
+                            });
+                        },
+                    ),
+                );
+                for (index, (name, _)) in sort_columns.iter().enumerate() {
+                    for direction in [SortDirection::Ascending, SortDirection::Descending] {
+                        let weak = weak.clone();
+                        menu = menu.item(
+                            PopupMenuItem::new(format!(
+                                "{} {}",
+                                name,
+                                if direction == SortDirection::Ascending {
+                                    "↑ ASC"
+                                } else {
+                                    "↓ DESC"
+                                }
+                            ))
+                            .on_click(move |_, _, cx| {
+                                let _ = weak.update(cx, |s, cx| {
+                                    s.query_sort = Some(TableSort {
+                                        column: index,
+                                        direction,
+                                    });
+                                    s.query_pending = true;
+                                    cx.notify();
+                                });
+                            }),
+                        );
+                    }
+                }
+                menu
+            });
+        let weak = cx.weak_entity();
+        let page_size = Button::new("table-page-size")
+            .small()
+            .label(format!(
+                "{} {} ▾",
+                self.query_page_size,
+                query_text(locale, "행", "rows")
+            ))
+            .disabled(busy)
+            .dropdown_menu(move |mut menu, _, _| {
+                for size in TABLE_PAGE_SIZES {
+                    let weak = weak.clone();
+                    menu = menu.item(PopupMenuItem::new(size.to_string()).on_click(
+                        move |_, _, cx| {
+                            let _ = weak.update(cx, |s, cx| {
+                                s.query_page_size = size;
+                                s.query_pending = true;
+                                cx.notify();
+                            });
+                        },
+                    ));
+                }
+                menu
+            });
+        let mut toolbar = div()
+            .px_3()
+            .py_2()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .bg(rgb(PANEL))
+            .border_b_1()
+            .border_color(rgb(BORDER))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .text_size(px(10.))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(rgb(MUTED))
+                            .child(query_text(locale, "서버 조회", "SERVER QUERY")),
+                    )
+                    .child(
+                        Self::button("table-add-filter", query_text(locale, "+ 필터", "+ Filter"))
+                            .disabled(
+                                busy || columns.is_empty()
+                                    || self.query_fields.len() >= dbide_data::MAX_TABLE_FILTERS,
+                            )
+                            .on_click(cx.listener(|s, _, w, cx| s.add_filter(w, cx))),
+                    )
+                    .child(sort)
+                    .child(page_size)
+                    .child(div().flex_1())
+                    .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(
+                        if self.query_pending {
+                            query_text(
+                                locale,
+                                "변경 대기 · 적용 시 첫 페이지",
+                                "Pending · apply starts page 1",
+                            )
+                        } else {
+                            query_text(
+                                locale,
+                                "필터 AND 결합 · 읽기 전용",
+                                "Filters use AND · read only",
+                            )
+                        },
+                    ))
+                    .child(
+                        Self::button(
+                            "table-apply-query",
+                            query_text(locale, "조회 적용", "Apply query"),
+                        )
+                        .primary()
+                        .disabled(busy || self.metadata.is_none())
+                        .on_click(cx.listener(|s, _, w, cx| s.apply_query(w, cx))),
+                    )
+                    .child(
+                        Self::button("table-clear-query", query_text(locale, "초기화", "Reset"))
+                            .disabled(busy || self.metadata.is_none())
+                            .on_click(cx.listener(|s, _, w, cx| {
+                                s.query_fields.clear();
+                                s.query_sort = None;
+                                s.query_pending = true;
+                                s.apply_query(w, cx);
+                            })),
+                    ),
+            );
+        for (index, field) in self.query_fields.iter().enumerate() {
+            let label = field
+                .column
+                .and_then(|ix| columns.get(ix))
+                .map(|c| format!("{} · {}", c.0, c.1))
+                .unwrap_or_else(|| query_text(locale, "열 선택", "Choose column").into());
+            let choices = columns.clone();
+            let weak = cx.weak_entity();
+            let column = Button::new(("table-filter-column", index))
+                .small()
+                .label(format!("{label} ▾"))
+                .disabled(busy)
+                .dropdown_menu(move |mut menu, _, _| {
+                    for (column, (name, ty)) in choices.iter().enumerate() {
+                        let weak = weak.clone();
+                        menu = menu.item(PopupMenuItem::new(format!("{name} · {ty}")).on_click(
+                            move |_, _, cx| {
+                                let _ = weak.update(cx, |s, cx| {
+                                    if let Some(field) = s.query_fields.get_mut(index) {
+                                        field.column = Some(column);
+                                        s.query_pending = true;
+                                        cx.notify();
+                                    }
+                                });
+                            },
+                        ));
+                    }
+                    menu
+                });
+            let weak = cx.weak_entity();
+            let operator = Button::new(("table-filter-operator", index))
+                .small()
+                .label(format!("{} ▾", field.operator.label()))
+                .disabled(busy)
+                .dropdown_menu(move |mut menu, _, _| {
+                    for operator in FilterOperator::ALL {
+                        let weak = weak.clone();
+                        menu = menu.item(PopupMenuItem::new(operator.label()).on_click(
+                            move |_, _, cx| {
+                                let _ = weak.update(cx, |s, cx| {
+                                    if let Some(field) = s.query_fields.get_mut(index) {
+                                        field.operator = operator;
+                                        s.query_pending = true;
+                                        cx.notify();
+                                    }
+                                });
+                            },
+                        ));
+                    }
+                    menu
+                });
+            toolbar = toolbar.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .w(px(26.))
+                            .text_size(px(10.))
+                            .text_color(rgb(MUTED))
+                            .child(if index == 0 { "WHERE" } else { "AND" }),
+                    )
+                    .child(column)
+                    .child(operator)
+                    .child(
+                        div().flex_1().min_w_0().child(
+                            Input::new(&field.input)
+                                .small()
+                                .aria_label(format!(
+                                    "{} {}",
+                                    query_text(locale, "서버 필터 값", "Server filter value"),
+                                    index + 1
+                                ))
+                                .disabled(busy || !field.operator.needs_value()),
+                        ),
+                    )
+                    .child(
+                        Button::new(("remove-table-filter", index))
+                            .small()
+                            .label("×")
+                            .disabled(busy)
+                            .tooltip(query_text(locale, "필터 제거", "Remove filter"))
+                            .on_click(cx.listener(move |s, _, _, cx| {
+                                if index < s.query_fields.len() {
+                                    s.query_fields.remove(index);
+                                    s.query_pending = true;
+                                    cx.notify();
+                                }
+                            })),
+                    ),
+            );
+        }
+        if self.metadata.as_ref().is_some_and(|m| {
+            m.table.primary_key.is_none()
+                && m.spec.as_ref().is_none_or(|spec| spec.identity.is_none())
+        }) {
+            toolbar = toolbar.child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(
+                query_text(
+                    locale,
+                    "기본 키 없음 · 동일 정렬값의 페이지 순서는 보장되지 않음",
+                    "No primary key · tied rows may change page order",
+                ),
+            ));
+        }
+        toolbar
+    }
     fn button(id: &'static str, label: &'static str) -> Button {
         Button::new(id).label(label).small()
     }
@@ -858,12 +1280,18 @@ impl Render for TableEditor {
             self.search.update(cx, |input, cx| {
                 input.set_placeholder(tr(locale, Message::FindLoadedPage), window, cx)
             });
+            for field in &self.query_fields {
+                field.input.update(cx, |input, cx| {
+                    input.set_placeholder(query_text(locale, "값", "Value"), window, cx)
+                });
+            }
             self.search_locale = locale;
         }
         let status = self.status.render(locale);
+        let query_toolbar = self.query_toolbar(cx);
         let edit_controls = false; // M1 viewer: row writes await the M2 execution validation gate.
         let editable = edit_controls && self.editable();
-        let busy = self.busy();
+        let busy = self.busy() || !self.read_controls_enabled;
         let mut form = div()
             .id("table-row-form")
             .w(px(360.))
@@ -1065,9 +1493,15 @@ impl Render for TableEditor {
                         .border_b_1()
                         .border_color(rgb(BORDER))
                         .child(
+                            div()
+                                .text_size(px(10.))
+                                .text_color(rgb(MUTED))
+                                .child(query_text(locale, "읽기 전용", "READ ONLY")),
+                        )
+                        .child(
                             Self::button("reload-table", tr(locale, Message::Reload))
                                 .disabled(busy)
-                                .on_click(cx.listener(|s, _, w, cx| s.reload(s.page, w, cx))),
+                                .on_click(cx.listener(|s, _, w, cx| s.reload(0, w, cx))),
                         )
                         .child(
                             Self::button("previous-page", tr(locale, Message::PreviousPage))
@@ -1079,11 +1513,22 @@ impl Render for TableEditor {
                         .child(
                             Self::button("next-page", tr(locale, Message::NextPage))
                                 .disabled(
-                                    busy || self.grid.read(cx).delegate().row_count() < PAGE_ROWS,
+                                    busy || self.grid.read(cx).delegate().row_count()
+                                        < self.query.page_size,
                                 )
                                 .on_click(cx.listener(|s, _, w, cx| {
                                     s.reload(s.page.saturating_add(1), w, cx)
                                 })),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(10.))
+                                .text_color(rgb(MUTED))
+                                .child(format!(
+                                    "{} {}",
+                                    query_text(locale, "페이지", "Page"),
+                                    self.page + 1
+                                )),
                         )
                         .when(edit_controls, |el| {
                             el.child(
@@ -1105,6 +1550,7 @@ impl Render for TableEditor {
                                 .on_click(cx.listener(|s, _, w, cx| s.find(w, cx))),
                         ),
                 )
+                .child(query_toolbar)
                 .child(
                     div()
                         .flex_1()

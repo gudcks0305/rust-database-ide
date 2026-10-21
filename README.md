@@ -15,7 +15,8 @@ DataGrip의 주요 작업 흐름을 Rust 데스크톱 앱으로 독립 재구현
 - **제품 전체·M1–M6 전체 완성·DataGrip 성능 우위는 아직 달성하지 않음.**
 
 데이터베이스 트리의 지연 조회·캐시 연동과 도구 패널 한·영 전환을 반영했다.
-테이블 화면 통합 검증, 자동완성 메타데이터 갱신, 키보드 작업 흐름을 계속 보강 중이다.
+테이블 문서 탭, 서버 필터·정렬, 공간 크기 조절, 자동완성 키보드 조작과 메타데이터 갱신을 추가했다.
+메타데이터는 private JSON 파일로 나눠 저장하며, 펼친 객체만 부분적으로 읽는다. CLI `catalog list/show`도 제공한다.
 [UX 조사](docs/UX-RESEARCH.md)와 [제품 backlog](docs/PRODUCT-BACKLOG.md)에
 구현 상태와 검증 조건을 분리해 기록한다.
 
@@ -69,6 +70,11 @@ cargo run -p dbide-cli --bin dbide -- config language set en
 
 별도 프로필 파일을 쓰면 GUI와 CLI에 동일한 설정 위치를 지정해야 한다.
 CLI의 도움말과 원본 DB 오류, 일부 공용 UI 구성 요소는 아직 영어다.
+
+자동완성은 `⌘J`(또는 OS가 가로채지 않는 경우 `Ctrl+Space`), 후보 이동은 ↑↓,
+확정은 Enter/Tab, 취소는 Esc. `Ctrl+Tab`/`Ctrl+Shift+Tab`은 SQL·테이블 탭을 이동한다.
+탐색기 경계와 SQL/결과 경계를 드래그하면 크기가 저장된다.
+환경설정에서 편집기 글꼴·탭 너비, 새 테이블 페이지 크기, 복구·언어를 바꿀 수 있다.
 
 ## 격리 PostgreSQL fixture
 

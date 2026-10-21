@@ -19,7 +19,7 @@ impl Workbench {
             .small()
             .label(connection_label)
             .disabled(locked)
-            .tooltip("Pinned to this SQL console only. Other consoles and browser are unchanged.")
+            .tooltip(self.console_context_label())
             .dropdown_menu(move |mut menu, _, _| {
                 menu = menu.label(tr(locale, Message::ConsoleContext));
                 for profile in &profiles {
@@ -83,11 +83,7 @@ impl Workbench {
             .map(|p| {
                 format!(
                     "{}: {} ▾",
-                    if locale == Locale::Ko {
-                        "연결 시작 DB"
-                    } else {
-                        "Configured database"
-                    },
+                    "DB",
                     if p.engine == DatabaseEngine::Sqlite {
                         "main"
                     } else {
@@ -156,7 +152,7 @@ impl Workbench {
         let mut bar = div()
             .px_3()
             .py_2()
-            .bg(rgb(0x20252d))
+            .bg(rgb(PANEL))
             .border_b_1()
             .border_color(rgb(BORDER))
             .flex()
@@ -167,6 +163,8 @@ impl Workbench {
                     .flex()
                     .items_center()
                     .gap_2()
+                    .flex_wrap()
+                    .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child("SQL"))
                     .child(connection)
                     .child(database)
                     .when(
@@ -201,15 +199,6 @@ impl Workbench {
                                 cx.listener(move |s, _, _, cx| s.disconnect_console(route, cx)),
                             ),
                     ),
-            )
-            .child(
-                div()
-                    .id("console-pinned-target")
-                    .role(Role::Status)
-                    .aria_label(self.console_context_label())
-                    .text_size(px(10.))
-                    .text_color(rgb(MUTED))
-                    .child(self.console_context_label()),
             );
         if self.console_database_editor == Some(route) {
             bar = bar.child(

@@ -1,6 +1,10 @@
 use super::*;
 use dbide_ui_spike::navigator::{Data, Key, Relation, Scope};
-use gpui_component::menu::{DropdownMenu, PopupMenuItem};
+use gpui_component::{
+    Icon,
+    menu::{DropdownMenu, PopupMenuItem},
+};
+use gpui_kit_assets::IconName;
 
 const VISIBLE_ROWS: usize = 1000;
 struct TreeRows {
@@ -14,6 +18,8 @@ struct TreeRow {
     depth: usize,
     relation: Option<Relation>,
     field: bool,
+    detail: String,
+    annotation: String,
     unavailable: bool,
 }
 impl Workbench {
@@ -62,7 +68,14 @@ impl Workbench {
                 self.navigator.notice = Some(error);
             }
         } else {
-            self.navigator.notice = Some("Connection changed. Reopen this branch.".into());
+            self.navigator.notice = Some(
+                if self.locale == Locale::Ko {
+                    "연결이 변경되었습니다. 이 목록을 다시 여세요."
+                } else {
+                    "Connection changed. Reopen this branch."
+                }
+                .into(),
+            );
         }
         cx.notify();
     }
@@ -105,6 +118,8 @@ impl Workbench {
             depth,
             relation,
             field: false,
+            detail: String::new(),
+            annotation: String::new(),
             unavailable,
         });
         let Some(snapshot) = self.navigator.snapshot(&key) else {
@@ -156,11 +171,7 @@ impl Workbench {
                     };
                     self.navigator_rows(
                         key.child(&key.database, Scope::Columns(relation.clone())),
-                        format!(
-                            "{} {}",
-                            if object.kind == "table" { "▦" } else { "◫" },
-                            object.name
-                        ),
+                        object.name.clone(),
                         depth + 1,
                         Some(relation),
                         false,
@@ -186,28 +197,25 @@ impl Workbench {
                     }
                     tree.rows.push(TreeRow {
                         key: key.clone(),
-                        label: format!(
-                            "{}{}{} · {} · {}{}{}",
+                        label: column.name.clone(),
+                        detail: format!(
+                            "{} · {}{}{}",
                             column.name,
+                            column.data_type,
                             if column.primary_key_ordinal.is_some() {
-                                " PK"
+                                " · PK"
                             } else {
                                 ""
                             },
-                            if column.foreign_key { " FK" } else { "" },
-                            column.data_type,
-                            if column.nullable { "NULL" } else { "NOT NULL" },
-                            column
-                                .default
-                                .as_ref()
-                                .map(|d| format!(" · DEFAULT {d}"))
-                                .unwrap_or_default(),
-                            column
-                                .extra
-                                .as_ref()
-                                .map(|d| format!(" · {d}"))
-                                .unwrap_or_default()
+                            if column.foreign_key { " · FK" } else { "" }
                         ),
+                        annotation: if column.primary_key_ordinal.is_some() {
+                            "PK".into()
+                        } else if column.foreign_key {
+                            "FK".into()
+                        } else {
+                            column.data_type.clone()
+                        },
                         depth: depth + 1,
                         relation: None,
                         field: true,
@@ -257,20 +265,44 @@ impl Workbench {
         for (ix, row) in tree.rows.into_iter().enumerate() {
             let branch = self.navigator.branch(&row.key);
             let snapshot = branch.and_then(|b| b.snapshot.as_ref());
+            let identity = match &row.key.scope {
+                Scope::Databases => row.label.clone(),
+                Scope::Schemas => format!("{} / {}", row.key.profile_id, row.key.database),
+                Scope::Objects(schema) => {
+                    format!("{} / {} / {schema}", row.key.profile_id, row.key.database)
+                }
+                Scope::Columns(relation) | Scope::Details(relation) => format!(
+                    "{} / {} / {}.{}",
+                    row.key.profile_id, row.key.database, relation.schema, relation.name
+                ),
+            };
             if row.field {
-                let label = row.label;
+                let caption = format!("{identity} / {}", row.detail);
                 list = list.child(
                     div()
                         .id(("nav-field", ix))
                         .role(Role::Label)
-                        .aria_label(label.clone())
-                        .ml(px((row.depth * 8) as f32))
-                        .h(px(22.))
-                        .text_ellipsis()
-                        .py_1()
-                        .text_size(px(10.))
+                        .aria_label(caption.clone())
+                        .ml(px((row.depth.min(4) * 10 + 18) as f32))
+                        .h(px(25.))
+                        .pr_2()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .text_size(px(11.))
                         .text_color(rgb(MUTED))
-                        .child(label),
+                        .child(div().min_w_0().flex_1().text_ellipsis().child(row.label))
+                        .child(
+                            div()
+                                .max_w(px(90.))
+                                .text_ellipsis()
+                                .text_size(px(10.))
+                                .child(row.annotation),
+                        )
+                        .tooltip(move |_, cx| {
+                            cx.new(|_| gpui_component::tooltip::Tooltip::new(caption.clone()))
+                                .into()
+                        }),
                 );
                 continue;
             }
@@ -279,14 +311,33 @@ impl Workbench {
             let refresh = row.key.clone();
             let is_root = matches!(row.key.scope, Scope::Databases);
             let profile_id = row.key.profile_id.clone();
-            let metadata = snapshot
-                .map(|snapshot| format!(" ({})", snapshot.len()))
-                .unwrap_or_default();
-            let label = format!(
-                "{} {}{}{}",
-                if opened { "▾" } else { "▸" },
-                row.label,
-                metadata,
+            let selected = self.structure.as_ref().is_some_and(|panel| {
+                let target = &panel.read(cx).detail_key;
+                target.profile_id == row.key.profile_id && target.database == row.key.database
+                    && target.generation == row.key.generation && target.fingerprint == row.key.fingerprint
+                    && matches!((&target.scope, &row.relation), (Scope::Details(a), Some(b)) if a == b)
+            });
+            let icon = match &row.key.scope {
+                Scope::Databases => IconName::HardDrive,
+                Scope::Schemas => IconName::FolderClosed,
+                Scope::Objects(_) => {
+                    if opened {
+                        IconName::FolderOpen
+                    } else {
+                        IconName::Folder
+                    }
+                }
+                Scope::Columns(relation) | Scope::Details(relation) => {
+                    if relation.kind == "table" {
+                        IconName::LayoutDashboard
+                    } else {
+                        IconName::FileText
+                    }
+                }
+            };
+            let caption = format!(
+                "{}{}{}",
+                identity,
                 if row.unavailable {
                     if ko {
                         " · 접근 불가"
@@ -295,48 +346,118 @@ impl Workbench {
                     }
                 } else {
                     ""
-                }
+                },
+                snapshot
+                    .map(|snapshot| format!(
+                        " · {} {} · {}s{}{}",
+                        snapshot.len(),
+                        if ko { "불러옴" } else { "loaded" },
+                        snapshot.age().as_secs(),
+                        if snapshot.historical {
+                            if ko {
+                                " · 파일 캐시 · 이전 수집본"
+                            } else {
+                                " · file cache · historical"
+                            }
+                        } else if snapshot.stale() {
+                            if ko { " · 만료됨" } else { " · expired" }
+                        } else {
+                            ""
+                        },
+                        if snapshot.truncated {
+                            if ko {
+                                " · 일부 목록"
+                            } else {
+                                " · partial list"
+                            }
+                        } else {
+                            ""
+                        }
+                    ))
+                    .unwrap_or_default()
             );
             let mut group = div()
                 .id(("nav-group", ix))
                 .role(Role::Group)
-                .aria_label(label.clone())
+                .aria_label(caption.clone())
                 .aria_expanded(opened)
-                .ml(px((row.depth * 8) as f32))
                 .child(
                     div()
+                        .h(px(28.))
                         .flex()
                         .items_center()
                         .gap_1()
+                        .rounded(px(4.))
+                        .pl(px((row.depth.min(3) * 10) as f32))
+                        .when(selected, |el| el.bg(rgb(0x25334b)))
+                        .hover(|el| el.bg(rgb(0x252d39)))
                         .child(
                             Button::new(("nav-toggle", ix))
                                 .ghost()
                                 .small()
+                                .h(px(28.))
                                 .flex_1()
                                 .min_w_0()
                                 .justify_start()
-                                .accessibility_label(label.clone())
-                                .tooltip(if let Some(snapshot) = snapshot {
-                                    format!(
-                                        "{} · {} {} · {}s{}",
-                                        row.label,
-                                        snapshot.len(),
-                                        if ko { "불러옴" } else { "loaded" },
-                                        snapshot.age().as_secs(),
-                                        if snapshot.truncated {
-                                            if ko {
-                                                " · 일부 목록"
-                                            } else {
-                                                " · partial list"
-                                            }
-                                        } else {
-                                            ""
-                                        }
-                                    )
-                                } else {
-                                    row.label.clone()
-                                })
-                                .label(label)
+                                .px_1()
+                                .accessibility_label(caption.clone())
+                                .tooltip(caption)
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .w_full()
+                                        .min_w_0()
+                                        .gap_1()
+                                        .child(
+                                            div()
+                                                .w(px(10.))
+                                                .flex_shrink_0()
+                                                .text_color(rgb(MUTED))
+                                                .text_size(px(10.))
+                                                .child(
+                                                    Icon::new(if opened {
+                                                        IconName::ChevronDown
+                                                    } else {
+                                                        IconName::ChevronRight
+                                                    })
+                                                    .size(px(10.)),
+                                                ),
+                                        )
+                                        .child(
+                                            div()
+                                                .w(px(15.))
+                                                .flex_shrink_0()
+                                                .text_color(rgb(if selected {
+                                                    ACCENT
+                                                } else {
+                                                    MUTED
+                                                }))
+                                                .child(Icon::new(icon).size(px(14.))),
+                                        )
+                                        .child(
+                                            div()
+                                                .flex_1()
+                                                .min_w_0()
+                                                .text_ellipsis()
+                                                .text_size(px(12.))
+                                                .text_color(rgb(if row.unavailable {
+                                                    MUTED
+                                                } else {
+                                                    TEXT
+                                                }))
+                                                .child(row.label.clone()),
+                                        )
+                                        .when_some(snapshot, |el, snapshot| {
+                                            el.child(
+                                                div()
+                                                    .flex_shrink_0()
+                                                    .text_size(px(10.))
+                                                    .text_color(rgb(MUTED))
+                                                    .child(snapshot.len().to_string()),
+                                            )
+                                        }),
+                                )
                                 .disabled(row.unavailable)
                                 .on_click(cx.listener(move |s, _, _, cx| {
                                     s.navigator_toggle(key.clone(), cx)
@@ -350,37 +471,21 @@ impl Workbench {
                             )
                         })
                         .when(snapshot.is_some_and(|s| s.stale() || s.truncated), |el| {
-                            let snapshot = snapshot.unwrap();
-                            el.child(
-                                Self::nav_text(
-                                    ("nav-stale", ix),
-                                    &format!(
-                                        "{}{}",
-                                        if snapshot.truncated {
-                                            if ko { "일부 " } else { "partial " }
-                                        } else {
-                                            ""
-                                        },
-                                        if snapshot.stale() {
-                                            format!(
-                                                "{} {}s",
-                                                if ko { "만료" } else { "stale" },
-                                                snapshot.age().as_secs()
-                                            )
-                                        } else {
-                                            String::new()
-                                        }
-                                    ),
-                                )
-                                .text_color(rgb(0xd4ad78)),
-                            )
+                            el.child(div().text_color(rgb(0xd4ad78)).text_size(px(10.)).child(
+                                if snapshot.is_some_and(|s| s.historical) {
+                                    if ko { "저장본" } else { "saved" }
+                                } else {
+                                    "•"
+                                },
+                            ))
                         })
                         .when(opened, |el| {
                             el.child(
                                 Button::new(("nav-refresh", ix))
                                     .ghost()
                                     .small()
-                                    .label("↻")
+                                    .w(px(22.))
+                                    .icon(IconName::RefreshCw)
                                     .accessibility_label(format!(
                                         "{} {}",
                                         self.ui_label("Refresh"),
@@ -405,7 +510,8 @@ impl Workbench {
                                 Button::new(("nav-edit", ix))
                                     .ghost()
                                     .small()
-                                    .label("✎")
+                                    .w(px(22.))
+                                    .icon(IconName::Settings2)
                                     .accessibility_label(format!(
                                         "{} {}",
                                         self.ui_label("Edit"),
@@ -434,6 +540,18 @@ impl Workbench {
                 );
             if let Some(error) = branch.and_then(|b| b.error.as_ref()) {
                 group = group.child(Self::nav_text(("nav-error", ix), error).role(Role::Alert));
+            }
+            if opened
+                && branch.is_some_and(|b| !b.loading && b.error.is_none())
+                && snapshot.is_some_and(|s| s.is_empty())
+            {
+                group = group.child(
+                    Self::nav_text(
+                        ("nav-branch-empty", ix),
+                        if ko { "객체 없음" } else { "No objects" },
+                    )
+                    .ml(px((row.depth.min(3) * 10 + 26) as f32)),
+                );
             }
             list = list.child(group);
         }
@@ -474,9 +592,9 @@ impl Workbench {
                 .child(Self::nav_text(
                     "nav-filter-scope",
                     if ko {
-                        "펼친 목록만 검색 · SQL 탭 연결은 변경하지 않음"
+                        "불러온 객체에서 검색"
                     } else {
-                        "Filter expanded lists · browsing never rebinds SQL tabs"
+                        "Search loaded objects"
                     },
                 ))
                 .child(list)
@@ -484,6 +602,8 @@ impl Workbench {
                     div()
                         .px_2()
                         .py_2()
+                        .border_t_1()
+                        .border_color(rgb(BORDER))
                         .flex()
                         .flex_wrap()
                         .items_center()
@@ -491,9 +611,10 @@ impl Workbench {
                         .child(Self::nav_text(
                             "nav-budget",
                             &format!(
-                                "{:.1}/16 MiB · {}/2 · {} {}",
+                                "{:.1} MiB · {} {} · {} {}",
                                 stats.accounted_bytes as f64 / 1048576.,
                                 self.navigator.running(),
+                                if ko { "조회 중" } else { "loading" },
                                 self.navigator.pending(),
                                 if ko { "대기" } else { "queued" }
                             ),
@@ -560,7 +681,8 @@ impl Workbench {
         Button::new(("nav-object-menu", ix))
             .ghost()
             .small()
-            .label("⋯")
+            .icon(IconName::Ellipsis)
+            .w(px(22.))
             .accessibility_label(caption.clone())
             .tooltip(caption)
             .dropdown_menu(move |menu, _, _| {
@@ -616,7 +738,14 @@ impl Workbench {
         let (Some(request), Some(snapshot)) =
             (self.navigator_request(key), self.navigator.snapshot(key))
         else {
-            self.navigator.notice = Some("Reload this branch before opening structure.".into());
+            self.navigator.notice = Some(
+                if self.locale == Locale::Ko {
+                    "구조를 열기 전에 이 목록을 새로고침하세요."
+                } else {
+                    "Reload this branch before opening structure."
+                }
+                .into(),
+            );
             cx.notify();
             return;
         };
@@ -638,8 +767,8 @@ impl Workbench {
                 {
                     return;
                 }
-                let object_inspector::InspectorEvent::LoadDetails(key) = event;
-                s.navigator_expand(key.clone(), true, cx);
+                let object_inspector::InspectorEvent::LoadDetails(key, refresh) = event;
+                s.navigator_expand(key.clone(), *refresh, cx);
                 s.sync_navigator_inspector(cx);
             }));
         self.structure = Some(panel);
@@ -653,7 +782,14 @@ impl Workbench {
         };
         let key = panel.read(cx).detail_key.clone();
         if !self.navigator.authorized(&key) {
-            panel.update(cx,|p,cx|p.set_details(None,Some("Connection changed. Close this snapshot and reopen the object under its current connection before loading details.".into()),false,cx));
+            let message = if self.locale == Locale::Ko {
+                "연결이 변경되었습니다. 현재 연결에서 객체를 다시 열어 상세 정보를 불러오세요."
+            } else {
+                "Connection changed. Reopen the object under its current connection before loading details."
+            };
+            panel.update(cx, |p, cx| {
+                p.set_details(None, Some(message.into()), false, cx)
+            });
             return;
         }
         if let Some(branch) = self.navigator.branch(&key) {
@@ -672,7 +808,14 @@ impl Workbench {
         cx: &mut Context<Self>,
     ) {
         let Some(request) = self.navigator_request(key) else {
-            self.navigator.notice = Some("Connection changed. Reopen this branch.".into());
+            self.navigator.notice = Some(
+                if self.locale == Locale::Ko {
+                    "연결이 변경되었습니다. 이 목록을 다시 여세요."
+                } else {
+                    "Connection changed. Reopen this branch."
+                }
+                .into(),
+            );
             cx.notify();
             return;
         };

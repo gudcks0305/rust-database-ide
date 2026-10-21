@@ -170,6 +170,33 @@ printf 'select 1 as value;' | dbide sql format --stdin --dialect sqlite
 `postgres`, `sqlite`, `mysql` dialect. 공통 `dbide-sql::format_sql`을 사용한다.
 설정 파일·DB·Keychain에 접근하지 않는다. parser가 지원하지 않는 SQL은 오류로 보고한다.
 
+## 저장된 catalog 일부 조회
+
+```sh
+dbide --config ./profiles.json catalog list
+# 목록의 shard_id를 그대로 복사해 SHARD_ID에 지정한 뒤:
+dbide --config ./profiles.json catalog show "$SHARD_ID"
+```
+
+이 명령은 공통 `dbide-catalog-store`를 사용해 선택한 profiles 파일 부모의
+`catalog-cache/`만 읽는다. `--config` 생략 시 기본 profiles 경로의 같은 부모다.
+profiles JSON 자체·DB·인증 정보·Keychain에 접근하지 않고, refresh나 SQL을 실행하지 않는다.
+cache가 없으면 `list`는 `[]`를 반환하며 디렉터리나 파일을 생성하지 않는다.
+
+- `list`: 최대 2 MiB / 2048 entries의 bounded identity manifest만 읽는다. 각 항목은
+  `shard_id`, `key`, `bytes`, `captured_unix_ms`. 개별 shard payload를 읽거나 전체 디렉터리를
+  스캔하지 않으므로 관련 없는 shard가 손상되어도 목록과 다른 shard 조회는 가능하다.
+- `show SHARD_ID`: manifest에 있는 정확한 소문자 64자리 hex + `.json` ID 하나를 선택해
+  최대 1 MiB의 shard 하나만 읽는다. JSON의 `key`, `snapshot`, `historical:true`로 반환한다.
+  scope는 database 목록, schemas, 특정 schema의 objects, 특정 relation의 columns 중 하나다.
+  `snapshot.captured_unix_ms`, `truncated`, `fields_partial`을 그대로 유지한다.
+
+결과는 저장 당시의 metadata이며 현재 서버 상태나 freshness를 보증하지 않는다. query row나
+SQL history를 읽는 명령도 아니다. 경로·상대경로·변형 ID·없는 shard는 exit 2로 거절한다.
+손상·미지원 manifest/shard, 비공개 권한 조건 위반, symlink 경로도 진단 후 원본을 보존한다.
+Store 정책상 cache 디렉터리는 Unix 0700, 파일은 0600이며 symlink ancestor를 허용하지 않는다.
+GUI가 저장하는 disk cache 총량 cap은 128 MiB다. 이 CLI 명령에는 쓰기·삭제 기능이 없다.
+
 ## Exit codes와 검증
 
 | code | 의미 |
@@ -193,10 +220,12 @@ DBIDE_CLI_LIVE_FIXTURE=owned-loopback cargo test -p dbide-cli mysql_owned_fixtur
 ignored 테스트는 127.0.0.1:55439 / :55441의 프로젝트 fixture와 고정 fixture 계정만 사용한다.
 기본 suite 통과는 live PG/MySQL 테스트를 실행했다는 뜻이 아니다.
 
-이번 구현 검증: 기본 suite **14 passed / 2 ignored**, 별도 명시 실행한 PostgreSQL fixture
+이번 구현 검증: 기본 suite **18 passed / 2 ignored**, 별도 명시 실행한 PostgreSQL fixture
 **1 passed**, MySQL fixture **1 passed**. 두 native 엔진 모두 JSON의 두 result set과
 positional NULL/empty string, `--result-index 1` CSV 원문을 검사했다. 기본 suite에는
 8개 CLI child process의 동시 profile 추가 보존, timeout/Ctrl+C와 export 실패 전후의
 기존 파일 보존 검사도 포함한다. 실제 SQL 완료 뒤 history 파일 크기 제한 저장 실패가
 발생해도 stdout/file report·원래 SQL exit·단일 실행을 유지하는 회귀도 검사한다.
 Clippy `--all-targets -- -D warnings` 통과.
+기본 suite의 offline catalog subprocess 계약 4개는 missing cache 무생성, private Store roundtrip,
+manifest-only listing, 단일 shard 부분 읽기, traversal 거절, 손상 원본 보존을 검사한다.

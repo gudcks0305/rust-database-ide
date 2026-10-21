@@ -193,6 +193,14 @@ impl VerifiedTable {
         Ok(result)
     }
     pub fn select_sql(&self, page: usize) -> String {
+        self.select_sql_with_query(page, &dbide_data::TableQuery::default())
+            .expect("captured table supports the default bounded query")
+    }
+    pub fn select_sql_with_query(
+        &self,
+        page: usize,
+        query: &dbide_data::TableQuery,
+    ) -> Result<String, String> {
         let cols = self
             .table
             .columns
@@ -219,38 +227,60 @@ impl VerifiedTable {
             })
             .collect::<Vec<_>>()
             .join(", ");
-        let order = self
-            .spec
-            .as_ref()
-            .and_then(|s| {
-                s.identity.as_ref().map(|i| {
-                    i.columns
-                        .iter()
-                        .map(|&ix| dbide_schema::quote_ident(&s.columns[ix].name))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                })
+        let columns = self
+            .table
+            .columns
+            .iter()
+            .map(|c| dbide_data::QueryColumn {
+                name: c.name.clone(),
+                pg_type: pg_type(&c.data_type),
             })
-            .or_else(|| {
-                self.table
-                    .primary_key
+            .collect::<Vec<_>>();
+        let primary_key = self
+            .table
+            .primary_key
+            .as_ref()
+            .map(|key| {
+                key.columns
+                    .iter()
+                    .map(|name| {
+                        self.table
+                            .columns
+                            .iter()
+                            .position(|c| c.name == *name)
+                            .ok_or_else(|| {
+                                "Primary key references an uncaptured column".to_string()
+                            })
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .transpose()?
+            .unwrap_or_else(|| {
+                self.spec
                     .as_ref()
-                    .map(|p| dbide_schema::quote_columns(&p.columns))
+                    .and_then(|spec| spec.identity.as_ref())
+                    .map(|identity| identity.columns.clone())
+                    .unwrap_or_default()
             });
-        format!(
-            "SELECT {cols} FROM {}.{}{} LIMIT {PAGE_ROWS} OFFSET {};",
+        let suffix = dbide_data::table_query_suffix(&columns, &primary_key, query, page)
+            .map_err(|e| e.to_string())?;
+        Ok(format!(
+            "SELECT {cols} FROM {}.{} AS \"{}\"{suffix}",
             dbide_schema::quote_ident(&self.schema),
             dbide_schema::quote_ident(&self.table.name),
-            order.map(|o| format!(" ORDER BY {o}")).unwrap_or_default(),
-            page.saturating_mul(PAGE_ROWS)
-        )
+            dbide_data::TABLE_SOURCE_ALIAS
+        ))
     }
+
     pub fn decode_rows(
         &self,
         columns: &[String],
         rows: &[Vec<Option<String>>],
         truncated: bool,
     ) -> Result<Vec<Vec<Cell>>, String> {
+        if rows.len() > 500 {
+            return Err("Table page exceeds the maximum 500-row read budget".into());
+        }
         if truncated {
             return Err(
                 "Driver result was truncated; editing requires a complete requested page".into(),
@@ -309,7 +339,7 @@ impl VerifiedTable {
                 spec,
                 &unchanged,
                 Limits {
-                    max_rows: PAGE_ROWS,
+                    max_rows: 500,
                     max_bytes: 8 * 1024 * 1024,
                 },
             )
@@ -688,6 +718,84 @@ mod tests {
                 .is_err()
         );
         assert_eq!(staging.count(), 1);
+    }
+    #[test]
+    fn bounded_query_uses_raw_column_sort_and_injection_stays_one_statement() {
+        use dbide_data::{FilterOperator, SortDirection, TableFilter, TableQuery, TableSort};
+        let (snapshot, profile) = fixture();
+        let model = VerifiedTable::capture(&snapshot, "public", "items", &profile).unwrap();
+        let query = TableQuery {
+            filters: vec![TableFilter {
+                column: 1,
+                operator: FilterOperator::Equal,
+                value: Cell::Text("한글\\'; SELECT pg_sleep(9); --".into()),
+            }],
+            sort: Some(TableSort {
+                column: 1,
+                direction: SortDirection::Descending,
+            }),
+            page_size: 500,
+        };
+        let sql = model.select_sql_with_query(2, &query).unwrap();
+        assert!(sql.contains("FROM \"public\".\"items\" AS \"__dbide_source\""));
+        assert!(
+            sql.contains(
+                "ORDER BY \"__dbide_source\".\"name\" DESC, \"__dbide_source\".\"id\" ASC"
+            )
+        );
+        assert!(sql.ends_with("LIMIT 500 OFFSET 1000;"));
+        assert_eq!(
+            dbide_sql::statement_ranges(&sql, dbide_sql::Dialect::PostgreSql).len(),
+            1
+        );
+        let names = model
+            .table
+            .columns
+            .iter()
+            .map(|c| c.name.clone())
+            .collect::<Vec<_>>();
+        let rows = (1..=500)
+            .map(|id| vec![Some(id.to_string()), Some("value".into()), None, None])
+            .collect::<Vec<_>>();
+        assert_eq!(model.decode_rows(&names, &rows, false).unwrap().len(), 500);
+        let mut oversized = rows;
+        oversized.push(oversized[0].clone());
+        assert!(model.decode_rows(&names, &oversized, false).is_err());
+    }
+    #[test]
+    fn primary_keyless_verified_unique_identity_preserves_deterministic_paging() {
+        use dbide_data::{SortDirection, TableQuery, TableSort};
+        let (mut snapshot, profile) = fixture();
+        let table = &mut snapshot.schemas[0].tables[0];
+        table.primary_key = None;
+        table.indexes.push(dbide_schema::Index {
+            name: "items_id_name_key".into(),
+            columns: vec!["id".into(), "name".into()],
+            unique: true,
+            method: "btree".into(),
+            predicate: None,
+            expressions: vec![],
+            include: vec![],
+            constraint_owned: true,
+            unsupported_features: vec![],
+        });
+        let model = VerifiedTable::capture(&snapshot, "public", "items", &profile).unwrap();
+        assert_eq!(
+            model.spec.as_ref().unwrap().identity.as_ref().unwrap().kind,
+            IdentityKind::UniqueConstraint
+        );
+        assert!(model.select_sql(2).ends_with(" ORDER BY \"__dbide_source\".\"id\" ASC, \"__dbide_source\".\"name\" ASC LIMIT 100 OFFSET 200;"));
+        let query = TableQuery {
+            sort: Some(TableSort {
+                column: 1,
+                direction: SortDirection::Descending,
+            }),
+            page_size: 50,
+            ..TableQuery::default()
+        };
+        let sql = model.select_sql_with_query(3, &query).unwrap();
+        assert!(sql.ends_with(" ORDER BY \"__dbide_source\".\"name\" DESC, \"__dbide_source\".\"id\" ASC LIMIT 50 OFFSET 150;"));
+        assert_eq!(sql.matches("\"__dbide_source\".\"name\"").count(), 1);
     }
     #[test]
     fn temporal_projection_keeps_infinity_and_era_and_precision_maps_correctly() {

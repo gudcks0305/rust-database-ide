@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-22",
+  "workspace_tests": {
+    "passed": 393,
+    "failed": 0,
+    "ignored": 62,
+    "command": "cargo test --workspace"
+  },
+  "ui_recheck": {
+    "passed": 90,
+    "failed": 0,
+    "ignored": 3,
+    "command": "cargo test -p dbide-ui-spike",
+    "note": "After restored-editor tab-width correction; not added to workspace total."
+  },
+  "checks": [
+    "cargo fmt --all -- --check",
+    "cargo clippy --workspace --all-targets -- -D warnings",
+    "cargo clippy -p dbide-ui-spike --all-targets -- -D warnings",
+    "uv run --python >=3.14 scripts/verify_project.py",
+    "git diff --check",
+    "bash scripts/package-ui.sh"
+  ],
+  "independent_review": [
+    "UI/source review found and corrected hidden SQL action routing, editor viewport overflow, UNIQUE NOT NULL paging fallback, duplicate Preferences and narrow export controls.",
+    "Disk review found and corrected multi-writer manifest loss using a private advisory writer lock;9store+14Navigator+4CLI tests passed in the independent recheck."
+  ],
+  "native_evidence": "ui-workspace-polish-qa.json",
+  "limits": [
+    "Ignored live tests are not passed tests.",
+    "Existing block0.1.6 future-incompatibility advisory remains.",
+    "GitHub workflow draft is inactive; no remote CI run claimed.",
+    "Cache memory/disk budgets describe accounted payload, not total process RSS or unrelated files."
+  ],
+  "final_binary_sha256": "6c7a47afeeb0f52bc004c5566053e1bbe7995e5dd0e3b7f010988a8831406678",
+  "final_refinement": "Result overflow menu replaced the narrow toolbar export buttons; UI all-target clippy, release packaging and native menu access passed. No database behavior changed."
+}

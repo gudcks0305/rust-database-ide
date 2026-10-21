@@ -289,3 +289,20 @@ messages, parameter values and SQL tokens such as `NULL`, `NOT NULL` and
 use English; this is not a claim of complete third-party component localization.
 Row editing/Apply remain disabled at the current validation gate; language
 selection does not change execution, staging, paging or transaction behavior.
+
+## Read-only table query controls (2026-10-22)
+
+PostgreSQL table tabs support up to8 typed AND predicates on captured column
+indices, comparison/NULL operators, one explicit sort plus verified identity
+tie-breaks, and50/100/250/500-row page sizes. Values have a4096-byte bound and
+reuse scalar validation plus PostgreSQL literal escaping; raw WHERE text is not
+accepted. ORDER BY references qualified raw source columns, avoiding accidental
+sorting by encoded display aliases. PK-less tables use an available verified
+UNIQUE NOT NULL identity; tables with no such identity cannot promise stable
+ordering across pages. Concurrent database changes remain outside snapshot
+paging guarantees.
+
+Apply query and Reload start at page1. Switching retained table tabs preserves
+the applied filters/sort/page; changing a draft alone does not execute it. The
+Find control searches only the loaded page. These are read-only SELECT controls,
+not row editing or arbitrary-query server sorting.

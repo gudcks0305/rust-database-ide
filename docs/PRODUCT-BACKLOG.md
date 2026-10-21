@@ -46,8 +46,10 @@ mistaking a partial snapshot for a complete one.
 
 **Current state:** schema grouping, text search, expand/collapse, manual refresh,
 loaded object/column counts, and a metadata-limit warning are present as a
-prototype. Catalog capture is a bounded flat metadata query; there is no user
-choice of introspection scope/level or lazy per-schema fetch yet.
+bounded implementation. Branches load on expand; manual refresh is scoped.
+Private versioned JSON shards support restart browsing and partial reads, with
+historical markers and bounded writer-locked storage. A full-background index and
+user-selectable introspection levels remain separate work.
 
 **Work:**
 
@@ -77,7 +79,7 @@ recovery toggle is available in the tab strip. The baseline inspection found no
 general Preferences screen or central keymap settings. Subsequent work added a
 typed Korean/English catalog and a shared CLI/GUI settings store, with Preferences
 host integration and native runtime/restart locale acceptance completed for the
-core surface. Specialized English views, broader preferences and keymaps remain; see [CURRENT-STATUS.md](CURRENT-STATUS.md).
+core surface. Tools/table/structure locale controls and editor/result/recovery sections are integrated. Native Navigate/View menus expose tab cycling, catalog/result focus and panel toggles; fully customizable keymaps remain; see [CURRENT-STATUS.md](CURRENT-STATUS.md).
 
 **Work:**
 
@@ -106,8 +108,9 @@ whether a control affects the database or only loaded rows.
 **Current state:** query results are bounded retained snapshots with multiple
 result-set navigation. The regular grid has sorting disabled and no row-page
 controls. A PostgreSQL table viewer has 100-row server pages and search over
-the loaded page, but remains read-only and sort/filter controls are not
-complete.
+the loaded page. Read-only PostgreSQL table tabs now add typed server AND filters,
+raw-column sort and bounded page-size choices. Generic query results and other
+engines still need equivalent server filter/sort workflows.
 
 **Work:**
 
@@ -206,3 +209,14 @@ parity percentage.
 - [TablePlus Getting Started](https://docs.tableplus.com/getting-started)
 - [TablePlus query history](https://tableplus.com/docs/query-editor/query-history)
 - [TablePlus connection management](https://docs.tableplus.com/gui-tools/manage-connections)
+
+## 2026-10-22 independent UX review follow-through
+
+The eight findings in the screenshot review drove the current pass: keyboard
+completion with actual GPUI Input-action capture; retained table tabs alongside
+SQL; PostgreSQL typed server filter/sort; resizable catalog and editor/results;
+aligned field/key/index information; distinct SQL and historical-catalog status;
+useful Preferences; and native navigation/view actions. Active tabs scroll into
+view on selection and panel-width changes. Existing safety gates are unchanged:
+row Apply remains disabled, and neither M0/M1 nor DataGrip parity is declared
+complete. Final native and test evidence identifies each tested binary.

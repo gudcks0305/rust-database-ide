@@ -28,9 +28,10 @@ impl Workbench {
         key: Key,
         request: ConnectionRequest,
         relation: Relation,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.dismiss_completion(cx);
         if self.pending_table_open.is_some() {
             return;
         }
@@ -57,11 +58,6 @@ impl Workbench {
             cx.notify();
             return;
         }
-        if self.busy() || self.profile_write_busy || self.table_editor.is_some() {
-            fail(self,if self.locale==Locale::Ko{"진행 중인 테이블 연결 작업을 마치거나 현재 데이터 뷰를 닫은 뒤 다시 시도하세요. SQL 콘솔은 변경하지 않았습니다."}else{"Finish the table connection operation or close the current data view before retrying. SQL consoles are unchanged."}.into());
-            cx.notify();
-            return;
-        }
         let mut pending =
             match PendingTableOpen::new(key.clone(), request.clone(), relation.clone()) {
                 Ok(pending) => pending,
@@ -71,16 +67,60 @@ impl Workbench {
                     return;
                 }
             };
-        if self.connection == ConnectionState::Connected
-            && self
-                .configured
+        let identity = table_tabs::model::TableIdentity::capture(&key, &relation);
+        let existing = self
+            .table_tabs
+            .iter()
+            .find(|tab| {
+                table_tabs::model::TableIdentity::capture(&tab.key, &tab.relation) == identity
+            })
+            .map(|tab| (tab.id, tab.editor.clone()));
+        if let Some((id, editor)) = &existing {
+            self.active_table_tab = Some(*id);
+            self.tools = None;
+            if let Some(tab) = self.table_tabs.iter_mut().find(|tab| tab.id == *id) {
+                tab.key = key.clone();
+                tab.request = request.clone();
+            }
+            if self
+                .table_editor
                 .as_ref()
-                .is_some_and(|current| current.profile == request.profile)
-        {
-            self.table_open_feedback = None;
-            self.open_table_editor(relation.schema, relation.name, window, cx);
+                .is_some_and(|owner| owner.entity_id() == editor.entity_id())
+                && self.connection == ConnectionState::Connected
+                && self
+                    .configured
+                    .as_ref()
+                    .is_some_and(|current| current.profile == request.profile)
+                && editor.read(cx).token().connection_revision == self.connection_revision
+                && self.pending_table_open.is_none()
+                && (self.transaction_state == ServerTransactionState::Idle
+                    || self.table_reader_busy(cx))
+            {
+                self.table_open_feedback = None;
+                editor.update(cx, |editor, cx| editor.set_read_controls_enabled(true, cx));
+                cx.notify();
+                return;
+            }
+            editor.update(cx, |editor, cx| editor.set_read_controls_enabled(false, cx));
+            if editor.read(cx).has_unsaved(cx) {
+                fail(self, if self.locale == Locale::Ko { "이 탭의 로컬 편집 내용을 유지했습니다. 연결을 다시 지정하려면 탭을 닫을 때 편집 폐기를 확인한 뒤 다시 여세요." } else { "This tab's local edits are retained. To bind its reader again, close the tab, confirm discarding its edits, and reopen it." }.into());
+                cx.notify();
+                return;
+            }
+        }
+        if self.table_reader_busy(cx) || self.profile_write_busy {
+            fail(self,if self.locale==Locale::Ko{"테이블 전용 연결의 진행 중인 읽기나 연결 작업이 끝난 뒤 이 탭을 다시 선택하세요. 저장된 화면은 유지됩니다."}else{"Select this tab again after the table reader's current capture, read or connection operation finishes. Its snapshot is retained."}.into());
+            cx.notify();
             return;
         }
+        if existing.is_none() && !table_tabs::model::can_add(self.table_tabs.len()) {
+            fail(self, if self.locale == Locale::Ko { "테이블 탭은 최대 16개입니다. 사용하지 않는 탭을 닫은 뒤 다시 여세요." } else { "Up to 16 table tabs can be retained. Close an unused table tab before opening another." }.into());
+            cx.notify();
+            return;
+        }
+        // Even a matching profile passes Configure/Connect/Observe Idle before
+        // a different retained editor becomes the reader owner. Cached state is
+        // never used as authorization to dispatch a new table query.
         if self.transaction_may_be_open() {
             fail(self,if self.locale==Locale::Ko{"테이블 전용 연결의 트랜잭션을 먼저 롤백하거나 명시적으로 연결을 끊으세요. SQL 콘솔의 트랜잭션은 건드리지 않습니다."}else{"Rollback or explicitly disconnect the table reader's transaction before changing its target. SQL-console transactions are untouched."}.into());
             cx.notify();
@@ -91,8 +131,10 @@ impl Workbench {
                 .configuration_operation
                 .expect("configuration accepted");
             pending.configure(operation);
+            self.pending_table_tab = existing.map(|(id, _)| id);
             self.pending_table_open = Some(pending);
             self.table_open_feedback = None;
+            self.disable_table_read_controls(cx);
         } else {
             fail(self,if self.locale==Locale::Ko{"테이블 전용 연결 요청을 제출하지 못했습니다. 연결 상태를 확인한 뒤 직접 다시 시도하세요."}else{"Table connection preparation was not submitted. Review its state, then retry explicitly."}.into());
         }
@@ -101,6 +143,8 @@ impl Workbench {
     /// Retire ONLY the legacy table bridge. Clear its UI binding before ignoring
     /// late acknowledgements; no old target can authorize a later table query.
     fn retire_table_reader(&mut self, cx: &mut Context<Self>) {
+        self.disable_table_read_controls(cx);
+        self.pending_table_tab = None;
         self.configuration_operation = None;
         self.pending_configuration = None;
         self.connect_after_configuration = false;
@@ -211,6 +255,7 @@ impl Workbench {
                 self.configuration_operation = None;
                 self.pending_configuration = None;
                 self.connect_after_configuration = false;
+                self.pending_table_tab = None;
                 cx.notify();
                 return true;
             }
@@ -250,6 +295,8 @@ impl Workbench {
         }
     }
     pub(super) fn table_reader_disconnected(&mut self, cx: &mut Context<Self>) {
+        self.pending_table_tab = None;
+        self.disable_table_read_controls(cx);
         if let Some(mut pending) = self.pending_table_open.take() {
             pending.close();
             self.table_open_feedback = Some(TableOpenFeedback::from_pending(
@@ -305,7 +352,17 @@ impl Workbench {
                 self.busy(),
                 self.transaction_state,
             )
-        }) && self.table_editor.is_none()
+        }) && self
+            .table_editor
+            .as_ref()
+            .is_none_or(|editor| !editor.read(cx).is_busy())
+            && self.pending_table_tab.is_none_or(|id| {
+                self.table_tabs
+                    .iter()
+                    .any(|tab| tab.id == id && !tab.editor.read(cx).has_unsaved(cx))
+            })
+            && self.active_operation.is_none()
+            && self.pending_sql.is_none()
             && self.tools.is_none()
             && !self.recovery.close_after;
         if !valid {
@@ -315,8 +372,9 @@ impl Workbench {
         let pending = self.pending_table_open.take().unwrap();
         self.table_open_feedback = None;
         self.open_table_editor(
-            pending.relation().schema.clone(),
-            pending.relation().name.clone(),
+            pending.key().clone(),
+            pending.request().clone(),
+            pending.relation().clone(),
             window,
             cx,
         );
@@ -334,7 +392,11 @@ impl Workbench {
             Some(Ok(operation)) => {
                 self.active_operation = Some(operation);
                 self.active_execution = None;
-                self.table_operation = Some(TableOperation::Control);
+                self.table_operation = Some(TableOperation {
+                    operation,
+                    owner: self.table_editor.as_ref().map(Entity::entity_id),
+                    kind: workbench_tables::TableOperationKind::Control,
+                });
                 self.pending_owner = None;
                 self.pending_sql = None;
                 self.connection = ConnectionState::Executing;

@@ -157,3 +157,16 @@ TLS PG의 ssl=t, MySQL8.4.11/TLS_AES_128_GCM_SHA256 확인.
 실행하지 않았다. 별도 명시적 `seed pg fidelity`는 실행해 기존 객체 보존·constraint
 guard·새 empty-edit fixture 생성을 확인했다.
 이들의 실제 lifecycle 검증은 테스트 종료 후 명시적으로 수행할 작업이다.
+
+### UI table tabs across databases
+
+After the owned `consoles` seed creates `dbide_console_b`, the native UI check uses
+a small marker table in that database. This is separate from the105-row
+`dbide_ui_workbench.items` fixture in `dbide_fixture`:
+
+```sh
+docker exec -i dbide-m0-pg psql -U postgres -d dbide_console_b -v ON_ERROR_STOP=1 < fixtures/postgres/ui-table-tabs-b.sql
+```
+
+The script inserts missing marker rows only and does not overwrite existing rows.
+Run only against the project-owned loopback fixture.
