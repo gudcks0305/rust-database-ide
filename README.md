@@ -14,8 +14,8 @@ DataGrip의 주요 작업 흐름을 Rust 데스크톱 앱으로 독립 재구현
 - 행 편집·schema tools·Codex WebSocket 연동을 통합 검증 중. [최신 기능별 상태와 한계](docs/CURRENT-STATUS.md).
 - **제품 전체·M1–M6 전체 완성·DataGrip 성능 우위는 아직 달성하지 않음.**
 
-현재 우선 작업은 데이터베이스 트리의 지연 조회·캐시 연동, Preferences 확대,
-남은 전문 화면 번역, 메모리 한도를 둔 메타데이터 기반 자동완성이다.
+데이터베이스 트리의 지연 조회·캐시 연동과 도구 패널 한·영 전환을 반영했다.
+테이블 화면 통합 검증, 자동완성 메타데이터 갱신, 키보드 작업 흐름을 계속 보강 중이다.
 [UX 조사](docs/UX-RESEARCH.md)와 [제품 backlog](docs/PRODUCT-BACKLOG.md)에
 구현 상태와 검증 조건을 분리해 기록한다.
 
@@ -57,6 +57,18 @@ Rust 1.99.1을 프로젝트에 고정. 전역 기본 toolchain은 변경하지 �
 bash scripts/package-ui.sh
 open 'outputs/Rust Database IDE.app'
 ```
+
+앱에서 `⌘,` → **환경설정 / Preferences** → **언어 / Language**로 한국어·영어를
+즉시 전환한다. 선택은 재시작 후에도 유지되며 SQL·DB 이름·조회 값은 번역하지 않는다.
+CLI에서도 같은 설정을 바꿀 수 있다:
+
+```sh
+cargo run -p dbide-cli --bin dbide -- config language set ko
+cargo run -p dbide-cli --bin dbide -- config language set en
+```
+
+별도 프로필 파일을 쓰면 GUI와 CLI에 동일한 설정 위치를 지정해야 한다.
+CLI의 도움말과 원본 DB 오류, 일부 공용 UI 구성 요소는 아직 영어다.
 
 ## 격리 PostgreSQL fixture
 

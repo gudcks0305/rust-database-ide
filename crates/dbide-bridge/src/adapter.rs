@@ -49,6 +49,22 @@ pub(super) fn target(request: &ConnectionRequest) -> ConnectionTarget {
         ConnectionTarget::from(&request.profile)
     }
 }
+pub(super) const METADATA_CONNECT_TIMEOUT_SECS: u64 = 4;
+/// Bound every metadata connection independently of the following query budget.
+/// Leave the configured profile and every non-metadata connection policy intact.
+pub(super) fn metadata_request(request: &ConnectionRequest) -> ConnectionRequest {
+    let mut probe = request.clone();
+    probe.profile.connect_timeout_secs = probe
+        .profile
+        .connect_timeout_secs
+        .min(METADATA_CONNECT_TIMEOUT_SECS);
+    if probe.profile.engine == DatabaseEngine::Sqlite {
+        probe.profile.read_only = true;
+        probe.profile.sqlite_create = false;
+        probe.password.clear();
+    }
+    probe
+}
 fn diagnostic(request: &ConnectionRequest, kind: ConnectionErrorKind) -> ConnectionDiagnostic {
     let (message, hint) = match kind {
         ConnectionErrorKind::Configuration => (
@@ -350,6 +366,46 @@ impl AdapterSession {
                   ON c.TABLE_SCHEMA=t.TABLE_SCHEMA AND c.TABLE_NAME=t.TABLE_NAME
                 WHERE t.TABLE_SCHEMA=DATABASE()
                 ORDER BY t.TABLE_SCHEMA,t.TABLE_NAME,c.ORDINAL_POSITION LIMIT 2049"#
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn metadata_probe_request_caps_connect_timeout_without_mutating_original() {
+        for engine in [
+            DatabaseEngine::PostgreSql,
+            DatabaseEngine::MySql,
+            DatabaseEngine::Sqlite,
+        ] {
+            for timeout in [1, 3, 4, 300] {
+                let mut profile = dbide_profiles::ConnectionProfile::fixture();
+                profile.engine = engine;
+                profile.connect_timeout_secs = timeout;
+                profile.sqlite_path = Some("/metadata-clone-test.sqlite".into());
+                profile.sqlite_create = true;
+                profile.read_only = false;
+                let original = ConnectionRequest {
+                    profile,
+                    password: "memory-only-fixture-password".into(),
+                };
+                let before = original.clone();
+                let probe = metadata_request(&original);
+                let mut expected = before.profile.clone();
+                expected.connect_timeout_secs = timeout.min(4);
+                if engine == DatabaseEngine::Sqlite {
+                    expected.read_only = true;
+                    expected.sqlite_create = false;
+                    assert!(probe.password.is_empty());
+                } else {
+                    assert_eq!(probe.password, before.password);
+                }
+                assert_eq!(probe.profile, expected);
+                assert_eq!(original.profile, before.profile);
+                assert_eq!(original.password, before.password);
             }
         }
     }

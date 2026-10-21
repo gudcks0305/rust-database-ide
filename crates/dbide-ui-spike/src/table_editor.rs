@@ -3,6 +3,58 @@ use dbide_data::{Cell, Edit, InsertValue};
 use dbide_ui_spike::table_edit_model::{PAGE_ROWS, Staging, VerifiedTable, cell_text};
 use gpui_component::input::{Textarea, TextareaState};
 
+// Keep application captions separate from backend data so locale changes can redraw
+// existing statuses without rewriting SQL, cell contents, identifiers or diagnostics.
+#[derive(Clone)]
+enum TableText {
+    Message(Message),
+    Formatted(Message, Vec<(&'static str, TableText)>),
+    Raw(String),
+}
+impl From<Message> for TableText {
+    fn from(value: Message) -> Self {
+        Self::Message(value)
+    }
+}
+impl From<String> for TableText {
+    fn from(value: String) -> Self {
+        Self::Raw(value)
+    }
+}
+impl TableText {
+    fn formatted(message: Message, args: Vec<(&'static str, Self)>) -> Self {
+        Self::Formatted(message, args)
+    }
+    fn render(&self, locale: Locale) -> String {
+        match self {
+            Self::Message(message) => tr(locale, *message).into(),
+            Self::Raw(value) => value.clone(),
+            Self::Formatted(message, args) => {
+                let values: Vec<_> = args
+                    .iter()
+                    .map(|(key, value)| (*key, value.render(locale)))
+                    .collect();
+                let args: Vec<_> = values
+                    .iter()
+                    .map(|(key, value)| (*key, value.as_str()))
+                    .collect();
+                // Large raw diagnostics remain intact in a separately labelled raw view.
+                dbide_i18n::format(locale, *message, &args).unwrap_or_else(|_| {
+                    format!(
+                        "{}: {}",
+                        tr(locale, Message::ErrorDetails),
+                        values
+                            .iter()
+                            .map(|(_, value)| value.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" · ")
+                    )
+                })
+            }
+        }
+    }
+}
+
 pub use dbide_ui_spike::table_edit_model::RowContext as TableToken;
 #[derive(Clone)]
 pub enum TableEditorEvent {
@@ -35,6 +87,7 @@ struct Field {
     default: bool,
 }
 pub struct TableEditor {
+    locale: Locale,
     request: ConnectionRequest,
     schema: String,
     name: String,
@@ -52,19 +105,40 @@ pub struct TableEditor {
     capture_id: u64,
     form_revision: u64,
     page: usize,
-    error: Option<String>,
-    status: String,
+    error: Option<TableText>,
+    status: TableText,
     search: Entity<InputState>,
+    search_locale: Locale,
     _subscriptions: Vec<Subscription>,
     _field_subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<TableEditorEvent> for TableEditor {}
 impl TableEditor {
+    #[allow(dead_code)] // Compatibility constructor; the locale-aware host uses new_with_locale.
     pub fn new(
         request: ConnectionRequest,
         schema: String,
         name: String,
         revision: u64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        Self::new_with_locale(
+            request,
+            schema,
+            name,
+            revision,
+            Locale::default(),
+            window,
+            cx,
+        )
+    }
+    pub fn new_with_locale(
+        request: ConnectionRequest,
+        schema: String,
+        name: String,
+        revision: u64,
+        locale: Locale,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -89,6 +163,7 @@ impl TableEditor {
             }
         });
         let mut state = Self {
+            locale,
             token: TableToken {
                 profile: request.profile.clone(),
                 connection_revision: revision,
@@ -111,14 +186,20 @@ impl TableEditor {
             form_revision: 0,
             page: 0,
             error: None,
-            status: "Capturing verified table metadata…".into(),
-            search: cx
-                .new(|cx| InputState::new(window, cx).placeholder("Find in this loaded page")),
+            status: Message::CapturingTableMetadata.into(),
+            search: cx.new(|cx| {
+                InputState::new(window, cx).placeholder(tr(locale, Message::FindLoadedPage))
+            }),
+            search_locale: locale,
             _subscriptions: vec![subscription],
             _field_subscriptions: vec![],
         };
         state.capture(false, window, cx);
         state
+    }
+    pub fn set_locale(&mut self, locale: Locale, cx: &mut Context<Self>) {
+        self.locale = locale;
+        cx.notify();
     }
     pub fn has_staged(&self) -> bool {
         self.staging.count() > 0
@@ -136,6 +217,9 @@ impl TableEditor {
         self.token.clone()
     }
     pub fn fail(&mut self, message: String, cx: &mut Context<Self>) {
+        self.fail_text(message.into(), cx);
+    }
+    fn fail_text(&mut self, message: TableText, cx: &mut Context<Self>) {
         self.capture_id = self.capture_id.wrapping_add(1);
         self.error = Some(message);
         self.phase = Phase::ReloadRequired;
@@ -150,11 +234,17 @@ impl TableEditor {
         cx: &mut Context<Self>,
     ) {
         self.phase = Phase::ReloadRequired;
-        self.status = format!(
-            "Transaction control {:?} · current wire {:?}. Reload rows; staged edits will not be replayed.",
-            report.outcome, report.transaction_state
+        self.status = TableText::formatted(
+            Message::TableControlStatus,
+            vec![
+                ("outcome", format!("{:?}", report.outcome).into()),
+                (
+                    "transaction",
+                    format!("{:?}", report.transaction_state).into(),
+                ),
+            ],
         );
-        self.error = report.terminal_error.map(|e| e.message);
+        self.error = report.terminal_error.map(|e| e.message.into());
         cx.notify();
     }
     fn busy(&self) -> bool {
@@ -173,8 +263,7 @@ impl TableEditor {
     }
     fn capture(&mut self, apply: bool, window: &mut Window, cx: &mut Context<Self>) {
         if apply {
-            self.error =
-                Some("Row editing validation pending. Apply is disabled in this release.".into());
+            self.error = Some(Message::TableApplyDisabledError.into());
             cx.notify();
             return;
         }
@@ -185,9 +274,9 @@ impl TableEditor {
         };
         self.error = None;
         self.status = if apply {
-            "Revalidating table identity and catalog before Apply…"
+            Message::RevalidatingTable
         } else {
-            "Capturing complete live metadata…"
+            Message::CapturingLiveMetadata
         }
         .into();
         let request = self.request.clone();
@@ -196,32 +285,145 @@ impl TableEditor {
         let revision = self.staging.revision;
         self.capture_id = self.capture_id.wrapping_add(1);
         let capture_id = self.capture_id;
-        cx.spawn_in(window,async move|view,cx|{
-            let result=cx.background_executor().spawn(async move{
-                let runtime=tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|e|e.to_string())?;
-                runtime.block_on(dbide_workflows::capture_table_for_edit(&request,&schema,&name,dbide_workflows::CaptureLimits::default())).map_err(|e|e.to_string())
-            }).await;
-            let _=view.update_in(cx,|s,w,cx|{
-                if s.capture_id!=capture_id||s.phase!=if apply{Phase::Validating}else{Phase::Capturing}{return;}
-                let result=result.and_then(|capture|VerifiedTable::capture(&capture.snapshot,&s.schema,&s.name,&s.request.profile).map(|metadata|(metadata,capture.relation_oid,capture.metadata_fingerprint)));
+        cx.spawn_in(window, async move |view, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    let runtime = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .map_err(|e| e.to_string())?;
+                    runtime
+                        .block_on(dbide_workflows::capture_table_for_edit(
+                            &request,
+                            &schema,
+                            &name,
+                            dbide_workflows::CaptureLimits::default(),
+                        ))
+                        .map_err(|e| e.to_string())
+                })
+                .await;
+            let _ = view.update_in(cx, |s, w, cx| {
+                if s.capture_id != capture_id
+                    || s.phase
+                        != if apply {
+                            Phase::Validating
+                        } else {
+                            Phase::Capturing
+                        }
+                {
+                    return;
+                }
+                let result = result.and_then(|capture| {
+                    VerifiedTable::capture(
+                        &capture.snapshot,
+                        &s.schema,
+                        &s.name,
+                        &s.request.profile,
+                    )
+                    .map(|metadata| (metadata, capture.relation_oid, capture.metadata_fingerprint))
+                });
                 match result {
-                    Ok((metadata,oid,fingerprint)) if apply=>{
-                        if s.staging.revision!=revision||s.metadata.as_ref().is_none_or(|old|old.table!=metadata.table||old.spec!=metadata.spec)||oid!=s.relation_oid||fingerprint!=s.metadata_fingerprint {s.fail("Table metadata/identity changed. Reload and stage edits again; nothing was applied.".into(),cx);return;}
-                        match s.staging.ready_plan().cloned(){Ok(plan)=>{
-                            let statements=plan.statements.into_iter().map(|p|dbide_bridge::ParameterizedStatement{sql:p.sql,parameters:p.parameters.into_iter().map(|p|p.value).collect(),expected_affected_rows:Some(p.expected_affected_rows)}).collect();
-                            s.phase=Phase::Applying;s.status="Applying explicit parameterized batch…".into();
-                            cx.emit(TableEditorEvent::Apply{token:s.token.clone(),guard:dbide_bridge::TableIdentityGuard{schema:s.schema.clone(),table:s.name.clone(),oid:s.relation_oid,metadata_fingerprint:Some(s.metadata_fingerprint.clone())},statements});
-                        },Err(e)=>s.fail(e,cx)}
-                    },
-                    Ok((metadata,oid,fingerprint))=>{
-                        s.relation_oid=oid;s.metadata_fingerprint=fingerprint;s._field_subscriptions.clear();s.fields=metadata.table.columns.iter().map(|column|Field{input:cx.new(|cx|TextareaState::new(w,cx)),null:column.nullable,default:column.default.is_some()||column.generated.is_some()}).collect();
-                        for field in &s.fields {s._field_subscriptions.push(cx.subscribe(&field.input,|s,_,event,cx|{if matches!(event,InputEvent::Change){s.form_revision=s.form_revision.wrapping_add(1);s.staging.preview=None;cx.notify();}}));}
-                        let sql=metadata.select_sql(s.page);s.metadata=Some(metadata);s.phase=Phase::Reading;s.status="Reading a bounded page on the existing connection…".into();
-                        cx.emit(TableEditorEvent::Load{token:s.token.clone(),sql});
-                    },Err(e)=>{if apply{s.fail(e,cx);}else{s.status=format!("Catalog viewer unavailable: {e}. Opening a read-only SELECT instead.");cx.emit(TableEditorEvent::ReadFallback{token:s.token.clone(),sql:dbide_ui_spike::workbench_model::table_query(DatabaseEngine::PostgreSql,&s.schema,&s.name)});}},
-                }cx.notify();
+                    Ok((metadata, oid, fingerprint)) if apply => {
+                        if s.staging.revision != revision
+                            || s.metadata.as_ref().is_none_or(|old| {
+                                old.table != metadata.table || old.spec != metadata.spec
+                            })
+                            || oid != s.relation_oid
+                            || fingerprint != s.metadata_fingerprint
+                        {
+                            s.fail_text(Message::TableMetadataChanged.into(), cx);
+                            return;
+                        }
+                        match s.staging.ready_plan().cloned() {
+                            Ok(plan) => {
+                                let statements = plan
+                                    .statements
+                                    .into_iter()
+                                    .map(|p| dbide_bridge::ParameterizedStatement {
+                                        sql: p.sql,
+                                        parameters: p
+                                            .parameters
+                                            .into_iter()
+                                            .map(|p| p.value)
+                                            .collect(),
+                                        expected_affected_rows: Some(p.expected_affected_rows),
+                                    })
+                                    .collect();
+                                s.phase = Phase::Applying;
+                                s.status = Message::ApplyingTableBatch.into();
+                                cx.emit(TableEditorEvent::Apply {
+                                    token: s.token.clone(),
+                                    guard: dbide_bridge::TableIdentityGuard {
+                                        schema: s.schema.clone(),
+                                        table: s.name.clone(),
+                                        oid: s.relation_oid,
+                                        metadata_fingerprint: Some(s.metadata_fingerprint.clone()),
+                                    },
+                                    statements,
+                                });
+                            }
+                            Err(e) => s.fail(e, cx),
+                        }
+                    }
+                    Ok((metadata, oid, fingerprint)) => {
+                        s.relation_oid = oid;
+                        s.metadata_fingerprint = fingerprint;
+                        s._field_subscriptions.clear();
+                        s.fields = metadata
+                            .table
+                            .columns
+                            .iter()
+                            .map(|column| Field {
+                                input: cx.new(|cx| TextareaState::new(w, cx)),
+                                null: column.nullable,
+                                default: column.default.is_some() || column.generated.is_some(),
+                            })
+                            .collect();
+                        for field in &s.fields {
+                            s._field_subscriptions.push(cx.subscribe(
+                                &field.input,
+                                |s, _, event, cx| {
+                                    if matches!(event, InputEvent::Change) {
+                                        s.form_revision = s.form_revision.wrapping_add(1);
+                                        s.staging.preview = None;
+                                        cx.notify();
+                                    }
+                                },
+                            ));
+                        }
+                        let sql = metadata.select_sql(s.page);
+                        s.metadata = Some(metadata);
+                        s.phase = Phase::Reading;
+                        s.status = Message::ReadingTablePage.into();
+                        cx.emit(TableEditorEvent::Load {
+                            token: s.token.clone(),
+                            sql,
+                        });
+                    }
+                    Err(e) => {
+                        if apply {
+                            s.fail(e, cx);
+                        } else {
+                            s.status = TableText::formatted(
+                                Message::TableCatalogFallback,
+                                vec![("error", e.into())],
+                            );
+                            cx.emit(TableEditorEvent::ReadFallback {
+                                token: s.token.clone(),
+                                sql: dbide_ui_spike::workbench_model::table_query(
+                                    DatabaseEngine::PostgreSql,
+                                    &s.schema,
+                                    &s.name,
+                                ),
+                            });
+                        }
+                    }
+                }
+                cx.notify();
             });
-        }).detach();
+        })
+        .detach();
         cx.notify();
     }
     pub fn accept_report(
@@ -235,21 +437,30 @@ impl TableEditor {
         let (pages, summary) = split_report(report);
         if apply {
             self.phase = Phase::ReloadRequired;
-            self.status = format!(
-                "{:?} · transaction {:?} · {}. Reload before any further edits; no batch is replayed.",
-                summary.outcome,
-                summary.transaction_state,
-                if summary.outcome == dbide_pg_spike::Outcome::Completed {
-                    if summary.transaction_state == ServerTransactionState::Idle {
-                        "Commit acknowledged"
-                    } else {
-                        "Submitted into open transaction; not committed"
-                    }
-                } else {
-                    "No successful batch acknowledgement"
-                }
+            self.status = TableText::formatted(
+                Message::TableApplyStatus,
+                vec![
+                    ("outcome", format!("{:?}", summary.outcome).into()),
+                    (
+                        "transaction",
+                        format!("{:?}", summary.transaction_state).into(),
+                    ),
+                    (
+                        "acknowledgement",
+                        if summary.outcome == dbide_pg_spike::Outcome::Completed {
+                            if summary.transaction_state == ServerTransactionState::Idle {
+                                Message::CommitAcknowledged
+                            } else {
+                                Message::SubmittedNotCommitted
+                            }
+                        } else {
+                            Message::NoBatchAcknowledgement
+                        }
+                        .into(),
+                    ),
+                ],
             );
-            self.error = summary.terminal_error.clone();
+            self.error = summary.terminal_error.clone().map(Into::into);
             if summary.outcome == dbide_pg_spike::Outcome::Completed {
                 self.staging = Staging::default();
                 self.selected = None;
@@ -259,10 +470,13 @@ impl TableEditor {
             return;
         }
         if summary.outcome != dbide_pg_spike::Outcome::Completed || summary.connection_retired {
-            self.fail(
-                summary
-                    .terminal_error
-                    .unwrap_or_else(|| format!("Row read {:?}; reload required", summary.outcome)),
+            self.fail_text(
+                summary.terminal_error.map(Into::into).unwrap_or_else(|| {
+                    TableText::formatted(
+                        Message::TableReadReloadRequired,
+                        vec![("outcome", format!("{:?}", summary.outcome).into())],
+                    )
+                }),
                 cx,
             );
             return;
@@ -277,14 +491,14 @@ impl TableEditor {
             .map(|c| c.name.clone())
             .collect::<Vec<_>>();
         let Some(page) = pages.into_iter().find(|p| p.columns == expected) else {
-            self.fail("Read returned an unexpected table projection".into(), cx);
+            self.fail_text(Message::UnexpectedTableProjection.into(), cx);
             return;
         };
         match metadata.decode_rows(&page.columns, &page.rows, summary.truncated) {
             Ok(rows) => self.rows = rows,
             Err(error) => {
                 metadata.read_only = Some(error.clone());
-                self.error = Some(error);
+                self.error = Some(error.into());
                 self.rows = vec![];
             }
         }
@@ -323,15 +537,23 @@ impl TableEditor {
         self.phase = Phase::Ready;
         self.selected = None;
         self.insert_mode = false;
-        self.status = format!(
-            "Server page {} · {} loaded rows · table total unknown",
-            self.page + 1,
-            self.grid.read(cx).delegate().row_count()
+        self.status = TableText::formatted(
+            Message::LoadedTablePage,
+            vec![
+                ("page", (self.page + 1).to_string().into()),
+                (
+                    "rows",
+                    self.grid.read(cx).delegate().row_count().to_string().into(),
+                ),
+            ],
         );
         cx.notify();
     }
     fn form_values(&self, cx: &App) -> Result<Vec<Cell>, String> {
-        let metadata = self.metadata.as_ref().ok_or("Metadata unavailable")?;
+        let metadata = self
+            .metadata
+            .as_ref()
+            .ok_or(tr(self.locale, Message::MetadataUnavailable))?;
         self.fields
             .iter()
             .enumerate()
@@ -391,9 +613,12 @@ impl TableEditor {
         }
         let receiver = window.prompt(
             PromptLevel::Warning,
-            "Discard unstaged row form changes?",
-            Some("Stage the current row to keep it in the local transaction preview."),
-            &["Keep form", "Discard form changes"],
+            tr(self.locale, Message::DiscardRowFormTitle),
+            Some(tr(self.locale, Message::DiscardRowFormHint)),
+            &[
+                tr(self.locale, Message::KeepForm),
+                tr(self.locale, Message::DiscardFormChanges),
+            ],
             cx,
         );
         cx.spawn_in(window, async move |view, cx| {
@@ -444,7 +669,7 @@ impl TableEditor {
                     .update(cx, |input, cx| input.set_value("", window, cx));
             }
         }
-        self.status = "New row form · changes remain local until Stage, Preview and Apply".into();
+        self.status = Message::NewRowFormStatus.into();
         cx.notify();
     }
     fn stage(&mut self, delete: bool, cx: &mut Context<Self>) {
@@ -452,8 +677,14 @@ impl TableEditor {
             return;
         }
         let result = (|| -> Result<(), String> {
-            let metadata = self.metadata.as_ref().ok_or("Metadata unavailable")?;
-            let spec = metadata.spec.as_ref().ok_or("Table is read-only")?;
+            let metadata = self
+                .metadata
+                .as_ref()
+                .ok_or(tr(self.locale, Message::MetadataUnavailable))?;
+            let spec = metadata
+                .spec
+                .as_ref()
+                .ok_or(tr(self.locale, Message::TableReadOnly))?;
             if self.insert_mode {
                 let cells = self.form_values(cx)?;
                 let values = cells
@@ -469,11 +700,13 @@ impl TableEditor {
                     .collect();
                 self.staging.stage_insert(values, spec)?;
             } else {
-                let row = self.selected.ok_or("Select a row first")?;
+                let row = self
+                    .selected
+                    .ok_or(tr(self.locale, Message::SelectRowFirst))?;
                 let original = self
                     .rows
                     .get(row)
-                    .ok_or("Original row unavailable")?
+                    .ok_or(tr(self.locale, Message::OriginalRowUnavailable))?
                     .clone();
                 let edit = if delete {
                     Edit::Delete { original }
@@ -481,10 +714,11 @@ impl TableEditor {
                     let replacement = self.form_values(cx)?;
                     for (ix, col) in metadata.table.columns.iter().enumerate() {
                         if col.generated.is_some() && original[ix] != replacement[ix] {
-                            return Err(format!(
-                                "Generated/identity column {} is read-only",
-                                col.name
-                            ));
+                            return Err(TableText::formatted(
+                                Message::GeneratedColumnReadOnly,
+                                vec![("column", col.name.clone().into())],
+                            )
+                            .render(self.locale));
                         }
                     }
                     Edit::Update {
@@ -503,21 +737,18 @@ impl TableEditor {
                     self.insert_mode = false;
                     self.selected = None;
                 }
-                self.status = format!(
-                    "{} staged row edits · no SQL executed",
-                    self.staging.count()
+                self.status = TableText::formatted(
+                    Message::StagedRowEditsStatus,
+                    vec![("count", self.staging.count().to_string().into())],
                 );
             }
-            Err(e) => self.error = Some(e),
+            Err(e) => self.error = Some(e.into()),
         }
         cx.notify();
     }
     fn preview(&mut self, cx: &mut Context<Self>) {
         if self.form_dirty(cx) {
-            self.error = Some(
-                "Stage the current row form or discard its changes before previewing the batch."
-                    .into(),
-            );
+            self.error = Some(Message::StageFormBeforePreview.into());
             cx.notify();
             return;
         }
@@ -528,16 +759,14 @@ impl TableEditor {
             .metadata
             .as_ref()
             .and_then(|m| m.spec.as_ref())
-            .ok_or("Table is read-only".into())
+            .ok_or(tr(self.locale, Message::TableReadOnly).into())
             .and_then(|spec| self.staging.plan(spec));
         match result {
             Ok(()) => {
                 self.error = None;
-                self.status =
-                    "Transaction preview ready. Apply is a separate explicit submit gesture."
-                        .into();
+                self.status = Message::TransactionPreviewReady.into();
             }
-            Err(e) => self.error = Some(e),
+            Err(e) => self.error = Some(e.into()),
         }
         cx.notify();
     }
@@ -547,7 +776,16 @@ impl TableEditor {
         }
         if self.has_unsaved(cx) {
             let expected = self.edit_revision();
-            let receiver=window.prompt(PromptLevel::Warning,"Discard local row edits and reload?",Some("Both staged edits and unstaged form changes will be discarded. Nothing is replayed automatically."),&["Keep edits","Discard and reload"],cx);
+            let receiver = window.prompt(
+                PromptLevel::Warning,
+                tr(self.locale, Message::DiscardReloadTitle),
+                Some(tr(self.locale, Message::DiscardReloadHint)),
+                &[
+                    tr(self.locale, Message::KeepEdits),
+                    tr(self.locale, Message::DiscardAndReload),
+                ],
+                cx,
+            );
             cx.spawn_in(window, async move |view, cx| {
                 if receiver.await == Ok(1) {
                     let _ = view.update_in(cx, |s, w, cx| {
@@ -580,7 +818,7 @@ impl TableEditor {
         if self.phase == Phase::Ready {
             self.error = None;
         }
-        self.status="Local buffers discarded. Discard submits no SQL; prior execution/transaction outcomes are unchanged.".into();
+        self.status = Message::LocalBuffersDiscarded.into();
         cx.notify();
     }
     fn find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -605,7 +843,7 @@ impl TableEditor {
                 g.scroll_to_row(row, cx);
             });
         } else {
-            self.status = "No match in the currently loaded page (client search only)".into();
+            self.status = Message::NoMatchLoadedPage.into();
         }
         cx.notify();
     }
@@ -614,7 +852,15 @@ impl TableEditor {
     }
 }
 impl Render for TableEditor {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let locale = self.locale;
+        if self.search_locale != locale {
+            self.search.update(cx, |input, cx| {
+                input.set_placeholder(tr(locale, Message::FindLoadedPage), window, cx)
+            });
+            self.search_locale = locale;
+        }
+        let status = self.status.render(locale);
         let edit_controls = false; // M1 viewer: row writes await the M2 execution validation gate.
         let editable = edit_controls && self.editable();
         let busy = self.busy();
@@ -632,11 +878,17 @@ impl Render for TableEditor {
                     .p_4()
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(if self.insert_mode {
-                        "Insert new row".into()
+                        tr(locale, Message::InsertNewRow).into()
                     } else {
                         self.selected
-                            .map(|r| format!("Edit row {} on this page", r + 1))
-                            .unwrap_or_else(|| "Select a row to edit".into())
+                            .map(|r| {
+                                TableText::formatted(
+                                    Message::EditRowOnPage,
+                                    vec![("row", (r + 1).to_string().into())],
+                                )
+                                .render(locale)
+                            })
+                            .unwrap_or_else(|| tr(locale, Message::SelectRowToEdit).into())
                     }),
             );
         let mut inputs = div()
@@ -651,9 +903,13 @@ impl Render for TableEditor {
         if let Some(metadata) = &self.metadata {
             if let Some(reason) = &metadata.read_only {
                 inputs = inputs.child(
-                    div()
-                        .text_color(rgb(0xf0b797))
-                        .child(format!("Read-only: {reason}")),
+                    div().text_color(rgb(0xf0b797)).child(
+                        TableText::formatted(
+                            Message::ReadOnlyReason,
+                            vec![("reason", reason.clone().into())],
+                        )
+                        .render(locale),
+                    ),
                 );
             }
             inputs = inputs.children(metadata.table.columns.iter().enumerate().map(
@@ -669,40 +925,52 @@ impl Render for TableEditor {
                                 .text_size(px(11.))
                                 .text_color(rgb(MUTED))
                                 .child(format!(
-                                    "{} · {}{}{}",
+                                    "{} · {} · {}{}",
                                     column.name,
                                     column.data_type,
                                     if column.nullable {
-                                        " · nullable"
+                                        tr(locale, Message::Nullable)
                                     } else {
-                                        " · NOT NULL"
+                                        "NOT NULL"
                                     },
                                     if generated {
-                                        " · generated/identity"
+                                        format!(" · {}", tr(locale, Message::GeneratedIdentity))
                                     } else {
-                                        ""
+                                        String::new()
                                     }
                                 )),
                         )
                         .when_some(column.default.as_ref(), |el, value| {
                             el.child(
-                                div()
-                                    .text_size(px(10.))
-                                    .text_color(rgb(MUTED))
-                                    .child(format!("Default: {value}")),
+                                div().text_size(px(10.)).text_color(rgb(MUTED)).child(
+                                    TableText::formatted(
+                                        Message::DefaultExpression,
+                                        vec![("value", value.clone().into())],
+                                    )
+                                    .render(locale),
+                                ),
                             )
                         })
                         .when_some(column.generated.as_ref(), |el, value| {
                             el.child(
-                                div()
-                                    .text_size(px(10.))
-                                    .text_color(rgb(MUTED))
-                                    .child(format!("Generated: {value}")),
+                                div().text_size(px(10.)).text_color(rgb(MUTED)).child(
+                                    TableText::formatted(
+                                        Message::GeneratedExpression,
+                                        vec![("value", value.clone().into())],
+                                    )
+                                    .render(locale),
+                                ),
                             )
                         })
                         .child(
                             Textarea::new(&f.input)
-                                .aria_label(format!("Row value for {}", column.name))
+                                .aria_label(
+                                    TableText::formatted(
+                                        Message::RowValueFor,
+                                        vec![("column", column.name.clone().into())],
+                                    )
+                                    .render(locale),
+                                )
                                 .h(px(72.))
                                 .disabled(
                                     !editable
@@ -733,7 +1001,7 @@ impl Render for TableEditor {
                                 .when(self.insert_mode, |el| {
                                     el.child(
                                         Checkbox::new(("default", ix))
-                                            .label(format!("Default · {}", column.name))
+                                            .label(format!("DEFAULT · {}", column.name))
                                             .checked(f.default)
                                             .disabled(
                                                 !editable
@@ -764,9 +1032,9 @@ impl Render for TableEditor {
                     Self::button(
                         "stage-update",
                         if self.insert_mode {
-                            "Stage insert"
+                            tr(locale, Message::StageInsert)
                         } else {
-                            "Stage update"
+                            tr(locale, Message::StageUpdate)
                         },
                     )
                     .primary()
@@ -774,7 +1042,7 @@ impl Render for TableEditor {
                     .on_click(cx.listener(|s, _, _, cx| s.stage(false, cx))),
                 )
                 .child(
-                    Self::button("stage-delete", "Stage delete")
+                    Self::button("stage-delete", tr(locale, Message::StageDelete))
                         .disabled(!editable || self.insert_mode || self.selected.is_none())
                         .on_click(cx.listener(|s, _, _, cx| s.stage(true, cx))),
                 ),
@@ -797,19 +1065,19 @@ impl Render for TableEditor {
                         .border_b_1()
                         .border_color(rgb(BORDER))
                         .child(
-                            Self::button("reload-table", "Reload")
+                            Self::button("reload-table", tr(locale, Message::Reload))
                                 .disabled(busy)
                                 .on_click(cx.listener(|s, _, w, cx| s.reload(s.page, w, cx))),
                         )
                         .child(
-                            Self::button("previous-page", "Previous page")
+                            Self::button("previous-page", tr(locale, Message::PreviousPage))
                                 .disabled(busy || self.page == 0)
                                 .on_click(cx.listener(|s, _, w, cx| {
                                     s.reload(s.page.saturating_sub(1), w, cx)
                                 })),
                         )
                         .child(
-                            Self::button("next-page", "Next page")
+                            Self::button("next-page", tr(locale, Message::NextPage))
                                 .disabled(
                                     busy || self.grid.read(cx).delegate().row_count() < PAGE_ROWS,
                                 )
@@ -819,7 +1087,7 @@ impl Render for TableEditor {
                         )
                         .when(edit_controls, |el| {
                             el.child(
-                                Self::button("insert-table-row", "New row")
+                                Self::button("insert-table-row", tr(locale, Message::NewRow))
                                     .disabled(!editable)
                                     .on_click(cx.listener(|s, _, w, cx| s.begin_insert(w, cx))),
                             )
@@ -827,12 +1095,12 @@ impl Render for TableEditor {
                         .child(
                             div().flex_1().min_w_0().child(
                                 Input::new(&self.search)
-                                    .aria_label("Find in currently loaded table page")
+                                    .aria_label(tr(locale, Message::FindLoadedPage))
                                     .small(),
                             ),
                         )
                         .child(
-                            Self::button("find-page", "Find")
+                            Self::button("find-page", tr(locale, Message::Find))
                                 .disabled(busy)
                                 .on_click(cx.listener(|s, _, w, cx| s.find(w, cx))),
                         ),
@@ -861,10 +1129,11 @@ impl Render for TableEditor {
                         .text_color(rgb(MUTED))
                         .id("table-page-status")
                         .role(Role::Status)
-                        .aria_label(self.status.clone())
-                        .child(self.status.clone()),
+                        .aria_label(status.clone())
+                        .child(status),
                 );
         if let Some(error) = &self.error {
+            let error = error.render(locale);
             root = root.child(
                 div()
                     .id("table-edit-error")
@@ -888,30 +1157,71 @@ impl Render for TableEditor {
                     .gap_2()
                     .border_t_1()
                     .border_color(rgb(BORDER))
-                    .child(div().child(format!("{} staged edits", self.staging.count())))
                     .child(
-                        Self::button("preview-table-plan", "Preview transaction")
-                            .disabled(!editable || !self.has_staged())
-                            .on_click(cx.listener(|s, _, _, cx| s.preview(cx))),
+                        div().child(
+                            TableText::formatted(
+                                Message::StagedEdits,
+                                vec![("count", self.staging.count().to_string().into())],
+                            )
+                            .render(locale),
+                        ),
                     )
                     .child(
-                        Self::button("discard-staged", "Discard staged")
+                        Self::button(
+                            "preview-table-plan",
+                            tr(locale, Message::PreviewTransaction),
+                        )
+                        .disabled(!editable || !self.has_staged())
+                        .on_click(cx.listener(|s, _, _, cx| s.preview(cx))),
+                    )
+                    .child(
+                        Self::button("discard-staged", tr(locale, Message::DiscardStaged))
                             .disabled(busy || !self.has_unsaved(cx))
                             .on_click(cx.listener(|s, _, w, cx| s.discard_edits(w, cx))),
                     )
                     .child(
-                        Self::button("apply-table-plan", "Apply preview")
+                        Self::button("apply-table-plan", tr(locale, Message::ApplyPreview))
                             .primary()
                             .disabled(true)
                             .on_click(cx.listener(|s, _, w, cx| s.capture(true, w, cx))),
                     ),
             )
         });
-        root = root.child(div().px_4().py_1().text_size(px(10.)).text_color(rgb(MUTED)).child("Read-only table viewer · row editing validation pending · each page is a fresh bounded SELECT"));
+        root = root.child(
+            div()
+                .px_4()
+                .py_1()
+                .text_size(px(10.))
+                .text_color(rgb(MUTED))
+                .child(tr(locale, Message::TableViewerHint)),
+        );
         if edit_controls && let Some(plan) = preview {
-            root=root.child(div().child("Row editing validation pending · Apply disabled").id("table-plan-preview").max_h(px(180.)).overflow_y_scroll().px_4().py_2().bg(rgb(PANEL)).text_size(px(10.)).font_family("Menlo")
-            .child("Explicit guarded transaction · DEFAULT is evaluated by the database · original-cell predicates · exactly1 affected row per statement · server defaults may advance sequences even after rollback · value checks do not detect ABA changes")
-            .children(plan.statements.iter().enumerate().map(|(ix,statement)|div().id(("planned-edit",ix)).py_2().child(format!("{}: {}\nBound parameters: {:?}",ix+1,statement.sql,statement.parameters.iter().map(|p|&p.value).collect::<Vec<_>>())))));
+            root = root.child(
+                div()
+                    .child(tr(locale, Message::TableApplyDisabled))
+                    .id("table-plan-preview")
+                    .max_h(px(180.))
+                    .overflow_y_scroll()
+                    .px_4()
+                    .py_2()
+                    .bg(rgb(PANEL))
+                    .text_size(px(10.))
+                    .font_family("Menlo")
+                    .child(tr(locale, Message::GuardedTransactionHint))
+                    .children(plan.statements.iter().enumerate().map(|(ix, statement)| {
+                        div().id(("planned-edit", ix)).py_2().child(format!(
+                            "{}: {}\n{}: {:?}",
+                            ix + 1,
+                            statement.sql,
+                            tr(locale, Message::BoundParameters),
+                            statement
+                                .parameters
+                                .iter()
+                                .map(|p| &p.value)
+                                .collect::<Vec<_>>()
+                        ))
+                    })),
+            );
         }
         root
     }

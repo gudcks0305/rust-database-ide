@@ -550,3 +550,48 @@ fn target_snapshot_is_explicitly_incomplete_schema_and_preserves_outgoing_fk() {
             .complete
     );
 }
+
+#[test]
+fn ordinary_rewrite_rule_marker_is_precise_preserved_and_blocks_migration_generation() {
+    use metadata_features::USER_REWRITE_RULES;
+    let sql = capture_sql(&["test_schema".into()], CaptureLimits::default());
+    assert!(sql.contains("CASE WHEN c.relkind='r' AND EXISTS(SELECT 1 FROM pg_catalog.pg_rewrite rw WHERE rw.ev_class=c.oid) THEN 'user rewrite rules' END"));
+    let targeted =
+        open_target_capture_sql(&["test_schema".into()], "parent", CaptureLimits::default())
+            .unwrap();
+    assert!(targeted.contains("c.relkind='r' AND EXISTS(SELECT 1 FROM pg_catalog.pg_rewrite"));
+    let mut rows = records();
+    rows[2]["features"] = json!([USER_REWRITE_RULES]);
+    let snapshot = snapshot_from_report(
+        &request(),
+        &["test_schema".into()],
+        CaptureLimits::default(),
+        &report(rows),
+    )
+    .unwrap();
+    let parent = snapshot
+        .tables()
+        .find(|(n, _)| n.name == "parent")
+        .unwrap()
+        .1;
+    assert!(
+        parent
+            .unsupported_features
+            .iter()
+            .any(|feature| feature == USER_REWRITE_RULES)
+    );
+    let round = SchemaSnapshot::from_json(&snapshot.to_json().unwrap()).unwrap();
+    assert_eq!(round, snapshot);
+    let empty = SchemaSnapshot::empty(
+        snapshot.database.clone(),
+        Provenance::Imported {
+            label: "empty target".into(),
+        },
+        snapshot.scope.clone(),
+    );
+    assert!(
+        compare_snapshots(&snapshot, &empty)
+            .unwrap()
+            .has_unsupported()
+    );
+}

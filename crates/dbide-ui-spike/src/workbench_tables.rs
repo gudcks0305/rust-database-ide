@@ -24,7 +24,9 @@ impl Workbench {
             return;
         }
         let revision = self.connection_revision;
-        let editor = cx.new(|cx| TableEditor::new(request, schema, name, revision, window, cx));
+        let editor = cx.new(|cx| {
+            TableEditor::new_with_locale(request, schema, name, revision, self.locale, window, cx)
+        });
         self._subscriptions
             .push(cx.subscribe_in(&editor, window, |s, source, event, w, cx| {
                 s.handle_table_event(source.entity_id(), event, w, cx)
@@ -205,6 +207,17 @@ impl Workbench {
         {
             self.diagnostic = None;
         }
+        if self.table_editor.is_none()
+            && matches!(kind, TableOperation::Control)
+            && let Some(feedback) = &mut self.table_open_feedback
+        {
+            feedback.message = if report.outcome == dbide_pg_spike::Outcome::Completed {
+                if self.locale==Locale::Ko{"테이블 연결의 트랜잭션 제어가 완료되었습니다. 데이터 열기는 직접 다시 시도하세요."}else{"Table transaction control completed. Retry Data explicitly."}.into()
+            } else {
+                report.terminal_error.as_ref().map(|e|e.message.clone()).unwrap_or_else(||if self.locale==Locale::Ko{"테이블 연결 트랜잭션 제어를 확인하지 못했습니다. 실제 상태를 확인한 뒤 연결을 끊거나 직접 다시 시도하세요."}else{"Table transaction control was not confirmed. Inspect its wire state, then disconnect or retry explicitly."}.into())
+            };
+            feedback.neutral = report.outcome == dbide_pg_spike::Outcome::Completed;
+        }
         if let Some(editor) = self.table_editor.clone() {
             editor.update(cx, |editor, cx| match kind {
                 TableOperation::Load => {
@@ -229,6 +242,10 @@ impl Workbench {
         }
     }
     fn close_table_shortcut(&mut self, _: &CloseSqlTab, w: &mut Window, cx: &mut Context<Self>) {
+        if self.preferences.take().is_some() {
+            cx.notify();
+            return;
+        }
         self.close_table_editor(w, cx);
     }
     pub(super) fn table_editor_view(
@@ -266,21 +283,25 @@ impl Workbench {
                             .id("table-context-status")
                             .role(Role::Status)
                             .aria_label(format!(
-                                "Table data {} · {} · {} · transaction {:?}",
+                                "{} · {} · {} · {} · {}: {}",
+                                tr(self.locale, Message::TableData),
                                 editor.read(cx).label(),
                                 token.profile.name,
                                 dbide_ui_spike::workbench_model::profile_target(&token.profile),
-                                self.transaction_state
+                                tr(self.locale, Message::Transaction),
+                                self.tx_label(self.transaction_state)
                             ))
                             .flex_1()
                             .min_w_0()
                             .text_ellipsis()
                             .child(format!(
-                                "Table data · {} · {} · {} · current transaction {:?}",
+                                "{} · {} · {} · {} · {}: {}",
+                                tr(self.locale, Message::TableData),
                                 editor.read(cx).label(),
                                 token.profile.name,
                                 dbide_ui_spike::workbench_model::profile_target(&token.profile),
-                                self.transaction_state
+                                tr(self.locale, Message::Transaction),
+                                self.tx_label(self.transaction_state)
                             )),
                     )
                     .child(
@@ -301,11 +322,20 @@ impl Workbench {
                             .on_click(cx.listener(move |s, _, _, cx| s.cancel(cancel, cx))),
                     )
                     .child(
-                        self.button("close-table-editor", "Close table")
+                        self.button("close-table-editor", tr(self.locale, Message::CloseTable))
                             .disabled(self.active_operation.is_some() || editor.read(cx).is_busy())
                             .on_click(cx.listener(|s, _, w, cx| s.close_table_editor(w, cx))),
                     ),
             )
-            .child(div().flex_1().min_h_0().child(editor.clone()))
+            .child(
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .child(div().flex_1().min_w_0().child(editor.clone()))
+                    .when_some(self.preferences.as_ref(), |el, prefs| {
+                        el.child(self.preferences_panel(prefs, cx))
+                    }),
+            )
     }
 }

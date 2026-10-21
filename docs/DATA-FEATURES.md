@@ -275,3 +275,17 @@ publication, vendor codecs, broader server versions and trigger/RLS/collation
 contracts remain separate work. The fixture verifies this particular native
 parameterized executor and the generated plans; it does not make arbitrary
 simple-protocol SQL a safe mutation path.
+
+### Native table viewer language
+
+The native read-only table viewer accepts an explicit Korean/English locale and
+runtime locale updates from its host. Paging/search buttons, row-field captions
+and accessibility labels, prompts, application status/error wrappers and viewer
+hints use the shared typed `dbide-i18n` catalog. Stored status templates redraw
+in the current language without translating raw backend diagnostics. Table and
+column identifiers, cell values, generated/default SQL expressions, SQLSTATE
+messages, parameter values and SQL tokens such as `NULL`, `NOT NULL` and
+`DEFAULT` remain unchanged. Shared grid/component built-in messages may still
+use English; this is not a claim of complete third-party component localization.
+Row editing/Apply remain disabled at the current validation gate; language
+selection does not change execution, staging, paging or transaction behavior.

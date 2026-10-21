@@ -137,6 +137,7 @@ impl Workbench {
                         "CA certificate path (optional)" => "CA 인증서 경로 (선택)",
                         "Advanced" => "고급",
                         "Tools" => "데이터베이스 도구",
+                        "Close tools" => "도구 닫기",
                         "Recovery: On" => "SQL 복구: 켜짐",
                         "Recovery: Off" => "SQL 복구: 꺼짐",
                         _ => label,
@@ -199,6 +200,56 @@ impl Workbench {
             self.tx_label(session.transaction_state)
         )
     }
+    pub(super) fn recovery_status_label(&self) -> String {
+        let ko = self.locale == Locale::Ko;
+        match self.recovery.status.as_str() {
+            "SQL recovery enabled · local 0600 file; original SQL files are not changed." => {
+                format!(
+                    "{} · {}",
+                    tr(self.locale, Message::RecoveryOn),
+                    if ko {
+                        "로컬 0600 파일 · 원본 SQL 파일은 변경하지 않음"
+                    } else {
+                        "local 0600 file; original SQL files are not changed"
+                    }
+                )
+            }
+            "SQL recovery off · enable to retain local drafts across restarts." => format!(
+                "{} · {}",
+                tr(self.locale, Message::RecoveryOff),
+                if ko {
+                    "켜면 앱을 다시 열 때 로컬 초안을 복구합니다"
+                } else {
+                    "enable to retain local drafts across restarts"
+                }
+            ),
+            "SQL drafts are saved locally in a 0600 file. SQL may contain sensitive values; source .sql files are not auto-saved." =>
+            {
+                format!(
+                    "{} · {}",
+                    tr(self.locale, Message::RecoveryOn),
+                    if ko {
+                        "로컬 0600 파일에 저장 · SQL에 민감한 값이 포함될 수 있음 · 원본 파일 자동 저장 없음"
+                    } else {
+                        "local 0600 file; SQL may contain sensitive values; source files are not auto-saved"
+                    }
+                )
+            }
+            "SQL recovery disabled. The prior recovery snapshot remains local and is not restored while disabled." =>
+            {
+                format!(
+                    "{} · {}",
+                    tr(self.locale, Message::RecoveryOff),
+                    if ko {
+                        "이전 복구 파일은 로컬에 유지되며 끈 동안 복원하지 않음"
+                    } else {
+                        "prior local snapshot retained; it is not restored while recovery is off"
+                    }
+                )
+            }
+            other => other.into(),
+        }
+    }
     pub(super) fn refresh_core_placeholders(&self, window: &mut Window, cx: &mut Context<Self>) {
         let search = tr(self.locale, Message::SearchObjects);
         if self
@@ -254,6 +305,12 @@ impl Workbench {
                 match result {
                     Ok(settings) => {
                         s.locale = settings.locale;
+                        if let Some(editor) = &s.table_editor {
+                            editor.update(cx, |editor, cx| editor.set_locale(settings.locale, cx));
+                        }
+                        if let Some(tools) = &s.tools {
+                            tools.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+                        }
                         s.menu_state = None;
                         if let Some(panel) = &s.preferences {
                             panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
@@ -313,6 +370,12 @@ impl Workbench {
                 match result {
                     Ok(settings) => {
                         s.locale = settings.locale;
+                        if let Some(editor) = &s.table_editor {
+                            editor.update(cx, |editor, cx| editor.set_locale(settings.locale, cx));
+                        }
+                        if let Some(tools) = &s.tools {
+                            tools.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+                        }
                         s.menu_state = None;
                         s.settings_error = None;
                         if let Some(panel) = &s.preferences {
@@ -326,5 +389,50 @@ impl Workbench {
             });
         })
         .detach();
+    }
+}
+
+impl Workbench {
+    pub(super) fn preferences_panel(
+        &self,
+        preferences: &Entity<dbide_preferences_ui::PreferencesPanel>,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        div()
+            .w(px(380.))
+            .flex_shrink_0()
+            .bg(rgb(PANEL))
+            .border_l_1()
+            .border_color(rgb(BORDER))
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .p_3()
+                    .flex()
+                    .justify_between()
+                    .child(self.ui_label("Preferences"))
+                    .child(
+                        self.button("close-preferences", "Close")
+                            .on_click(cx.listener(|s, _, _, cx| {
+                                s.preferences = None;
+                                cx.notify();
+                            })),
+                    ),
+            )
+            .when(self.settings_busy, |el| {
+                el.child(
+                    div()
+                        .id("settings-persist-status")
+                        .px_4()
+                        .role(Role::Status)
+                        .aria_label(self.ui_label("Saving…"))
+                        .child(self.ui_label("Saving…")),
+                )
+            })
+            .when_some(self.settings_error.as_ref(), |el, error| {
+                el.child(div().px_4().text_color(rgb(0xf0b797)).child(error.clone()))
+            })
+            .child(div().flex_1().min_h_0().child(preferences.clone()))
     }
 }

@@ -135,9 +135,9 @@ impl ToolsPanel {
         }
     }
     pub(crate) fn objects_view(&self, cx: &mut Context<Self>) -> Div {
-        let mut body=div().flex().flex_col().gap_3().child(card("Captured PostgreSQL objects").child("Browse actual table/view metadata, then generate one SQL statement for review.").child(hint("Drafts never execute here. Copy, save or open a new console with the captured profile. Run remains an explicit workbench action.")));
+        let mut body=div().flex().flex_col().gap_3().child(card(self.t("Captured PostgreSQL objects")).child(self.t("Browse actual table/view metadata, then generate one SQL statement for review.")).child(hint(self.t("Drafts never execute here. Copy, save or open a new console with the captured profile. Run remains an explicit workbench action."))));
         let Some(snapshot) = &self.actual else {
-            return body.child(hint(if self.live_enabled(){"Capture schema in Schema tab to load actual objects."}else{"Live object capture and PostgreSQL object drafts are disabled for this captured engine. Reopen tools with a PostgreSQL profile."}));
+            return body.child(hint(if self.live_enabled(){self.t("Capture schema in Schema tab to load actual objects.")}else{self.t("Live object capture and PostgreSQL object drafts are disabled for this captured engine. Reopen tools with a PostgreSQL profile.")}));
         };
         let total_tables = snapshot.tables().count();
         let total_views = snapshot
@@ -145,9 +145,13 @@ impl ToolsPanel {
             .iter()
             .map(|s| s.views.len())
             .sum::<usize>();
-        body = body.child(hint(format!(
-            "{total_tables} tables · {total_views} views · captured scope {}",
-            snapshot.scope.join(", ")
+        body = body.child(hint(self.f(
+            Message::ToolsTotalTablesTablesTotalViewsViews,
+            &[
+                ("total_tables", (total_tables).to_string()),
+                ("total_views", (total_views).to_string()),
+                ("value_a", (snapshot.scope.join(", ")).to_string()),
+            ],
         )));
         let mut objects = div().flex().flex_wrap().gap_1();
         let mut count = 0usize;
@@ -158,10 +162,12 @@ impl ToolsPanel {
                 let selected = self.selected_object.as_ref() == Some(&selection);
                 objects = objects.child(
                     Button::new(("select-table", count))
-                        .label(format!(
-                            "Table {}{}",
-                            target.sql(),
-                            if selected { " ●" } else { "" }
+                        .label(self.f(
+                            Message::ToolsTable,
+                            &[
+                                ("value_a", (target.sql()).to_string()),
+                                ("value_b", (if selected { " ●" } else { "" }).to_string()),
+                            ],
                         ))
                         .small()
                         .disabled(self.operation.busy())
@@ -179,9 +185,9 @@ impl ToolsPanel {
                         .label(format!(
                             "{} {}",
                             if view.materialized {
-                                "Materialized view"
+                                self.t("Materialized view")
                             } else {
-                                "View"
+                                self.t("View")
                             },
                             target.sql()
                         ))
@@ -194,13 +200,21 @@ impl ToolsPanel {
                 count += 1;
             }
             if schema.unsupported_objects.len() > 100 {
-                body=body.child(hint(format!("{} unsupported objects in {} · showing first 100 markers; full details in snapshot JSON",schema.unsupported_objects.len(),schema.name)));
+                body = body.child(hint(self.f(
+                    Message::ToolsUnsupportedObjectsInShowingFirst100,
+                    &[
+                        ("value_a", (schema.unsupported_objects.len()).to_string()),
+                        ("value_b", (schema.name).to_string()),
+                    ],
+                )));
             }
             for marker in schema.unsupported_objects.iter().take(100) {
-                body = body.child(hint(format!(
-                    "Unsupported catalog object in {}: {}",
-                    schema.name,
-                    model::short(marker, 500)
+                body = body.child(hint(self.f(
+                    Message::ToolsUnsupportedCatalogObjectIn,
+                    &[
+                        ("value_a", (schema.name).to_string()),
+                        ("value_b", (model::short(marker, 500)).to_string()),
+                    ],
                 )));
             }
         }
@@ -208,23 +222,25 @@ impl ToolsPanel {
         if let Some(Selection::Table(target)) = &self.selected_object
             && let Ok(table) = drafts::table(snapshot, target)
         {
-            body = body.child(card(target.sql()).child(hint(format!(
-                "{} columns · {} foreign keys · {} indexes",
-                table.columns.len(),
-                table.foreign_keys.len(),
-                table.indexes.len()
+            body = body.child(card(target.sql()).child(hint(self.f(
+                Message::ToolsColumnsForeignKeysIndexes,
+                &[
+                    ("value_a", (table.columns.len()).to_string()),
+                    ("value_b", (table.foreign_keys.len()).to_string()),
+                    ("value_c", (table.indexes.len()).to_string()),
+                ],
             ))));
             for feature in &table.unsupported_features {
-                body = body.child(hint(format!(
-                    "Unsupported table feature: {}",
-                    model::short(feature, 800)
+                body = body.child(hint(self.f(
+                    Message::ToolsUnsupportedTableFeature,
+                    &[("value_a", (model::short(feature, 800)).to_string())],
                 )));
             }
             body = body.child(
                 div()
                     .id("object-columns")
                     .role(Role::Table)
-                    .aria_label("Captured columns and defaults")
+                    .aria_label(self.t("Captured columns and defaults"))
                     .flex()
                     .flex_col()
                     .gap_1()
@@ -238,47 +254,73 @@ impl ToolsPanel {
                                 card(format!("{} · {}", column.name, column.data_type))
                                     .id(("object-column", i))
                                     .role(Role::Row)
-                                    .child(hint(format!(
-                                        "Nullable: {} · default: {} · generated/identity: {}",
-                                        column.nullable,
-                                        model::short(
-                                            column.default.as_deref().unwrap_or("none"),
-                                            1200
+                                    .child(hint(
+                                        self.f(
+                                            Message::ToolsNullableDefaultGeneratedIdentity,
+                                            &[
+                                                ("value_a", self.flag(column.nullable)),
+                                                (
+                                                    "value_b",
+                                                    (model::short(
+                                                        column
+                                                            .default
+                                                            .as_deref()
+                                                            .unwrap_or(self.t("none")),
+                                                        1200,
+                                                    ))
+                                                    .to_string(),
+                                                ),
+                                                (
+                                                    "value_c",
+                                                    (model::short(
+                                                        column
+                                                            .generated
+                                                            .as_deref()
+                                                            .unwrap_or(self.t("none")),
+                                                        1200,
+                                                    ))
+                                                    .to_string(),
+                                                ),
+                                            ],
                                         ),
-                                        model::short(
-                                            column.generated.as_deref().unwrap_or("none"),
-                                            1200
-                                        )
-                                    )))
+                                    ))
                             }),
                     ),
             );
             if table.columns.len() > 300 {
-                body=body.child(hint("Column preview capped at 300. Full bounded capture remains available in snapshot JSON."));
+                body=body.child(hint(self.t("Column preview capped at 300. Full bounded capture remains available in snapshot JSON.")));
             }
             if let Some(pk) = &table.primary_key {
                 body = body.child(
-                    card(format!(
-                        "Primary key · {}",
-                        pk.name.as_deref().unwrap_or("unnamed")
+                    card(self.f(
+                        Message::ToolsPrimaryKey,
+                        &[(
+                            "value_a",
+                            (pk.name.as_deref().unwrap_or(self.t("unnamed"))).to_string(),
+                        )],
                     ))
                     .child(hint(pk.columns.join(", "))),
                 );
             }
             for fk in table.foreign_keys.iter().take(200) {
                 body = body.child(
-                    card(format!(
-                        "Foreign key · {}",
-                        fk.name.as_deref().unwrap_or("unnamed")
+                    card(self.f(
+                        Message::ToolsForeignKey,
+                        &[(
+                            "value_a",
+                            (fk.name.as_deref().unwrap_or(self.t("unnamed"))).to_string(),
+                        )],
                     ))
-                    .child(hint(format!(
-                        "{} → {} ({}) · DELETE {} · UPDATE {} · deferrable {}",
-                        fk.columns.join(", "),
-                        fk.references.sql(),
-                        fk.referenced_columns.join(", "),
-                        fk.on_delete.sql(),
-                        fk.on_update.sql(),
-                        fk.deferrable
+                    .child(hint(self.f(
+                        Message::ToolsDELETEUPDATEDeferrable,
+                        &[
+                            ("value_a", (fk.columns.join(", ")).to_string()),
+                            ("value_b", (fk.references.sql()).to_string()),
+                            ("value_c", (fk.referenced_columns.join(", ")).to_string()),
+                            ("value_d", (fk.on_delete.sql()).to_string()),
+                            ("value_e", (fk.on_update.sql()).to_string()),
+                            ("value_f", self.flag(fk.deferrable)),
+                        ],
                     ))),
                 );
             }
@@ -290,30 +332,54 @@ impl ToolsPanel {
                     || index.predicate.is_some()
                     || !index.include.is_empty()
                     || index.method != "btree";
-                let mut item = card(format!(
-                    "Index {} · {}{}",
-                    index.name,
-                    if index.unique { "UNIQUE " } else { "" },
-                    index.method
+                let mut item = card(self.f(
+                    Message::ToolsIndex,
+                    &[
+                        ("value_a", (index.name).to_string()),
+                        (
+                            "value_b",
+                            (if index.unique { "UNIQUE " } else { "" }).to_string(),
+                        ),
+                        ("value_c", (index.method).to_string()),
+                    ],
                 ))
-                .child(hint(format!(
-                    "Columns: {} · expressions: {} · INCLUDE: {} · predicate: {}",
-                    index.columns.join(", "),
-                    model::short(&index.expressions.join(", "), 2000),
-                    index.include.join(", "),
-                    model::short(index.predicate.as_deref().unwrap_or("none"), 2000)
-                )))
-                .child(hint(format!(
-                    "Constraint owned: {} · unsupported metadata: {}",
-                    index.constraint_owned,
-                    index.unsupported_features.join(", ")
+                .child(hint(
+                    self.f(
+                        Message::ToolsColumnsExpressionsINCLUDEPredicate,
+                        &[
+                            ("value_a", (index.columns.join(", ")).to_string()),
+                            (
+                                "value_b",
+                                (model::short(&index.expressions.join(", "), 2000)).to_string(),
+                            ),
+                            ("value_c", (index.include.join(", ")).to_string()),
+                            (
+                                "value_d",
+                                (model::short(
+                                    index.predicate.as_deref().unwrap_or(self.t("none")),
+                                    2000,
+                                ))
+                                .to_string(),
+                            ),
+                        ],
+                    ),
+                ))
+                .child(hint(self.f(
+                    Message::ToolsConstraintOwnedUnsupportedMetadata,
+                    &[
+                        ("value_a", self.flag(index.constraint_owned)),
+                        (
+                            "value_b",
+                            (index.unsupported_features.join(", ")).to_string(),
+                        ),
+                    ],
                 )));
                 if advanced {
-                    item=item.child(hint("Advanced definition shown from captured metadata; expression/predicate/INCLUDE/opclass/collation recreation is unsupported by this basic draft form."));
+                    item=item.child(hint(self.t("Advanced definition shown from captured metadata; expression/predicate/INCLUDE/opclass/collation recreation is unsupported by this basic draft form.")));
                 }
                 item = item.child(
                     Button::new(("draft-drop-index", i))
-                        .label("Draft DROP INDEX · destructive")
+                        .label(self.t("Draft DROP INDEX · destructive"))
                         .small()
                         .disabled(self.operation.busy() || index.constraint_owned)
                         .on_click(cx.listener(move |s, _, _, cx| {
@@ -323,28 +389,30 @@ impl ToolsPanel {
                 body = body.child(item);
             }
             if table.foreign_keys.len() > 200 || table.indexes.len() > 200 {
-                body=body.child(hint("Foreign key/index detail preview capped at 200 each; complete captured metadata remains in snapshot JSON."));
+                body=body.child(hint(self.t("Foreign key/index detail preview capped at 200 each; complete captured metadata remains in snapshot JSON.")));
             }
             body = body.child(
-                card("Create index draft · ordinary btree only")
+                card(self.t("Create index draft · ordinary btree only"))
                     .child(
                         Input::new(&self.index_name)
-                            .aria_label("New index name")
+                            .aria_label(self.t("New index name"))
                             .small()
                             .disabled(self.operation.busy()),
                     )
                     .child(
                         Input::new(&self.index_columns)
-                            .aria_label("Exact captured column names for index, comma separated")
+                            .aria_label(
+                                self.t("Exact captured column names for index, comma separated"),
+                            )
                             .small()
                             .disabled(self.operation.busy()),
                     )
                     .child(
                         Button::new("toggle-unique-index")
                             .label(if self.unique_index {
-                                "Unique: yes"
+                                self.t("Unique: yes")
                             } else {
-                                "Unique: no"
+                                self.t("Unique: no")
                             })
                             .small()
                             .disabled(self.operation.busy())
@@ -354,7 +422,7 @@ impl ToolsPanel {
                             })),
                     )
                     .child(
-                        self.button("draft-create-index", "Generate CREATE INDEX draft")
+                        self.button("draft-create-index", self.t("Generate CREATE INDEX draft"))
                             .on_click(cx.listener(|s, _, _, cx| {
                                 s.generate_draft(DraftAction::CreateIndex, cx)
                             })),
@@ -364,21 +432,21 @@ impl ToolsPanel {
         if let Some(Selection::View(target)) = &self.selected_object
             && let Ok(view) = drafts::view(snapshot, target)
         {
-            body=body.child(card(format!("Captured {} {}",if view.materialized{"materialized view"}else{"view"},target.sql())).child(hint(model::short(&view.definition,12_000))).child(hint(if view.materialized{"Materialized view refresh/storage/drop/create is unsupported in this basic view form."}else{"Definition captured from PostgreSQL. View owner, ACL, reloptions/security settings and triggers are outside this basic form."})));
+            body=body.child(card(self.f(Message::ToolsCaptured, &[("value_a", (if view.materialized{self.t("materialized view")}else{self.t("View")}).to_string()), ("value_b", (target.sql()).to_string())])).child(hint(model::short(&view.definition,12_000))).child(hint(if view.materialized{self.t("Materialized view refresh/storage/drop/create is unsupported in this basic view form.")}else{self.t("Definition captured from PostgreSQL. View owner, ACL, reloptions/security settings and triggers are outside this basic form.")})));
         }
-        body=body.child(card("Ordinary view SQL drafts").child(hint("Schema and view name are quoted as identifiers. Definition must parse as one query; review functions and dependencies before running. Existing ordinary views require explicit destructive Replace."))
-            .child(Input::new(&self.object_schema).aria_label("View schema in captured scope").small().disabled(self.operation.busy()))
-            .child(Input::new(&self.object_name).aria_label("View name").small().disabled(self.operation.busy()))
-            .child(Textarea::new(&self.view_query).aria_label("View definition, exactly one query").h(px(110.)).disabled(self.operation.busy()))
-            .child(div().flex().flex_wrap().gap_2().child(self.button("draft-create-view","Draft CREATE VIEW").on_click(cx.listener(|s,_,_,cx|s.generate_draft(DraftAction::CreateView,cx)))).child(self.button("draft-replace-view","Draft REPLACE VIEW · destructive").on_click(cx.listener(|s,_,_,cx|s.generate_draft(DraftAction::ReplaceView,cx)))).child(self.button("draft-drop-view","Draft DROP VIEW · destructive").disabled(self.operation.busy()||!matches!(self.selected_object,Some(Selection::View(_)))).on_click(cx.listener(|s,_,_,cx|s.generate_draft(DraftAction::DropView,cx))))));
+        body=body.child(card(self.t("Ordinary view SQL drafts")).child(hint(self.t("Schema and view name are quoted as identifiers. Definition must parse as one query; review functions and dependencies before running. Existing ordinary views require explicit destructive Replace.")))
+            .child(Input::new(&self.object_schema).aria_label(self.t("View schema in captured scope")).small().disabled(self.operation.busy()))
+            .child(Input::new(&self.object_name).aria_label(self.t("View name")).small().disabled(self.operation.busy()))
+            .child(Textarea::new(&self.view_query).aria_label(self.t("View definition, exactly one query")).h(px(110.)).disabled(self.operation.busy()))
+            .child(div().flex().flex_wrap().gap_2().child(self.button("draft-create-view",self.t("Draft CREATE VIEW")).on_click(cx.listener(|s,_,_,cx|s.generate_draft(DraftAction::CreateView,cx)))).child(self.button("draft-replace-view",self.t("Draft REPLACE VIEW · destructive")).on_click(cx.listener(|s,_,_,cx|s.generate_draft(DraftAction::ReplaceView,cx)))).child(self.button("draft-drop-view",self.t("Draft DROP VIEW · destructive")).disabled(self.operation.busy()||!matches!(self.selected_object,Some(Selection::View(_)))).on_click(cx.listener(|s,_,_,cx|s.generate_draft(DraftAction::DropView,cx))))));
         if let Some(SqlDraft {
             sql,
             destructive,
             description,
         }) = &self.object_draft
         {
-            body=body.child(card(if *destructive{"DESTRUCTIVE SQL draft · review required"}else{"SQL draft · review required"}).child(hint(description.clone())).child(div().font_family("Menlo").text_size(px(11.)).child(model::short(sql,64_000))).child(hint("This draft belongs to the captured target above. It is unchanged by later form edits; regenerate to reflect edits. No SQL has been executed."))
-            .child(div().flex().flex_wrap().gap_2().child(self.button("copy-object-draft","Copy SQL draft").on_click(cx.listener(|s,_,_,cx|{if let Some(draft)=&s.object_draft{cx.write_to_clipboard(ClipboardItem::new_string(draft.sql.clone()));s.status="SQL draft copied · nothing executed".into();cx.notify();}}))).child(self.button("save-object-draft","Save SQL draft…").on_click(cx.listener(|s,_,w,cx|s.save(SaveKind::Draft,w,cx)))).child(self.button("open-object-draft","Open draft in new console").on_click(cx.listener(|s,_,_,cx|s.open_draft_console(cx))))));
+            body=body.child(card(if *destructive{self.t("DESTRUCTIVE SQL draft · review required")}else{self.t("SQL draft · review required")}).child(hint(self.t(description).to_owned())).child(div().font_family("Menlo").text_size(px(11.)).child(model::short(sql,64_000))).child(hint(self.t("This draft belongs to the captured target above. It is unchanged by later form edits; regenerate to reflect edits. No SQL has been executed.")))
+            .child(div().flex().flex_wrap().gap_2().child(self.button("copy-object-draft",self.t("Copy SQL draft")).on_click(cx.listener(|s,_,_,cx|{if let Some(draft)=&s.object_draft{cx.write_to_clipboard(ClipboardItem::new_string(draft.sql.clone()));s.status="SQL draft copied · nothing executed".into();cx.notify();}}))).child(self.button("save-object-draft",self.t("Save SQL draft…")).on_click(cx.listener(|s,_,w,cx|s.save(SaveKind::Draft,w,cx)))).child(self.button("open-object-draft",self.t("Open draft in new console")).on_click(cx.listener(|s,_,_,cx|s.open_draft_console(cx))))));
         }
         body
     }

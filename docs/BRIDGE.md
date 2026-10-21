@@ -93,7 +93,7 @@ bytes, additionally subject to the existing driver result budget. Unsupported
 control-character names and over-budget rows mark `truncated`. PostgreSQL's query
 requests at most 257 rows to detect truncation; SHOW DATABASES is drained within
 the result/time budgets. Query time is capped at four seconds, connection setup
-uses the profile timeout, and exact operation Cancel/Disconnect/Drop interrupt the
+uses min(profile timeout, four seconds), and exact operation Cancel/Disconnect/Drop interrupt the
 probe. Permission/query failures produce a terminal Error with the operation ID
 and a fixed catalog/list-permission hint. No raw server connection errors escape.
 
@@ -135,12 +135,20 @@ No OS trust-store mutation and no
 plaintext fallback. `Disable` is an explicit profile choice for isolated local
 servers. `Session::connect(url)` is retained for existing fixture tests only.
 
+SQLite metadata operations (`inspect_schema`, database discovery and every lazy
+catalog query) normalize only a probe-local profile clone to `read_only=true` and
+`sqlite_create=false`. Missing files produce visible connection-failure events;
+metadata expansion cannot create a database file. The original configured request,
+cache-key fingerprint and live console connection remain unchanged. Explicit
+Connect, Run and TestConnection keep their original authorized creation policy.
+
 SQLite opens only the selected `sqlite_path`, honoring explicit `sqlite_create` and
-`read_only` file flags; passwords and network fields never enter SQLite. Its event
+`read_only` file flags for those explicit operations; passwords and network fields never enter SQLite. Its event
 target uses host `SQLite`, port `0`, and the bounded validated file path as database.
 MySQL connection failures map typed adapter errors to fixed credential-safe messages
 and existing diagnostic kinds; raw driver strings are never forwarded. Adapter
-connection setup is bounded by the profile timeout and existing cancellation epoch.
+connection setup is bounded by the profile timeout and existing cancellation epoch;
+metadata probes additionally clamp that connection timeout to at most four seconds.
 
 Read-only is engine-specific: SQLite uses a read-only file handle and rejects
 write-capable statements; PostgreSQL sets `default_transaction_read_only`; MySQL
@@ -217,9 +225,14 @@ wait for UI consumption. Unpolled UI eventually receives `QueueFull`.
 The driver retains at most an estimated 512 KiB / 4,096 events; this is not an
 entire process or transient wire-buffer memory bound.
 
-Connection/metadata establishment is bounded by the configured connection timeout
-and immediately interruptible by Drop, Disconnect, or its exact operation Cancel.
-This phase does not dispatch user SQL; there is no retry loop.
+Ordinary connection establishment uses the configured connection timeout. Every
+metadata operation clones its request and clamps only the probe connection phase
+to min(configured timeout, four seconds), followed by a separate four-second query
+budget. These are separate phases: the whole metadata operation is not promised
+to finish within four seconds (connection plus query can take up to about eight).
+The original configured timeout and SQL session remain unchanged. Both phases are
+immediately interruptible by Drop, Disconnect, or exact operation Cancel. The
+connection phase does not dispatch user SQL; there is no retry loop.
 
 ## Verification
 

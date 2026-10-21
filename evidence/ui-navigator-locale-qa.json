@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "kind": "native_lazy_navigator_and_locale_qa",
+  "observed_date": "2026-10-22",
+  "scope": "Isolated application profiles and project-owned loopback fixtures only.",
+  "runs": [
+    {
+      "binary_sha256": "e0cd8165ae415b54771cfba98b130ee8c4ff9cbe6b5cf6362460fe5f6881d707",
+      "passed": [
+        "SQLite profile expanded through main/table/fields, showing PK, nullability and rowid alias accurately.",
+        "SQLite Data opened a separate console with a quoted SELECT LIMIT 100; three rows preserved Korean text, NULL and empty values. Existing PostgreSQL console target was unchanged.",
+        "Collapsing and reopening main within TTL retained the fetched age. Expired cached nodes displayed expiry without automatic scanning.",
+        "PostgreSQL connection listed three databases; dbide_fixture and dbide_console_b expanded independently. Collapsing one database preserved its connection and sibling branches.",
+        "PostgreSQL dbide_ui_workbench.items displayed seven fields with identity, default and numeric metadata. Explicit details showed items_pkey/btree/UNIQUE(id), while the SQL console remained on dbide_console_b."
+      ]
+    },
+    {
+      "binary_sha256": "70e37e1e6b20f8bd91a4cd40aacfb4eed72c2498366b8bdeb3796a004120a019",
+      "passed": [
+        "Cmd+comma opened Preferences while Tools was visible. Switching English to Korean updated Tools labels/ARIA and main menus while preserving the exact schema input public, qa_language_marker.",
+        "PostgreSQL parent_view displayed its two columns and exact view definition through explicit details, without changing the active SQL target.",
+        "MySQL authentication failure was visible with retry/edit actions. The matching profile editor showed Korean connection, TLS and credential labels. Entering the fixture session password and refreshing loaded six databases.",
+        "MySQL dbide_fixture expanded directly into four objects. Loaded-name search filtered to orders; clearing it retained PK/FK, decimal(18,4) and datetime(6) fields.",
+        "Browsing PostgreSQL and MySQL trees preserved the existing PostgreSQL dbide_console_b SQL console target."
+      ]
+    },
+    {
+      "binary_sha256": "5f8b7424be091b37da54b00b4618f4734a471f5b09fe779c69c3faf6b1105ae0",
+      "unsigned_release_sha256": "78311d25a35f7c53d0abc7ed0cac6865bb5b8103a6d884648a5819f183138995",
+      "passed": [
+        "Compact tree exposed full accessible names for refresh/edit and an object actions menu with Structure/Data/SQL draft; repeated action rows were removed.",
+        "While SQL console B remained connected to dbide_console_b, Data from dbide_fixture/dbide_ui_workbench.items opened a separate table viewer. First page had 100 rows; Next showed exactly ids101..105 and disabled Next.",
+        "Table Preferences opened with Cmd+comma. Korean to English to Korean preserved page2, all five row values and search text QA item 103. Find selected the row with id103.",
+        "Close table returned to the exact existing SQL buffer and dbide_console_b target, connected/Idle. Running it returned dbide_console_b and the exact Korean value 재연결.",
+        "Korean recovery footer was visible; tree expiry markers used compact badges."
+      ],
+      "found_for_correction": [
+        "Table host title/transaction caption and Close table label remained English; fixed in the subsequent caption-only build."
+      ]
+    },
+    {
+      "binary_sha256": "1f7eaa8bca6ab7c7cdbba5e44bbbb5e89387cae8a9b4eee50a073837208cf68c",
+      "unsigned_release_sha256": "68860b0f2c0ca3c1a22f5003a0b2951c83ef22be7595040c55c7a2197f76d0e1",
+      "scope": "Caption-only correction after the preceding full pager/locale run.",
+      "passed": [
+        "Restart retained Korean and exact console source/target with no automatic connection.",
+        "The table title, transaction state caption and Close table control now switched correctly between Korean and English. Page1 retained100rows during switching.",
+        "Korean locale persisted after explicit app exit."
+      ]
+    }
+  ],
+  "limits": [
+    "Table-open cancellation/state isolation has pure/live bridge coverage; transient native opening/cancel timing was not separately exercised.",
+    "Physical Korean IME, complete VoiceOver coverage and Finder drag/drop remain unverified.",
+    "Cache capacity is accounted payload, not a process RSS bound.",
+    "SQL completion metadata freshness is a separate path and remains follow-up work.",
+    "PostgreSQL row Apply remains disabled. No blocked namespace/rule fault validation was resumed."
+  ]
+}

@@ -310,3 +310,87 @@ fn invalid_config_zero_ttl_and_deadline_overflow_are_visible() {
     assert_eq!(cache.stats().admissions_rejected, 2);
     assert!(MetadataCache::<(), ()>::accounted_size(0).unwrap() > 0);
 }
+
+#[test]
+fn scoped_invalidation_keeps_leases_charged_and_unrelated_schema_ttl_intact() {
+    type Scoped = MetadataCache<(&'static str, u32), Vec<u8>, ManualClock>;
+    let w = Scoped::accounted_size(4).unwrap();
+    let clock = ManualClock::default();
+    let mut cache = Scoped::with_clock(
+        CacheConfig {
+            max_accounted_bytes: 3 * w,
+            max_live_entries: 3,
+        },
+        clock.clone(),
+    )
+    .unwrap();
+    let held_a = cache
+        .insert(("schema_a", 1), vec![1; 4], 4, Duration::from_secs(10))
+        .unwrap();
+    drop(
+        cache
+            .insert(("schema_a", 2), vec![2; 4], 4, Duration::from_secs(10))
+            .unwrap(),
+    );
+    clock.advance(Duration::from_secs(2));
+    let held_b = cache
+        .insert(("schema_b", 1), vec![9; 4], 4, Duration::from_secs(10))
+        .unwrap();
+    assert_eq!(cache.invalidate_where(|key| key.0 == "schema_a"), 2);
+    assert_eq!(cache.invalidate_where(|key| key.0 == "missing"), 0);
+    assert_eq!(cache.stats().invalidations, 2);
+    assert_eq!(cache.stats().resident_entries, 1);
+    assert_eq!(cache.stats().accounted_bytes, 2 * w);
+    assert_eq!(cache.stats().pinned_bytes, 2 * w);
+    assert!(cache.get(&("schema_a", 1)).is_none());
+    assert!(cache.get(&("schema_a", 2)).is_none());
+    assert_eq!(&*held_a, &[1; 4]);
+    clock.advance(Duration::from_secs(1));
+    let new_heap = 2 * w - Scoped::accounted_size(0).unwrap();
+    assert_eq!(Scoped::accounted_size(new_heap).unwrap(), 2 * w);
+    let insert_a = |cache: &mut Scoped| {
+        cache.insert(
+            ("schema_a", 3),
+            vec![3; new_heap],
+            new_heap,
+            Duration::from_secs(10),
+        )
+    };
+    assert!(matches!(
+        insert_a(&mut cache),
+        Err(AdmissionError::BudgetExceeded { .. })
+    ));
+    assert_eq!(cache.stats().evictions, 0);
+    assert_eq!(cache.stats().resident_entries, 1);
+    drop(held_a);
+    assert_eq!(cache.stats().accounted_bytes, w);
+    let new_a = insert_a(&mut cache).unwrap();
+    let current_b = cache.get(&("schema_b", 1)).unwrap();
+    assert_eq!(&*current_b, &[9; 4]);
+    assert_eq!(current_b.expires_at(), Duration::from_secs(12));
+    assert_eq!(cache.stats().accounted_bytes, 3 * w);
+    assert_eq!(cache.stats().evictions, 0);
+    drop(current_b);
+    drop(held_b);
+    clock.advance(Duration::from_secs(9));
+    assert!(cache.get(&("schema_b", 1)).is_none());
+    assert_eq!(cache.stats().accounted_bytes, 2 * w);
+    assert_eq!(&*new_a, &vec![3; new_heap]);
+}
+
+#[test]
+fn scoped_invalidation_preserves_unrelated_lru_order() {
+    let w = weight(4);
+    let (mut cache, _) = cache(3 * w, 3);
+    for key in 1..=3 {
+        drop(put(&mut cache, key, key as u8, 4).unwrap());
+    }
+    drop(cache.get(&2).unwrap());
+    assert_eq!(cache.invalidate_where(|key| *key == 1), 1);
+    drop(put(&mut cache, 4, 4, 4).unwrap());
+    drop(put(&mut cache, 5, 5, 4).unwrap());
+    assert!(cache.get(&3).is_none());
+    assert_eq!(&*cache.get(&2).unwrap(), &[2; 4]);
+    assert_eq!(cache.stats().evictions, 1);
+    assert_eq!(cache.stats().invalidations, 1);
+}

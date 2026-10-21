@@ -19,6 +19,19 @@ impl SessionCredentials {
         .ok()?;
         Some((target.profile_id, target.endpoint_fingerprint))
     }
+    /// Prefer explicitly supplied console credentials only for this exact endpoint.
+    /// Empty drafts must not mask another matching console's entered password.
+    pub fn matching_password(
+        profile: &ConnectionProfile,
+        requests: impl IntoIterator<Item = ConnectionRequest>,
+    ) -> Option<String> {
+        let expected = Self::key(profile)?;
+        requests.into_iter().find_map(|request| {
+            (!request.password.is_empty()
+                && Self::key(&request.profile).as_ref() == Some(&expected))
+            .then_some(request.password)
+        })
+    }
     pub fn remember(&mut self, request: &ConnectionRequest) {
         if let Some(key) = Self::key(&request.profile) {
             self.forget_profile(&key.0);
@@ -117,5 +130,42 @@ mod tests {
         );
         assert_eq!(console.request().unwrap().password, "original-fixture-only");
         assert_eq!(console.target().unwrap().host, profile.host);
+    }
+    #[test]
+    fn browser_can_use_exact_console_password_but_empty_or_changed_endpoint_cannot_mask_it() {
+        let profile = ConnectionProfile::fixture();
+        let mut other = profile.clone();
+        other.host = "other.invalid".into();
+        let requests = vec![
+            ConnectionRequest {
+                profile: other,
+                password: "foreign-secret".into(),
+            },
+            ConnectionRequest {
+                profile: profile.clone(),
+                password: String::new(),
+            },
+            ConnectionRequest {
+                profile: profile.clone(),
+                password: "entered-console-secret".into(),
+            },
+        ];
+        let mut target = profile.clone();
+        target.database = "another_database".into();
+        assert_eq!(
+            SessionCredentials::matching_password(&target, requests).as_deref(),
+            Some("entered-console-secret")
+        );
+        target.username = "another_user".into();
+        assert!(
+            SessionCredentials::matching_password(
+                &target,
+                [ConnectionRequest {
+                    profile,
+                    password: "old-user-secret".into()
+                }]
+            )
+            .is_none()
+        );
     }
 }

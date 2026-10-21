@@ -1,355 +1,712 @@
 use super::*;
+use dbide_ui_spike::navigator::{Data, Key, Relation, Scope};
+use gpui_component::menu::{DropdownMenu, PopupMenuItem};
+
+const VISIBLE_ROWS: usize = 1000;
+struct TreeRows {
+    rows: Vec<TreeRow>,
+    clipped: bool,
+    query: String,
+}
+struct TreeRow {
+    key: Key,
+    label: String,
+    depth: usize,
+    relation: Option<Relation>,
+    field: bool,
+    unavailable: bool,
+}
 impl Workbench {
-    pub(super) fn database_explorer(&self, cx: &mut Context<Self>) -> Div {
-        let query = self.object_search.read(cx).value().trim().to_lowercase();
-        let mut groups =
-            std::collections::BTreeMap::<&str, Vec<&dbide_bridge::SchemaObject>>::new();
-        for object in &self.schema {
-            if dbide_ui_spike::explorer_model::matches(object, &query) {
-                groups.entry(&object.schema).or_default().push(object);
+    pub(super) fn navigator_request(&self, key: &Key) -> Option<ConnectionRequest> {
+        let mut profile = self.navigator.profile(key)?;
+        profile.name = self
+            .workspace
+            .profiles
+            .iter()
+            .find(|p| p.id == key.profile_id)?
+            .name
+            .clone();
+        let candidates = self
+            .documents
+            .iter()
+            .filter(|d| d.model.id == self.active_document)
+            .chain(
+                self.documents
+                    .iter()
+                    .filter(|d| d.model.id != self.active_document),
+            )
+            .filter_map(|d| d.session.request());
+        let password = dbide_ui_spike::session_credentials::SessionCredentials::matching_password(
+            &profile, candidates,
+        )
+        .or_else(|| self.passwords.get(&profile))
+        .unwrap_or_default();
+        Some(ConnectionRequest { profile, password })
+    }
+    pub(super) fn navigator_expand(&mut self, key: Key, refresh: bool, cx: &mut Context<Self>) {
+        self.navigator.sync_profiles(&self.workspace.profiles);
+        let key = if refresh && matches!(key.scope, Scope::Databases) {
+            match self.navigator.refresh_connection(&key.profile_id) {
+                Ok(key) => key,
+                Err(error) => {
+                    self.navigator.notice = Some(error);
+                    cx.notify();
+                    return;
+                }
+            }
+        } else {
+            key
+        };
+        if let Some(request) = self.navigator_request(&key) {
+            if let Err(error) = self.navigator.expand(key, request, refresh) {
+                self.navigator.notice = Some(error);
+            }
+        } else {
+            self.navigator.notice = Some("Connection changed. Reopen this branch.".into());
+        }
+        cx.notify();
+    }
+    fn navigator_toggle(&mut self, key: Key, cx: &mut Context<Self>) {
+        if self.navigator.branch(&key).is_some() {
+            self.navigator.collapse(&key);
+            cx.notify();
+        } else {
+            self.navigator_expand(key, false, cx);
+        }
+    }
+    fn navigator_rows(
+        &self,
+        key: Key,
+        label: String,
+        depth: usize,
+        relation: Option<Relation>,
+        unavailable: bool,
+        tree: &mut TreeRows,
+    ) {
+        if tree.clipped {
+            return;
+        }
+        if !tree.query.is_empty()
+            && relation.is_some()
+            && !label.to_lowercase().contains(&tree.query)
+        {
+            let matches=self.navigator.snapshot(&key).is_some_and(|snapshot|matches!(&snapshot.data,Data::Columns(v) if v.iter().any(|c|c.name.to_lowercase().contains(&tree.query)||c.data_type.to_lowercase().contains(&tree.query))));
+            if !matches {
+                return;
             }
         }
+        if tree.rows.len() >= VISIBLE_ROWS {
+            tree.clipped = true;
+            return;
+        }
+        tree.rows.push(TreeRow {
+            key: key.clone(),
+            label,
+            depth,
+            relation,
+            field: false,
+            unavailable,
+        });
+        let Some(snapshot) = self.navigator.snapshot(&key) else {
+            return;
+        };
+        let engine = self.navigator.engine(&key).unwrap_or_default();
+        match &snapshot.data {
+            Data::Databases(databases) => {
+                for database in databases {
+                    let scope = match engine {
+                        DatabaseEngine::PostgreSql => Scope::Schemas,
+                        DatabaseEngine::MySql => Scope::Objects(database.name.clone()),
+                        DatabaseEngine::Sqlite => Scope::Objects("main".into()),
+                    };
+                    self.navigator_rows(
+                        key.child(&database.name, scope),
+                        database.name.clone(),
+                        depth + 1,
+                        None,
+                        !database.accessible,
+                        tree,
+                    );
+                    if tree.clipped {
+                        break;
+                    }
+                }
+            }
+            Data::Schemas(schemas) => {
+                for schema in schemas {
+                    self.navigator_rows(
+                        key.child(&key.database, Scope::Objects(schema.name.clone())),
+                        schema.name.clone(),
+                        depth + 1,
+                        None,
+                        false,
+                        tree,
+                    );
+                    if tree.clipped {
+                        break;
+                    }
+                }
+            }
+            Data::Objects(objects) => {
+                for object in objects {
+                    let relation = Relation {
+                        schema: object.schema.clone(),
+                        name: object.name.clone(),
+                        kind: object.kind.clone(),
+                    };
+                    self.navigator_rows(
+                        key.child(&key.database, Scope::Columns(relation.clone())),
+                        format!(
+                            "{} {}",
+                            if object.kind == "table" { "▦" } else { "◫" },
+                            object.name
+                        ),
+                        depth + 1,
+                        Some(relation),
+                        false,
+                        tree,
+                    );
+                    if tree.clipped {
+                        break;
+                    }
+                }
+            }
+            Data::Details { .. } => {}
+            Data::Columns(columns) => {
+                for column in columns {
+                    if !tree.query.is_empty()
+                        && !column.name.to_lowercase().contains(&tree.query)
+                        && !column.data_type.to_lowercase().contains(&tree.query)
+                    {
+                        continue;
+                    }
+                    if tree.rows.len() >= VISIBLE_ROWS {
+                        tree.clipped = true;
+                        break;
+                    }
+                    tree.rows.push(TreeRow {
+                        key: key.clone(),
+                        label: format!(
+                            "{}{}{} · {} · {}{}{}",
+                            column.name,
+                            if column.primary_key_ordinal.is_some() {
+                                " PK"
+                            } else {
+                                ""
+                            },
+                            if column.foreign_key { " FK" } else { "" },
+                            column.data_type,
+                            if column.nullable { "NULL" } else { "NOT NULL" },
+                            column
+                                .default
+                                .as_ref()
+                                .map(|d| format!(" · DEFAULT {d}"))
+                                .unwrap_or_default(),
+                            column
+                                .extra
+                                .as_ref()
+                                .map(|d| format!(" · {d}"))
+                                .unwrap_or_default()
+                        ),
+                        depth: depth + 1,
+                        relation: None,
+                        field: true,
+                        unavailable: false,
+                    });
+                }
+            }
+        }
+    }
+    pub(super) fn database_explorer(&self, cx: &mut Context<Self>) -> Div {
+        let ko = self.locale == Locale::Ko;
+        let query = self.object_search.read(cx).value().trim().to_lowercase();
+        let mut tree = TreeRows {
+            rows: vec![],
+            clipped: false,
+            query,
+        };
+        for profile in &self.workspace.profiles {
+            if tree.clipped {
+                break;
+            }
+            if let Some(key) = self.navigator.root(&profile.id) {
+                let engine = match profile.engine {
+                    DatabaseEngine::PostgreSql => "PG",
+                    DatabaseEngine::MySql => "MySQL",
+                    DatabaseEngine::Sqlite => "SQLite",
+                };
+                self.navigator_rows(
+                    key,
+                    format!("{} · {engine}", profile.name),
+                    0,
+                    None,
+                    false,
+                    &mut tree,
+                );
+            }
+        }
+        // Filtering never fetches or expands. Preserve ancestor rows so branch actions
+        // stay discoverable; fields and relation rows are filtered only over loaded data.
+        let stats = self.navigator.stats();
         let mut list = div()
             .id("schema-list")
             .flex_1()
             .min_h_0()
             .overflow_y_scroll()
             .px_2();
-        if self.schema.is_empty() {
-            list = list.child(div().p_2().text_color(rgb(MUTED)).child(self.ui_label(
-                if self.schema_loading {
-                    "Loading tables and views…"
-                } else if self.connection == ConnectionState::Connected {
-                    "Refresh to load this database."
-                } else {
-                    "Connect, then Refresh to browse this database."
-                },
-            )));
-        } else if groups.is_empty() {
-            list = list.child(
-                div()
-                    .p_2()
-                    .text_color(rgb(MUTED))
-                    .child(self.ui_label("No matching schema, table or column.")),
-            );
-        }
-        for (schema, objects) in groups {
-            let opened = !query.is_empty() || self.expanded_schemas.contains(schema);
-            let key = schema.to_string();
-            let mut group = div()
-                .id(SharedString::from(format!("schema-group-{schema}")))
-                .role(Role::Group)
-                .aria_label(format!("Schema {schema}, {} objects", objects.len()))
-                .aria_expanded(opened)
-                .child(
-                    Button::new(SharedString::from(format!("schema-{schema}")))
-                        .ghost()
-                        .w_full()
-                        .justify_start()
-                        .label(format!(
-                            "{}  {}  ({})",
-                            if opened { "▾" } else { "▸" },
-                            schema,
-                            objects.len()
-                        ))
-                        .small()
-                        .on_click(cx.listener(move |s, _, _, cx| {
-                            if !s.expanded_schemas.remove(&key) {
-                                s.expanded_schemas.insert(key.clone());
-                            }
-                            cx.notify();
-                        })),
+        for (ix, row) in tree.rows.into_iter().enumerate() {
+            let branch = self.navigator.branch(&row.key);
+            let snapshot = branch.and_then(|b| b.snapshot.as_ref());
+            if row.field {
+                let label = row.label;
+                list = list.child(
+                    div()
+                        .id(("nav-field", ix))
+                        .role(Role::Label)
+                        .aria_label(label.clone())
+                        .ml(px((row.depth * 8) as f32))
+                        .h(px(22.))
+                        .text_ellipsis()
+                        .py_1()
+                        .text_size(px(10.))
+                        .text_color(rgb(MUTED))
+                        .child(label),
                 );
-            if opened {
-                for object in objects {
-                    let key = dbide_schema::QualifiedName::new(&object.schema, &object.name).id();
-                    let expanded = self.expanded_objects.contains(&key);
-                    let toggle = key.clone();
-                    let inspect = object.clone();
-                    let data = object.clone();
-                    let draft = object.clone();
-
-                    let mut row = div()
-                        .id(SharedString::from(format!("object-group-{key}")))
-                        .role(Role::Group)
-                        .aria_label(format!(
-                            "{} {}.{} · {} columns",
-                            object.kind,
-                            object.schema,
-                            object.name,
-                            object.columns.len()
-                        ))
-                        .aria_expanded(expanded)
-                        .ml_2()
-                        .mt_1()
-                        .border_l_1()
-                        .border_color(rgb(BORDER))
-                        .pl_1()
-                        .child(
-                            Button::new(SharedString::from(format!("object-{key}")))
-                                .ghost()
-                                .w_full()
-                                .justify_start()
-                                .label(format!(
-                                    "{} {}  {}",
-                                    if expanded { "▾" } else { "▸" },
-                                    if dbide_ui_spike::explorer_model::is_table(&object.kind) {
-                                        "▦"
-                                    } else {
-                                        "◫"
-                                    },
-                                    object.name
-                                ))
-                                .small()
-                                .on_click(cx.listener(move |s, _, _, cx| {
-                                    if !s.expanded_objects.remove(&toggle) {
-                                        s.expanded_objects.insert(toggle.clone());
-                                    }
-                                    cx.notify();
-                                })),
-                        );
-                    if expanded {
-                        row = row
-                            .child(
-                                div()
-                                    .ml_2()
-                                    .flex()
-                                    .gap_1()
-                                    .child(
-                                        Button::new(SharedString::from(format!("structure-{key}")))
-                                            .label(self.ui_label("Structure"))
-                                            .small()
-                                            .on_click(cx.listener(move |s, _, _, cx| {
-                                                let request = s.configured.clone();
-                                                s.structure = Some(cx.new(|cx| {
-                                                    object_inspector::ObjectInspector::new(
-                                                        request,
-                                                        inspect.clone(),
-                                                        cx,
-                                                    )
-                                                }));
-                                                s.form = None;
-                                                cx.notify();
-                                            })),
-                                    )
-                                    .child(
-                                        Button::new(SharedString::from(format!("data-{key}")))
-                                            .label(self.ui_label("Data"))
-                                            .small()
-                                            .disabled(
-                                                self.busy()
-                                                    || self.connection
-                                                        != ConnectionState::Connected,
-                                            )
-                                            .on_click(cx.listener(move |s, _, w, cx| {
-                                                s.open_object_data(data.clone(), w, cx)
-                                            })),
-                                    )
-                                    .child(
-                                        Button::new(SharedString::from(format!("sql-{key}")))
-                                            .label(self.ui_label("SQL"))
-                                            .small()
-                                            .on_click(cx.listener(move |s, _, w, cx| {
-                                                if s.documents.len() >= 32 {
-                                                    s.show_sql_tab_limit(cx);
-                                                    return;
-                                                }
-
-                                                let sql =
-                                                    dbide_ui_spike::workbench_model::table_query(
-                                                        s.configured
-                                                            .as_ref()
-                                                            .map(|r| r.profile.engine)
-                                                            .unwrap_or_default(),
-                                                        &draft.schema,
-                                                        &draft.name,
-                                                    );
-                                                s.new_document(
-                                                    sql,
-                                                    format!("{}.sql", draft.name),
-                                                    false,
-                                                    w,
-                                                    cx,
-                                                );
-                                                if let Some(request) = s.configured.clone() {
-                                                    let route = s.console().route();
-                                                    s.bind_console(route, request, w, cx);
-                                                }
-                                            })),
-                                    ),
-                            )
-                            .children(object.columns.iter().map(|column| {
-                                div()
-                                    .id(SharedString::from(format!("column-{key}-{}", column.name)))
-                                    .role(Role::Label)
-                                    .aria_label(format!(
-                                        "Column {} · type {} · {}{}{} · default {}",
-                                        column.name,
-                                        column.data_type,
-                                        if column.nullable {
-                                            "NULL allowed"
-                                        } else {
-                                            "NOT NULL"
-                                        },
-                                        if column.primary_key_ordinal.is_some() {
-                                            " · primary key"
-                                        } else {
-                                            ""
-                                        },
-                                        if column.foreign_key {
-                                            " · foreign key"
-                                        } else {
-                                            ""
-                                        },
-                                        column.default.as_deref().unwrap_or("none")
-                                    ))
-                                    .ml_3()
-                                    .py_1()
-                                    .text_size(px(10.))
-                                    .child(div().text_color(rgb(TEXT)).child(format!(
-                                        "{}{}{}",
-                                        column.name,
-                                        if column.primary_key_ordinal.is_some() {
-                                            "  PK"
-                                        } else {
-                                            ""
-                                        },
-                                        if column.foreign_key { "  FK" } else { "" }
-                                    )))
-                                    .child(div().text_color(rgb(MUTED)).child(format!(
-                                        "{} · {}",
-                                        column.data_type,
-                                        if column.nullable { "NULL" } else { "NOT NULL" }
-                                    )))
-                            }));
-                        if object.columns.is_empty() {
-                            row = row.child(
-                                div()
-                                    .id(SharedString::from(format!("no-columns-{key}")))
-                                    .role(Role::Label)
-                                    .aria_label("No columns returned")
-                                    .ml_3()
-                                    .text_color(rgb(MUTED))
-                                    .child(self.ui_label("No columns returned.")),
-                            );
-                        }
+                continue;
+            }
+            let opened = branch.is_some();
+            let key = row.key.clone();
+            let refresh = row.key.clone();
+            let is_root = matches!(row.key.scope, Scope::Databases);
+            let profile_id = row.key.profile_id.clone();
+            let metadata = snapshot
+                .map(|snapshot| format!(" ({})", snapshot.len()))
+                .unwrap_or_default();
+            let label = format!(
+                "{} {}{}{}",
+                if opened { "▾" } else { "▸" },
+                row.label,
+                metadata,
+                if row.unavailable {
+                    if ko {
+                        " · 접근 불가"
+                    } else {
+                        " · unavailable"
                     }
-                    group = group.child(row);
+                } else {
+                    ""
                 }
+            );
+            let mut group = div()
+                .id(("nav-group", ix))
+                .role(Role::Group)
+                .aria_label(label.clone())
+                .aria_expanded(opened)
+                .ml(px((row.depth * 8) as f32))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .child(
+                            Button::new(("nav-toggle", ix))
+                                .ghost()
+                                .small()
+                                .flex_1()
+                                .min_w_0()
+                                .justify_start()
+                                .accessibility_label(label.clone())
+                                .tooltip(if let Some(snapshot) = snapshot {
+                                    format!(
+                                        "{} · {} {} · {}s{}",
+                                        row.label,
+                                        snapshot.len(),
+                                        if ko { "불러옴" } else { "loaded" },
+                                        snapshot.age().as_secs(),
+                                        if snapshot.truncated {
+                                            if ko {
+                                                " · 일부 목록"
+                                            } else {
+                                                " · partial list"
+                                            }
+                                        } else {
+                                            ""
+                                        }
+                                    )
+                                } else {
+                                    row.label.clone()
+                                })
+                                .label(label)
+                                .disabled(row.unavailable)
+                                .on_click(cx.listener(move |s, _, _, cx| {
+                                    s.navigator_toggle(key.clone(), cx)
+                                })),
+                        )
+                        .when(branch.is_some_and(|b| b.loading), |el| {
+                            el.child(
+                                Self::nav_text(("nav-loading", ix), "…")
+                                    .role(Role::Status)
+                                    .aria_label(if ko { "불러오는 중" } else { "Loading" }),
+                            )
+                        })
+                        .when(snapshot.is_some_and(|s| s.stale() || s.truncated), |el| {
+                            let snapshot = snapshot.unwrap();
+                            el.child(
+                                Self::nav_text(
+                                    ("nav-stale", ix),
+                                    &format!(
+                                        "{}{}",
+                                        if snapshot.truncated {
+                                            if ko { "일부 " } else { "partial " }
+                                        } else {
+                                            ""
+                                        },
+                                        if snapshot.stale() {
+                                            format!(
+                                                "{} {}s",
+                                                if ko { "만료" } else { "stale" },
+                                                snapshot.age().as_secs()
+                                            )
+                                        } else {
+                                            String::new()
+                                        }
+                                    ),
+                                )
+                                .text_color(rgb(0xd4ad78)),
+                            )
+                        })
+                        .when(opened, |el| {
+                            el.child(
+                                Button::new(("nav-refresh", ix))
+                                    .ghost()
+                                    .small()
+                                    .label("↻")
+                                    .accessibility_label(format!(
+                                        "{} {}",
+                                        self.ui_label("Refresh"),
+                                        row.label
+                                    ))
+                                    .tooltip(if ko {
+                                        "이 목록 새로고침"
+                                    } else {
+                                        "Refresh this list"
+                                    })
+                                    .disabled(branch.is_some_and(|b| b.loading))
+                                    .on_click(cx.listener(move |s, _, _, cx| {
+                                        s.navigator_expand(refresh.clone(), true, cx)
+                                    })),
+                            )
+                        })
+                        .when_some(row.relation.as_ref(), |el, relation| {
+                            el.child(self.navigator_object_menu(ix, &row.key, relation, cx))
+                        })
+                        .when(is_root, |el| {
+                            el.child(
+                                Button::new(("nav-edit", ix))
+                                    .ghost()
+                                    .small()
+                                    .label("✎")
+                                    .accessibility_label(format!(
+                                        "{} {}",
+                                        self.ui_label("Edit"),
+                                        row.label
+                                    ))
+                                    .tooltip(format!("{} {}", self.ui_label("Edit"), row.label))
+                                    .disabled(self.busy() || self.profile_write_busy)
+                                    .on_click(cx.listener(move |s, _, w, cx| {
+                                        if let Some(profile) = s
+                                            .workspace
+                                            .profiles
+                                            .iter()
+                                            .find(|p| p.id == profile_id)
+                                            .cloned()
+                                        {
+                                            let password =
+                                                s.passwords.get(&profile).unwrap_or_default();
+                                            s.form =
+                                                Some(ProfileForm::new(profile, &password, w, cx));
+                                            s.form_error = None;
+                                            cx.notify();
+                                        }
+                                    })),
+                            )
+                        }),
+                );
+            if let Some(error) = branch.and_then(|b| b.error.as_ref()) {
+                group = group.child(Self::nav_text(("nav-error", ix), error).role(Role::Alert));
             }
             list = list.child(group);
         }
-        div()
-            .flex_1()
-            .min_h_0()
-            .flex()
-            .flex_col()
-            .child(
-                div()
-                    .px_3()
-                    .py_2()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .text_color(rgb(MUTED))
-                            .text_size(px(10.))
-                            .child(self.ui_label("DATABASE EXPLORER")),
-                    )
-                    .child(
-                        self.button("refresh-schema", "Refresh")
-                            .disabled(
-                                self.busy()
-                                    || self.schema_loading
-                                    || self.connection != ConnectionState::Connected,
-                            )
-                            .on_click(cx.listener(|s, _, _, cx| s.refresh_schema(cx))),
-                    ),
-            )
-            .child(
-                div()
-                    .px_3()
-                    .pb_2()
-                    .text_size(px(10.))
-                    .text_color(rgb(MUTED))
-                    .child(
-                        self.configured
-                            .as_ref()
-                            .map(|r| dbide_ui_spike::workbench_model::profile_target(&r.profile))
-                            .unwrap_or_else(|| "No connection selected".into()),
-                    ),
-            )
-            .child(
-                div().px_2().pb_2().child(
-                    Input::new(&self.object_search)
+        if tree.clipped {
+            list=list.child(Self::nav_text("nav-view-limit",if ko {"화면 한도 1,000행. 가지를 접거나 필터를 줄이세요. 불러온 전체 목록을 표시하지 않습니다."} else {"View limit: 1,000 rows. Collapse branches. This view is a subset of loaded metadata."}));
+        }
+        if self.workspace.profiles.is_empty() {
+            list = list.child(Self::nav_text(
+                "nav-empty",
+                if ko {
+                    "새 연결을 저장한 뒤 펼쳐서 탐색하세요."
+                } else {
+                    "Save a connection, then expand it to browse."
+                },
+            ));
+        }
+        let mut root =
+            div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(
+                    div()
+                        .px_3()
+                        .py_2()
+                        .text_color(rgb(MUTED))
+                        .text_size(px(10.))
+                        .child(self.ui_label("DATABASE EXPLORER")),
+                )
+                .child(div().px_2().pb_2().child(
+                    Input::new(&self.object_search).small().aria_label(if ko {
+                        "펼친 스냅샷만 필터"
+                    } else {
+                        "Filter expanded snapshots only"
+                    }),
+                ))
+                .child(Self::nav_text(
+                    "nav-filter-scope",
+                    if ko {
+                        "펼친 목록만 검색 · SQL 탭 연결은 변경하지 않음"
+                    } else {
+                        "Filter expanded lists · browsing never rebinds SQL tabs"
+                    },
+                ))
+                .child(list)
+                .child(
+                    div()
+                        .px_2()
+                        .py_2()
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap_1()
+                        .child(Self::nav_text(
+                            "nav-budget",
+                            &format!(
+                                "{:.1}/16 MiB · {}/2 · {} {}",
+                                stats.accounted_bytes as f64 / 1048576.,
+                                self.navigator.running(),
+                                self.navigator.pending(),
+                                if ko { "대기" } else { "queued" }
+                            ),
+                        ))
+                        .child(
+                            Button::new("nav-clear")
+                                .ghost()
+                                .small()
+                                .label(if ko {
+                                    "캐시 비우기"
+                                } else {
+                                    "Clear cache"
+                                })
+                                .on_click(cx.listener(|s, _, _, cx| {
+                                    s.navigator.clear();
+                                    cx.notify();
+                                })),
+                        ),
+                );
+        if let Some(error) = &self.navigator.notice {
+            root = root
+                .child(Self::nav_text("nav-notice", error).role(Role::Alert))
+                .child(
+                    Button::new("nav-dismiss")
+                        .ghost()
                         .small()
-                        .aria_label(tr(self.locale, Message::SearchObjects)),
-                ),
-            )
-            .child(
-                div()
-                    .px_3()
-                    .pb_2()
-                    .text_size(px(10.))
-                    .text_color(rgb(MUTED))
-                    .child(format!(
-                        "{} {} · {} {}{}",
-                        self.schema.len(),
-                        if self.locale == Locale::Ko {
-                            "불러온 객체"
-                        } else {
-                            "loaded objects"
-                        },
-                        self.schema.iter().map(|o| o.columns.len()).sum::<usize>(),
-                        if self.locale == Locale::Ko {
-                            "불러온 열"
-                        } else {
-                            "loaded columns"
-                        },
-                        if self.schema_truncated {
-                            if self.locale == Locale::Ko {
-                                " · 메타데이터 한도 도달, 일부만 표시"
-                            } else {
-                                " · metadata limit reached; subset only"
-                            }
-                        } else {
-                            ""
-                        }
-                    )),
-            )
-            .child(list)
+                        .label(self.ui_label("Dismiss"))
+                        .on_click(cx.listener(|s, _, _, cx| {
+                            s.navigator.notice = None;
+                            cx.notify();
+                        })),
+                );
+        }
+        root
     }
-    fn open_object_data(
+    fn navigator_object_menu(
+        &self,
+        ix: usize,
+        key: &Key,
+        relation: &Relation,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let ready = self.navigator.snapshot(key).is_some();
+        let opening = self.pending_table_open.is_some()
+            && self.navigator.engine(key) == Some(DatabaseEngine::PostgreSql)
+            && relation.kind == "table";
+        let weak = cx.weak_entity();
+        let key = key.clone();
+        let relation = relation.clone();
+        let structure = self.ui_label("Structure").to_owned();
+        let data = self.ui_label("Data").to_owned();
+        let sql = self.ui_label("SQL").to_owned();
+        let caption = format!(
+            "{} · {} / {}.{}",
+            if self.locale == Locale::Ko {
+                "객체 작업"
+            } else {
+                "Object actions"
+            },
+            key.database,
+            relation.schema,
+            relation.name
+        );
+        Button::new(("nav-object-menu", ix))
+            .ghost()
+            .small()
+            .label("⋯")
+            .accessibility_label(caption.clone())
+            .tooltip(caption)
+            .dropdown_menu(move |menu, _, _| {
+                let structure_weak = weak.clone();
+                let data_weak = weak.clone();
+                let sql_weak = weak.clone();
+                let structure_key = key.clone();
+                let data_key = key.clone();
+                let sql_key = key.clone();
+                let structure_relation = relation.clone();
+                let data_relation = relation.clone();
+                let sql_relation = relation.clone();
+                menu.label(format!(
+                    "{} / {}.{}",
+                    key.database, relation.schema, relation.name
+                ))
+                .item(
+                    PopupMenuItem::new(structure.clone())
+                        .disabled(!ready)
+                        .on_click(move |_, _, cx| {
+                            let _ = structure_weak.update(cx, |s, cx| {
+                                s.open_branch_structure(&structure_key, &structure_relation, cx)
+                            });
+                        }),
+                )
+                .item(PopupMenuItem::new(data.clone()).disabled(opening).on_click(
+                    move |_, w, cx| {
+                        let _ = data_weak.update(cx, |s, cx| {
+                            s.open_branch_console(&data_key, &data_relation, true, w, cx)
+                        });
+                    },
+                ))
+                .item(PopupMenuItem::new(sql.clone()).on_click(move |_, w, cx| {
+                    let _ = sql_weak.update(cx, |s, cx| {
+                        s.open_branch_console(&sql_key, &sql_relation, false, w, cx)
+                    });
+                }))
+            })
+            .into_any_element()
+    }
+    fn nav_text(id: impl Into<ElementId>, text: &str) -> Stateful<Div> {
+        div()
+            .id(id)
+            .role(Role::Label)
+            .aria_label(text.to_owned())
+            .px_2()
+            .py_1()
+            .text_size(px(10.))
+            .text_color(rgb(MUTED))
+            .child(text.to_owned())
+    }
+    fn open_branch_structure(&mut self, key: &Key, relation: &Relation, cx: &mut Context<Self>) {
+        let (Some(request), Some(snapshot)) =
+            (self.navigator_request(key), self.navigator.snapshot(key))
+        else {
+            self.navigator.notice = Some("Reload this branch before opening structure.".into());
+            cx.notify();
+            return;
+        };
+        let panel = cx.new(|cx| {
+            object_inspector::ObjectInspector::from_snapshot(
+                request,
+                key.clone(),
+                relation.clone(),
+                snapshot,
+                self.locale,
+                cx,
+            )
+        });
+        self._subscriptions
+            .push(cx.subscribe(&panel, |s, source, event, cx| {
+                if s.structure
+                    .as_ref()
+                    .is_none_or(|current| current.entity_id() != source.entity_id())
+                {
+                    return;
+                }
+                let object_inspector::InspectorEvent::LoadDetails(key) = event;
+                s.navigator_expand(key.clone(), true, cx);
+                s.sync_navigator_inspector(cx);
+            }));
+        self.structure = Some(panel);
+        self.sync_navigator_inspector(cx);
+        self.form = None;
+        cx.notify();
+    }
+    pub(super) fn sync_navigator_inspector(&mut self, cx: &mut Context<Self>) {
+        let Some(panel) = self.structure.clone() else {
+            return;
+        };
+        let key = panel.read(cx).detail_key.clone();
+        if !self.navigator.authorized(&key) {
+            panel.update(cx,|p,cx|p.set_details(None,Some("Connection changed. Close this snapshot and reopen the object under its current connection before loading details.".into()),false,cx));
+            return;
+        }
+        if let Some(branch) = self.navigator.branch(&key) {
+            let snapshot = branch.snapshot.clone();
+            let error = branch.error.clone();
+            let loading = branch.loading;
+            panel.update(cx, |p, cx| p.set_details(snapshot, error, loading, cx));
+        }
+    }
+    fn open_branch_console(
         &mut self,
-        object: dbide_bridge::SchemaObject,
+        key: &Key,
+        relation: &Relation,
+        run: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.busy() || self.connection != ConnectionState::Connected {
+        let Some(request) = self.navigator_request(key) else {
+            self.navigator.notice = Some("Connection changed. Reopen this branch.".into());
+            cx.notify();
             return;
-        }
-        if self
-            .configured
-            .as_ref()
-            .map(|r| r.profile.engine)
-            .unwrap_or_default()
-            == DatabaseEngine::PostgreSql
-            && dbide_ui_spike::explorer_model::is_table(&object.kind)
-        {
-            self.open_table_editor(object.schema, object.name, window, cx);
-            return;
-        }
+        };
         let sql = dbide_ui_spike::workbench_model::table_query(
-            self.configured
-                .as_ref()
-                .map(|r| r.profile.engine)
-                .unwrap_or_default(),
-            &object.schema,
-            &object.name,
+            request.profile.engine,
+            &relation.schema,
+            &relation.name,
         );
-        self.open_data_query(sql, format!("{}-data.sql", object.name), window, cx);
+        if run && request.profile.engine == DatabaseEngine::PostgreSql && relation.kind == "table" {
+            self.begin_table_open(key.clone(), request, relation.clone(), window, cx);
+            return;
+        }
+        if self.documents.len() >= 32 {
+            self.show_sql_tab_limit(cx);
+            return;
+        }
+        self.new_document(
+            sql.clone(),
+            format!(
+                "{}-{}.sql",
+                relation.name,
+                if run { "data" } else { "query" }
+            ),
+            false,
+            window,
+            cx,
+        );
+        let route = self.console().route();
+        self.bind_console(route, request, window, cx);
+        if run {
+            self.submit_sql(sql, cx);
+        }
     }
+    // Existing read-only table fallback keeps its captured browser target.
     pub(super) fn open_data_query(
         &mut self,
         sql: String,

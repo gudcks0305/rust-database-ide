@@ -24,3 +24,8 @@ pub const FOREIGN_KEY_DELETE_COLUMN_SUBSET: &str = "foreign key delete-column su
 /// Target-only capture checks incoming CASCADE/SET NULL/SET DEFAULT actions across ALL namespaces.
 /// A CRUD consumer must reject these effects unless it implements a broader mutation preview.
 pub const INCOMING_MUTATING_FOREIGN_KEY: &str = "incoming mutating foreign key";
+
+/// An ordinary table owns rewrite rules (ALSO/INSTEAD actions). Row editing must remain read-only;
+/// inspect the rule definitions before choosing an explicitly broader execution workflow.
+/// Views' normal _RETURN rules do not produce this table marker.
+pub const USER_REWRITE_RULES: &str = "user rewrite rules";

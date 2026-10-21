@@ -80,3 +80,22 @@ warm start/idle memory가 좋아도 같은 기능에서 query/data correctness�
 11. schema migration 방향과 DDL implicit commit/부분 실패 기록.
 12. 한국어 조합·후보창·cursor·undo·VoiceOver가 grid/editor 모두에서 동작.
 13. 직접 `BEGIN/COMMIT/ROLLBACK` 실행 및 DDL implicit commit 후 CommitPolicy와 실제 ServerTransactionState를 각각 검증.
+
+## 2026-10-22 빈 작업 공간 smoke 관찰
+
+공개 checkpoint `4aa6960`의 패키지 실행 파일을 고정 복사한 뒤, 별도 빈
+profile store에서 프로세스 시작 5회를 측정했다. DB 연결이나 입력은 하지 않았다.
+원시 표본·실행 파일 SHA-256·정의는
+[performance-console-locale.json](../evidence/performance-console-locale.json)에 있다.
+
+| 항목 | 관찰 |
+|---|---|
+| 첫 root-render callback | 중앙값 612.5ms, 범위 433.4–872.1ms |
+| 실행별 최대 sampled RSS | 중앙값 127.1MiB, 전체 관찰 최대 127.4MiB |
+| RSS 표본 간격 | main process를 `ps`로 약 100ms마다 확인 |
+
+root callback은 첫 화면 표시나 입력 지연이 아니며, sampled RSS는 실제 peak,
+GPU 또는 전체 프로세스군 메모리가 아니다. OS/Metal 캐시는 유지됐고 다른
+빌드 작업이 진행될 수 있는 환경이었다. 과거 다른 바이너리의 측정치와 직접
+비교하거나 DataGrip보다 빠르다는 근거로 사용하지 않는다. 실제 DB 탐색·대량
+결과·검색·스크롤 부하는 지연 조회 트리가 연결된 뒤 별도 측정해야 한다.

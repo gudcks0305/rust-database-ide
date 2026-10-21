@@ -19,6 +19,8 @@ use std::{
 };
 
 pub mod metadata_features;
+mod view_capture;
+pub use view_capture::{CapturedView, capture_view};
 
 static CAPTURES: AtomicU64 = AtomicU64::new(1);
 #[derive(Debug, Clone, Copy)]

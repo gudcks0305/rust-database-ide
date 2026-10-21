@@ -843,6 +843,7 @@ impl Workbench {
         }
     }
     pub(super) fn finish_window_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.abort_table_open("Window closed before table reading.".into(), true, cx);
         if self.quit_after_close {
             cx.quit();
         } else {
@@ -908,6 +909,7 @@ impl Workbench {
                 self.flush_recovery_and_close(window, cx);
                 return false;
             }
+            self.abort_table_open("Window closed before table reading.".into(), true, cx);
             return true;
         }
         if self.close_prompt_open || window.has_active_prompt() {
@@ -979,6 +981,9 @@ impl Workbench {
         dbide_ui_spike::workbench_model::engine_dialect(self.engine())
     }
     pub(super) fn open_tools(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.pending_table_open.is_some() {
+            return;
+        }
         let request = self.console().request();
         self.tools_label = request
             .as_ref()
@@ -991,7 +996,9 @@ impl Workbench {
             })
             .unwrap_or_else(|| "No profile captured · offline tools".into());
         let sql = self.editor.read(cx).value().to_string();
-        let panel = cx.new(|cx| dbide_tools_ui::ToolsPanel::new(request, sql, window, cx));
+        let panel = cx.new(|cx| {
+            dbide_tools_ui::ToolsPanel::new_with_locale(request, sql, self.locale, window, cx)
+        });
         self._subscriptions.push(cx.subscribe_in(&panel,window,|s,source,event,w,cx|{
             if s.tools.as_ref().is_none_or(|current|current.entity_id()!=source.entity_id()){return;}
             let dbide_tools_ui::ToolsEvent::OpenSqlDraft{profile,sql}=event;
@@ -1071,6 +1078,10 @@ impl Workbench {
         w: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.preferences.take().is_some() {
+            cx.notify();
+            return;
+        }
         if self.table_editor.is_some() {
             self.close_table_editor(w, cx);
             return;

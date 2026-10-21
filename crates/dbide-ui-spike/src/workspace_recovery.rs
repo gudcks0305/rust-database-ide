@@ -285,6 +285,11 @@ impl Workbench {
         }).detach();
     }
     pub(super) fn flush_recovery_and_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.abort_table_open(
+            "Window close requested before table reading.".into(),
+            true,
+            cx,
+        );
         self.recovery.close_after = true;
         self.recovery_tick(true, window, cx);
     }

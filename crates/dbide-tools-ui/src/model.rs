@@ -175,13 +175,23 @@ mod tests {
 }
 
 /// Engine-aware target formatting never exposes credentials.
+#[cfg(test)]
 pub fn target_label(profile: &dbide_profiles::ConnectionProfile) -> String {
+    target_label_with_locale(profile, dbide_i18n::Locale::default())
+}
+pub fn target_label_with_locale(
+    profile: &dbide_profiles::ConnectionProfile,
+    locale: dbide_i18n::Locale,
+) -> String {
     use dbide_profiles::DatabaseEngine;
     match profile.engine {
         DatabaseEngine::Sqlite => format!(
             "{} · SQLite · {}",
             profile.name,
-            profile.sqlite_path.as_deref().unwrap_or("No file selected")
+            profile
+                .sqlite_path
+                .as_deref()
+                .unwrap_or(super::i18n::text(locale, "No file selected"))
         ),
         DatabaseEngine::PostgreSql => format!(
             "{} · PostgreSQL · {}:{} / {}",

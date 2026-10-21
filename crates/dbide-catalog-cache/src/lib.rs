@@ -332,6 +332,22 @@ impl<K: Eq + Hash, V, C: Clock> MetadataCache<K, V, C> {
         }
         removed
     }
+    /// Remove matching resident keys without touching unrelated recency or TTL. The scan
+    /// is bounded by resident entry count; retired leased payloads remain budget-charged.
+    pub fn invalidate_where(&mut self, mut predicate: impl FnMut(&K) -> bool) -> usize {
+        let before = self.entries.len();
+        self.entries.retain(|key, record| {
+            if predicate(key) {
+                self.resident_bytes -= record.payload.weight;
+                false
+            } else {
+                true
+            }
+        });
+        let removed = before - self.entries.len();
+        self.counters.invalidations = self.counters.invalidations.saturating_add(removed as u64);
+        removed
+    }
     /// Same local invalidation contract; the caller schedules/validates any subsequent fetch.
     pub fn force_refresh(&mut self, key: &K) -> bool {
         self.invalidate(key)

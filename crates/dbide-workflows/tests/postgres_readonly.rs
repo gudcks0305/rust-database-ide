@@ -397,3 +397,55 @@ async fn live_target_capture_bypasses_unrelated_schema_caps_without_claiming_ful
     assert_eq!(fk.on_delete, dbide_schema::ReferentialAction::Cascade);
     assert!(fk.deferrable && fk.initially_deferred);
 }
+
+#[tokio::test]
+#[ignore = "reads existing parent_view only; verifies exact metadata lookup with caps smaller than unrelated seeded schema"]
+async fn live_view_capture_ignores_unrelated_schema_caps_and_rejects_nonviews() {
+    use dbide_workflows::{WorkflowError, capture_view};
+    let mut request = fixture();
+    request.profile.connect_timeout_secs = 30;
+    let before = request.profile.clone();
+    let limits = CaptureLimits {
+        max_relations: 1,
+        max_columns: 1,
+        max_records: 1,
+        max_bytes: 32_768,
+        timeout_secs: 4,
+    };
+    assert!(matches!(
+        capture_schema(&request, &["dbide_workflow_features".into()], limits).await,
+        Err(WorkflowError::Truncated)
+    ));
+    let capture = capture_view(&request, "dbide_workflow_features", "parent_view", limits)
+        .await
+        .unwrap();
+    assert_eq!(capture.schema, "dbide_workflow_features");
+    assert_eq!(capture.view.name, "parent_view");
+    assert!(!capture.view.materialized);
+    assert!(capture.view.definition.contains("parent"));
+    assert_eq!(request.profile, before);
+    assert!(matches!(
+        capture_view(&request, "dbide_workflow_features", "parent", limits).await,
+        Err(WorkflowError::Configuration(_))
+    ));
+    assert!(matches!(
+        capture_view(
+            &request,
+            "dbide_workflow_features",
+            "__dbide_missing_readonly_view",
+            limits
+        )
+        .await,
+        Err(WorkflowError::Configuration(_))
+    ));
+    assert!(matches!(
+        capture_view(
+            &request,
+            "dbide_workflow_features",
+            "v'\\; OR 1=1; --",
+            limits
+        )
+        .await,
+        Err(WorkflowError::Configuration(_))
+    ));
+}

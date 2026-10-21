@@ -590,6 +590,16 @@ async fn open(
         }
     }
 }
+async fn open_metadata(
+    request: &ConnectionRequest,
+    operation: OperationId,
+    budget: &mut Budget<'_>,
+    control: &mut ConnectionControl,
+    epoch: u64,
+) -> Result<Session, ()> {
+    let probe_request = adapter::metadata_request(request);
+    open(&probe_request, operation, budget, false, control, epoch).await
+}
 async fn metadata(session: &Session) -> Result<(Vec<SchemaObject>, bool), &'static str> {
     let sql = session.metadata_sql();
     let report = tokio::time::timeout(
@@ -892,7 +902,7 @@ async fn worker(
                     Command::InspectSchema => {
                         if active.is_some() {if !budget.error(operation,"Wait for execution to finish before inspecting schema") {break;} continue;}
                         let Some(request)=configured.as_ref() else {if !budget.error(operation,"Configure a connection profile first") {break;} continue;};
-                        let connected=tokio::select! {_=shutdown.changed()=>break,result=open(request,operation,&mut budget,false,&mut control,request_epoch)=>result};
+                        let connected=tokio::select! {_=shutdown.changed()=>break,result=open_metadata(request,operation,&mut budget,&mut control,request_epoch)=>result};
                         if let Ok(probe)=connected {
                             let result=tokio::select! {_=shutdown.changed()=>{probe.close();break;},_=control.wait(operation,request_epoch)=>Err("Schema inspection cancelled"),result=metadata(&probe)=>result};
                             probe.close();
@@ -902,7 +912,7 @@ async fn worker(
                     Command::ListDatabases => {
                         if active.is_some() {if !budget.error(operation,"Wait for execution to finish before listing databases") {break;} continue;}
                         let Some(request)=configured.as_ref() else {if !budget.error(operation,"Configure a connection profile first") {break;} continue;};
-                        let connected=tokio::select! {_=shutdown.changed()=>break,result=open(request,operation,&mut budget,false,&mut control,request_epoch)=>result};
+                        let connected=tokio::select! {_=shutdown.changed()=>break,result=open_metadata(request,operation,&mut budget,&mut control,request_epoch)=>result};
                         if let Ok(probe)=connected {
                             let result=tokio::select! {_=shutdown.changed()=>{probe.close();break;},_=control.wait(operation,request_epoch)=>Err("Database discovery cancelled"),result=databases(&probe,request)=>result};
                             probe.close();
@@ -913,7 +923,7 @@ async fn worker(
                         if active.is_some() {if !budget.error(operation,"Wait for execution to finish before loading metadata") {break;} continue;}
                         if !valid_catalog_request(&query) {if !budget.error(operation,"Metadata scope is invalid") {break;} continue;}
                         let Some(request)=configured.as_ref() else {if !budget.error(operation,"Configure a connection profile first") {break;} continue;};
-                        let connected=tokio::select! {_=shutdown.changed()=>break,result=open(request,operation,&mut budget,false,&mut control,request_epoch)=>result};
+                        let connected=tokio::select! {_=shutdown.changed()=>break,result=open_metadata(request,operation,&mut budget,&mut control,request_epoch)=>result};
                         if let Ok(probe)=connected {
                             let result=tokio::select! {_=shutdown.changed()=>{probe.close();break;},_=control.wait(operation,request_epoch)=>Err("Metadata loading cancelled"),result=catalog(&probe,query)=>result};
                             probe.close();

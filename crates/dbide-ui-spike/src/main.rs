@@ -8,6 +8,7 @@ mod profile_persistence;
 use profile_persistence::{ProfileMutation, ProfileWrite};
 mod console_selector;
 mod table_editor;
+mod table_open;
 mod workbench_actions;
 mod workbench_consoles;
 use dbide_ui_spike::console_session::{
@@ -337,6 +338,7 @@ struct Workbench {
     form_error: Option<String>,
     diagnostic: Option<Diagnostic>,
     schema: Vec<dbide_bridge::SchemaObject>,
+    navigator: dbide_ui_spike::navigator::Navigator,
     object_search: Entity<InputState>,
     expanded_schemas: HashSet<String>,
     expanded_objects: HashSet<String>,
@@ -351,6 +353,9 @@ struct Workbench {
     tools_label: String,
     table_editor: Option<Entity<table_editor::TableEditor>>,
     table_operation: Option<TableOperation>,
+    pending_table_open: Option<dbide_ui_spike::table_open_model::PendingTableOpen>,
+    table_open_feedback: Option<table_open::TableOpenFeedback>,
+    table_disconnect_operation: Option<dbide_bridge::OperationId>,
     connection_revision: u64,
     console_poll_cursor: usize,
     console_database_editor: Option<ConsoleRoute>,
@@ -443,12 +448,18 @@ impl Workbench {
             Ok(bridge) => (Some(bridge), "Ready · add a connection to begin".into()),
             Err(error) => (None, format!("Database worker unavailable: {error}")),
         };
-        cx.spawn(async move |view, cx| {
+        cx.spawn_in(window, async move |view, cx| {
             loop {
                 cx.background_executor()
                     .timer(Duration::from_millis(40))
                     .await;
-                if view.update(cx, |this, cx| this.poll_bridge(cx)).is_err() {
+                if view
+                    .update_in(cx, |this, w, cx| {
+                        this.poll_bridge(cx);
+                        this.finish_pending_table(w, cx);
+                    })
+                    .is_err()
+                {
                     break;
                 }
             }
@@ -527,6 +538,7 @@ impl Workbench {
                 ))
             }),
             schema: vec![],
+            navigator: dbide_ui_spike::navigator::Navigator::default(),
             object_search,
             expanded_schemas: HashSet::new(),
             expanded_objects: HashSet::new(),
@@ -541,6 +553,9 @@ impl Workbench {
             tools_label: String::new(),
             table_editor: None,
             table_operation: None,
+            pending_table_open: None,
+            table_open_feedback: None,
+            table_disconnect_operation: None,
             connection_revision: 0,
             console_poll_cursor: 0,
             console_database_editor: None,
@@ -603,6 +618,7 @@ impl Workbench {
             this.editor
                 .update(cx, |editor, cx| editor.focus(window, cx));
         }
+        this.navigator.sync_profiles(&this.workspace.profiles);
         this.init_settings(cx);
         this.init_recovery(window, cx);
         this
@@ -726,6 +742,19 @@ impl Workbench {
         cx.notify();
     }
     fn disconnect(&mut self, cx: &mut Context<Self>) {
+        if self.pending_table_open.is_some() {
+            self.abort_table_open(
+                if self.locale == Locale::Ko {
+                    "테이블 열기를 취소하고 테이블 연결만 종료합니다."
+                } else {
+                    "Table opening cancelled; disconnecting only the table connection."
+                }
+                .into(),
+                true,
+                cx,
+            );
+            return;
+        }
         if self.connection == ConnectionState::Disconnected {
             return;
         }
@@ -742,13 +771,26 @@ impl Workbench {
     }
     fn poll_bridge(&mut self, cx: &mut Context<Self>) {
         self.poll_console_sessions(cx);
+        self.navigator.sync_profiles(&self.workspace.profiles);
+        self.check_table_open_context(cx);
+        if self.navigator.poll() {
+            self.sync_navigator_inspector(cx);
+            cx.notify();
+        }
         // At most 32 events per turn; all DB/network work belongs to the private runtime.
         for _ in 0..32 {
             let Some(event) = self.bridge.as_mut().and_then(DatabaseBridge::try_next) else {
                 break;
             };
+            if self.table_open_event(&event, cx) {
+                continue;
+            }
             match event {
                 BridgeEvent::Configured { operation } => {
+                    let table_configuration = self
+                        .pending_table_open
+                        .as_ref()
+                        .is_some_and(|pending| pending.waiting_configured(operation));
                     if !dbide_ui_spike::workbench_model::complete_configuration(
                         &mut self.configuration_operation,
                         &mut self.pending_configuration,
@@ -760,11 +802,12 @@ impl Workbench {
                     self.connection_revision = self.connection_revision.saturating_add(1);
                     self.last_execution = None;
                     if let Some(request) = self.configured.as_ref().cloned() {
-                        if self
-                            .workspace
-                            .profiles
-                            .iter()
-                            .any(|p| p.id == request.profile.id)
+                        if !table_configuration
+                            && self
+                                .workspace
+                                .profiles
+                                .iter()
+                                .any(|p| p.id == request.profile.id)
                             && self.workspace.selected_profile_id.as_deref()
                                 != Some(&request.profile.id)
                         {
@@ -782,16 +825,24 @@ impl Workbench {
                         self.structure = None;
                         self.expanded_schemas.clear();
                         self.expanded_objects.clear();
-                        self.completions.clear();
-                        self.completion_source = None;
-                        self.rename_preview = None;
-                        self.sql_diagnostics.clear();
+                        if !table_configuration {
+                            self.completions.clear();
+                            self.completion_source = None;
+                            self.rename_preview = None;
+                            self.sql_diagnostics.clear();
+                        }
                         self.schema_operation = None;
                         self.schema_loading = false;
-                        self.schema_requested = false;
+                        self.schema_requested = table_configuration;
+                        if table_configuration {
+                            self.commit_policy = CommitPolicy::Auto;
+                        }
                         self.schema_truncated = false;
                     }
-                    if std::mem::take(&mut self.connect_after_configuration) {
+                    if table_configuration {
+                        self.connect_after_configuration = false;
+                        self.connect_pending_table(operation, cx);
+                    } else if std::mem::take(&mut self.connect_after_configuration) {
                         self.connect(cx);
                     }
                 }
@@ -945,6 +996,10 @@ impl Workbench {
                     {
                         continue;
                     }
+                    let table_connecting = self
+                        .pending_table_open
+                        .as_ref()
+                        .is_some_and(|pending| pending.waiting_connected(operation));
                     self.connection_revision = self.connection_revision.saturating_add(1);
                     self.last_execution = None;
                     if self.active_operation.is_none() {
@@ -955,11 +1010,22 @@ impl Workbench {
                         && let Some(bridge) = &self.bridge
                     {
                         match bridge.set_commit_policy(self.commit_policy) {
-                            Ok(operation) => self.policy_operation = Some(operation),
+                            Ok(policy_operation) => {
+                                self.policy_operation = Some(policy_operation);
+                                if table_connecting
+                                    && let Some(pending) = &mut self.pending_table_open
+                                {
+                                    pending.observe(operation, policy_operation);
+                                }
+                            }
                             Err(error) => {
+                                if table_connecting {
+                                    self.abort_table_open(format!("Table transaction-state observation was not submitted: {error:?}"),false,cx);
+                                    continue;
+                                }
                                 self.status = format!(
                                     "Connected; transaction status synchronization failed: {error:?}"
-                                )
+                                );
                             }
                         }
                     }
@@ -1023,11 +1089,26 @@ impl Workbench {
                     self.transaction_state = transaction_state;
                     self.status =
                         format!("Commit policy: {policy:?} · transaction: {transaction_state:?}");
-                    if !self.schema_requested {
+                    let table_observed =
+                        self.observe_pending_table(operation, transaction_state, cx);
+                    if !table_observed && !self.schema_requested {
                         self.refresh_schema(cx);
                     }
                 }
-                BridgeEvent::Disconnected { .. } => {
+                BridgeEvent::Disconnected { operation } => {
+                    if self
+                        .table_disconnect_operation
+                        .is_some_and(|expected| Some(expected) != operation)
+                    {
+                        continue;
+                    }
+                    if self.pending_table_open.is_some()
+                        || (self.table_disconnect_operation.is_some()
+                            && self.table_disconnect_operation == operation)
+                    {
+                        self.table_reader_disconnected(cx);
+                    }
+                    self.table_disconnect_operation = None;
                     self.connection_revision = self.connection_revision.saturating_add(1);
                     self.last_execution = None;
                     if let Some(editor) = self.table_editor.clone() {
@@ -1052,10 +1133,20 @@ impl Workbench {
                     {
                         self.active_execution = None;
                         self.active_operation = None;
-                        self.connection = ConnectionState::Disconnected;
+                        // No terminal report proves retirement; retain a potentially live
+                        // table transaction as Unknown until explicit resolution.
+                        self.connection = if self.configured.is_some() {
+                            ConnectionState::Connected
+                        } else {
+                            ConnectionState::Disconnected
+                        };
                         self.transaction_state = ServerTransactionState::Unknown;
                         self.connection_revision = self.connection_revision.saturating_add(1);
                         self.last_execution = None;
+                        if let Some(feedback) = &mut self.table_open_feedback {
+                            feedback.message = message.clone();
+                            feedback.neutral = false;
+                        }
                         if let Some(editor) = self.table_editor.clone() {
                             editor.update(cx, |e, cx| e.fail(message.clone(), cx));
                         }
@@ -1243,7 +1334,7 @@ impl Workbench {
         )
     }
     fn configure(&mut self, request: ConnectionRequest, cx: &mut Context<Self>) -> bool {
-        if self.busy() || self.profile_write_busy {
+        if self.busy() || self.profile_write_busy || self.pending_table_open.is_some() {
             return false;
         }
         if self.transaction_may_be_open() {
@@ -1337,55 +1428,46 @@ impl Workbench {
         }
         cx.notify();
     }
-    fn choose_profile(&mut self, id: &str, cx: &mut Context<Self>) {
-        if self.busy() {
-            return;
-        }
-        if let Some(profile) = self.workspace.profiles.iter().find(|p| p.id == id).cloned() {
-            let password = self.passwords.get(&profile).unwrap_or_default();
-            if self.configure(ConnectionRequest { profile, password }, cx) {
-                self.form = None;
-                self.diagnostic = None;
-            }
-        }
-    }
     fn remove_profile(&mut self, cx: &mut Context<Self>) {
-        if self.transaction_may_be_open() {
-            self.status =
-                "Commit, Rollback or Disconnect before removing the active profile".into();
+        let Some(profile) = self
+            .form
+            .as_ref()
+            .map(|f| f.original.clone())
+            .or_else(|| self.configured.as_ref().map(|r| r.profile.clone()))
+        else {
+            return;
+        };
+        let browser_matches = self
+            .configured
+            .as_ref()
+            .is_some_and(|r| r.profile.id == profile.id);
+        if self.busy() || (browser_matches && self.transaction_may_be_open()) {
+            self.form_error=Some("Finish the active browser operation or disconnect its transaction before removing this connection.".into());
             cx.notify();
             return;
         }
-        if self.busy() {
-            return;
-        }
-        if let Some(request) = self.configured.take() {
-            let removed_id = request.profile.id.clone();
-            self.workspace.remove(&removed_id);
-            self.passwords.forget_profile(&request.profile.id);
-            self.deleted = Some(request.profile);
-            self.persist_profile_mutation(ProfileMutation::Remove(removed_id), cx);
+        self.workspace.remove(&profile.id);
+        self.passwords.forget_profile(&profile.id);
+        self.persist_profile_mutation(ProfileMutation::Remove(profile.id.clone()), cx);
+        if browser_matches {
             self.disconnect(cx);
+            self.configured = None;
             self.schema.clear();
-            self.status = "Profile removed · Undo available".into();
-            self.form = None;
         }
+        self.deleted = Some(profile);
+        self.form = None;
+        self.navigator.sync_profiles(&self.workspace.profiles);
         cx.notify();
     }
     fn refresh_schema(&mut self, cx: &mut Context<Self>) {
-        if self.busy() || self.connection != ConnectionState::Connected {
-            return;
-        }
-        if let Some(bridge) = &self.bridge {
-            match bridge.inspect_schema() {
-                Ok(operation) => {
-                    self.schema_operation = Some(operation);
-                    self.schema_loading = true;
-                    self.schema_requested = true;
-                    self.status = "Loading database objects…".into();
-                }
-                Err(e) => self.status = format!("Schema request failed: {e:?}"),
-            }
+        self.schema_requested = true;
+        self.navigator.sync_profiles(&self.workspace.profiles);
+        if let Some(key) = self
+            .configured
+            .as_ref()
+            .and_then(|r| self.navigator.root(&r.profile.id))
+        {
+            self.navigator_expand(key, true, cx);
         }
         cx.notify();
     }
@@ -1497,184 +1579,86 @@ impl Render for Workbench {
         let busy = self.busy();
         let query_busy = self.console().busy();
         let query_configured = self.console().target().is_some();
-        let configured = self.configured.is_some();
-        let sidebar = div()
-            .w(px(230.))
-            .flex_shrink_0()
-            .bg(rgb(PANEL))
-            .border_r_1()
-            .border_color(rgb(BORDER))
-            .flex()
-            .flex_col()
-            .child(
-                div()
-                    .h(px(48.))
-                    .px_4()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .child(self.ui_label("Connections")),
-                    )
-                    .child(
-                        self.button("new-profile", "+ New")
-                            .disabled(busy)
-                            .on_click(cx.listener(|s, _, w, cx| s.edit_profile(true, w, cx))),
-                    ),
-            )
-            .child(
-                div()
-                    .id("profile-list")
-                    .max_h(px(140.))
-                    .overflow_y_scroll()
-                    .px_2()
-                    .children(self.workspace.profiles.iter().map(|profile| {
-                        let id = profile.id.clone();
-                        let selected = self.configured.as_ref().is_some_and(|r| r.profile.id == id);
-                        div()
-                            .id(SharedString::from(format!("profile-{id}")))
-                            .role(Role::Button)
-                            .aria_label(format!(
-                                "Select connection {} · {}",
-                                profile.name,
-                                dbide_ui_spike::workbench_model::profile_target(profile)
-                            ))
-                            .h(px(30.))
-                            .px_2()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .rounded_sm()
-                            .bg(rgb(if selected { 0x283344 } else { PANEL }))
-                            .cursor_pointer()
-                            .when(!busy && !self.profile_write_busy, |el| {
-                                el.on_click(
-                                    cx.listener(move |s, _, _, cx| s.choose_profile(&id, cx)),
-                                )
-                            })
-                            .child(
-                                div()
-                                    .text_size(px(10.))
-                                    .text_color(rgb(
-                                        if selected && self.connection == ConnectionState::Connected
-                                        {
-                                            0x80c7a2
-                                        } else {
-                                            MUTED
-                                        },
-                                    ))
-                                    .child("●"),
-                            )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .text_ellipsis()
-                                    .child(profile.name.clone()),
-                            )
-                            .child(div().text_size(px(9.)).text_color(rgb(MUTED)).child(
-                                match profile.engine {
-                                    DatabaseEngine::PostgreSql => "PG",
-                                    DatabaseEngine::Sqlite => "SQLite",
-                                    DatabaseEngine::MySql => "MySQL",
-                                },
-                            ))
-                    })),
-            )
-            .when(self.workspace.profiles.is_empty(), |el| {
-                el.child(
+        let sidebar =
+            div()
+                .w(px(230.))
+                .flex_shrink_0()
+                .bg(rgb(PANEL))
+                .border_r_1()
+                .border_color(rgb(BORDER))
+                .flex()
+                .flex_col()
+                .child(
                     div()
+                        .h(px(48.))
                         .px_4()
-                        .py_3()
-                        .text_color(rgb(MUTED))
-                        .child("Save a database connection to keep it in this workspace."),
-                )
-            })
-            .child(
-                div()
-                    .px_3()
-                    .py_3()
-                    .flex()
-                    .gap_2()
-                    .child(
-                        self.button(
-                            "connect",
-                            if self.connection == ConnectionState::Connected {
-                                "Disconnect"
-                            } else {
-                                "Connect"
-                            },
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .child(
+                            div()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .child(self.ui_label("Connections")),
                         )
-                        .disabled(busy || !configured)
-                        .on_click(cx.listener(|s, _, _, cx| {
-                            if s.connection == ConnectionState::Connected {
-                                s.disconnect(cx)
-                            } else {
-                                s.connect(cx)
-                            }
-                        })),
-                    )
-                    .child(
-                        self.button("edit-profile", "Edit")
-                            .disabled(busy || !configured)
-                            .on_click(cx.listener(|s, _, w, cx| s.edit_profile(false, w, cx))),
-                    ),
-            )
-            .child(div().h(px(1.)).bg(rgb(BORDER)))
-            .child(self.database_explorer(cx))
-            .when(self.deleted.is_some(), |el| {
-                el.child(
-                    self.button("undo-delete", "Undo profile removal")
-                        .on_click(cx.listener(|s, _, _, cx| {
+                        .child(
+                            self.button("new-profile", "+ New")
+                                .disabled(busy)
+                                .on_click(cx.listener(|s, _, w, cx| s.edit_profile(true, w, cx))),
+                        ),
+                )
+                .child(self.database_explorer(cx))
+                .when(self.deleted.is_some(), |el| {
+                    el.child(self.button("undo-delete", "Undo profile removal").on_click(
+                        cx.listener(|s, _, _, cx| {
                             if let Some(p) = s.deleted.take() {
                                 let _ = s.workspace.upsert(p.clone());
                                 s.persist_profile_mutation(ProfileMutation::Upsert(p), cx);
                                 cx.notify();
                             }
-                        })),
-                )
-            })
-            .child(
-                div()
-                    .px_3()
-                    .py_3()
-                    .border_t_1()
-                    .border_color(rgb(BORDER))
-                    .flex()
-                    .flex_wrap()
-                    .gap_2()
-                    .child(
-                        self.button("history-toggle", "History")
-                            .on_click(cx.listener(|s, _, _, cx| {
-                                s.show_history = !s.show_history;
-                                if s.show_history {
-                                    s.show_sql_tools = false;
-                                    s.transfer_preview = None;
-                                }
-                                cx.notify();
-                            })),
-                    )
-                    .child(
-                        self.button("preferences-toggle", "Preferences")
-                            .on_click(cx.listener(|s, _, w, cx| {
+                        }),
+                    ))
+                })
+                .child(
+                    div()
+                        .px_3()
+                        .py_3()
+                        .border_t_1()
+                        .border_color(rgb(BORDER))
+                        .flex()
+                        .flex_wrap()
+                        .gap_2()
+                        .child(
+                            self.button("history-toggle", "History")
+                                .on_click(cx.listener(|s, _, _, cx| {
+                                    s.show_history = !s.show_history;
+                                    if s.show_history {
+                                        s.show_sql_tools = false;
+                                        s.transfer_preview = None;
+                                    }
+                                    cx.notify();
+                                })),
+                        )
+                        .child(self.button("preferences-toggle", "Preferences").on_click(
+                            cx.listener(|s, _, w, cx| {
                                 s.open_preferences_action(&OpenPreferences, w, cx)
-                            })),
-                    )
-                    .child(
-                        self.button("advanced-toggle", "Advanced")
-                            .on_click(cx.listener(|s, _, _, cx| {
-                                s.show_tools = !s.show_tools;
-                                cx.notify();
-                            })),
-                    )
-                    .child(
-                        self.button("tools-toggle", "Tools")
-                            .disabled(self.configuration_operation.is_some())
-                            .on_click(cx.listener(|s, _, w, cx| s.open_tools(w, cx))),
-                    ),
-            );
+                            }),
+                        ))
+                        .child(
+                            self.button("advanced-toggle", "Advanced")
+                                .on_click(cx.listener(|s, _, _, cx| {
+                                    s.show_tools = !s.show_tools;
+                                    cx.notify();
+                                })),
+                        )
+                        .child(
+                            self.button("tools-toggle", "Tools")
+                                .disabled(
+                                    self.configuration_operation.is_some()
+                                        || self.pending_table_open.is_some(),
+                                )
+                                .on_click(cx.listener(|s, _, w, cx| s.open_tools(w, cx))),
+                        ),
+                );
 
         let result_body = div()
             .id("result-grid")
@@ -1754,6 +1738,10 @@ impl Render for Workbench {
             .child(self.document_tabs(cx))
             .child(self.console_context_bar(cx))
             .child(self.query_toolbar(cx))
+            .when(
+                self.pending_table_open.is_some() || self.table_open_feedback.is_some(),
+                |el| el.child(self.table_open_banner(cx)),
+            )
             .child(
                 div()
                     .h(px(235.))
@@ -1958,43 +1946,7 @@ impl Render for Workbench {
             .child(sidebar)
             .child(content);
         if let Some(preferences) = &self.preferences {
-            body = body.child(
-                div()
-                    .w(px(380.))
-                    .flex_shrink_0()
-                    .bg(rgb(PANEL))
-                    .border_l_1()
-                    .border_color(rgb(BORDER))
-                    .flex()
-                    .flex_col()
-                    .child(
-                        div()
-                            .p_3()
-                            .flex()
-                            .justify_between()
-                            .child(self.ui_label("Preferences"))
-                            .child(self.button("close-preferences", "Close").on_click(
-                                cx.listener(|s, _, _, cx| {
-                                    s.preferences = None;
-                                    cx.notify();
-                                }),
-                            )),
-                    )
-                    .when(self.settings_busy, |el| {
-                        el.child(
-                            div()
-                                .id("settings-persist-status")
-                                .px_4()
-                                .role(Role::Status)
-                                .aria_label(self.ui_label("Saving…"))
-                                .child(self.ui_label("Saving…")),
-                        )
-                    })
-                    .when_some(self.settings_error.as_ref(), |el, error| {
-                        el.child(div().px_4().text_color(rgb(0xf0b797)).child(error.clone()))
-                    })
-                    .child(div().flex_1().min_h_0().child(preferences.clone())),
-            );
+            body = body.child(self.preferences_panel(preferences, cx));
         } else if self.form.is_some() {
             body = body.child(self.connection_form_panel(cx));
         } else if let Some(inspector) = &self.structure {
@@ -2217,7 +2169,7 @@ impl Render for Workbench {
                             .text_ellipsis()
                             .text_size(px(10.))
                             .text_color(rgb(MUTED))
-                            .child(self.recovery.status.clone()),
+                            .child(self.recovery_status_label()),
                     )
                     .child(
                         div()

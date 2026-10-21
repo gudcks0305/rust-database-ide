@@ -30,3 +30,4 @@ dbide-workspace = { path = "../dbide-workspace" }
 dbide-i18n = { path = "../dbide-i18n" }
 dbide-settings = { path = "../dbide-settings" }
 dbide-preferences-ui = { path = "../dbide-preferences-ui" }
+dbide-catalog-cache = { path = "../dbide-catalog-cache" }

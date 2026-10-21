@@ -414,10 +414,7 @@ impl Workbench {
             .text_size(px(12.))
             .on_action(cx.listener(Self::quit_action))
             .on_action(cx.listener(Self::report_metrics))
-            .on_action(cx.listener(|s, _: &CloseSqlTab, _, cx| {
-                s.tools = None;
-                cx.notify();
-            }))
+            .on_action(cx.listener(Self::close_sql_action))
             .child(
                 div()
                     .h(px(48.))
@@ -428,13 +425,11 @@ impl Workbench {
                     .justify_between()
                     .border_b_1()
                     .border_color(rgb(BORDER))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .text_ellipsis()
-                            .child(format!("Database tools · {}", self.tools_label)),
-                    )
+                    .child(div().flex_1().min_w_0().text_ellipsis().child(format!(
+                        "{} · {}",
+                        self.ui_label("Tools"),
+                        self.tools_label
+                    )))
                     .child(self.button("close-database-tools", "Close tools").on_click(
                         cx.listener(|s, _, _, cx| {
                             s.tools = None;
@@ -442,7 +437,16 @@ impl Workbench {
                         }),
                     )),
             )
-            .child(div().flex_1().min_h_0().child(tools.clone()))
+            .child(
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .child(div().flex_1().min_w_0().child(tools.clone()))
+                    .when_some(self.preferences.as_ref(), |el, prefs| {
+                        el.child(self.preferences_panel(prefs, cx))
+                    }),
+            )
     }
 }
 impl Workbench {

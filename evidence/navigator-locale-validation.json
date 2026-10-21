@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-22",
+  "checkpoint": "Lazy catalog navigation and specialized Korean/English UI",
+  "checks": [
+    {
+      "command": "cargo test --workspace",
+      "passed": 358,
+      "failed": 0,
+      "ignored": 62,
+      "scope": "Before final render-only density/recovery refinements; touched-package recheck recorded separately."
+    },
+    {
+      "command": "cargo test -p dbide-workflows --test postgres_readonly live_view_capture_ignores_unrelated_schema_caps_and_rejects_nonviews -- --ignored --test-threads=1",
+      "passed": 1,
+      "failed": 0,
+      "scope": "Explicit project-owned PostgreSQL fixture, read-only existing view metadata."
+    },
+    {
+      "command": "uv run --python '>=3.14' scripts/verify_project.py",
+      "result": "passed",
+      "feature_groups": 42,
+      "verified_local_raw_evidence_files": 5
+    },
+    {
+      "command": "cargo test -p dbide-ui-spike -p dbide-i18n",
+      "passed": 81,
+      "failed": 0,
+      "ignored": 3,
+      "scope": "Final frozen UI/density/locale source recheck; not added to the initial workspace total."
+    },
+    {
+      "command": "DBIDE_BRIDGE_FIXTURES=owned-loopback cargo test -p dbide-ui-spike --test navigator --test table_reader -- --ignored --test-threads=1",
+      "passed": 2,
+      "failed": 0,
+      "scope": "Project-owned PG database discovery and separate read-only table-reader/SQL transaction isolation."
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "result": "passed"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "passed",
+      "note": "Existing upstream block 0.1.6 future-incompatibility advisory remains."
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    },
+    {
+      "command": "cargo test -p dbide-i18n",
+      "passed": 6,
+      "failed": 0,
+      "scope": "Final table-header/close-label correction; catalog completeness and argument parity recheck."
+    },
+    {
+      "command": "cargo clippy -p dbide-ui-spike --all-targets -- -D warnings",
+      "result": "passed",
+      "scope": "Final caption-only correction."
+    },
+    {
+      "command": "bash scripts/package-ui.sh",
+      "result": "passed",
+      "packaged_binary_sha256": "1f7eaa8bca6ab7c7cdbba5e44bbbb5e89387cae8a9b4eee50a073837208cf68c"
+    }
+  ],
+  "independent_review": {
+    "scope": "Captured table-reader target and operation/generation state, cancel/late acknowledgements, console isolation, locale state preservation",
+    "result": "No concrete P1/P2 findings in the reviewed files; four table-open model and six i18n tests passed.",
+    "limits": "Read-only source and pure-test review; no GUI/live DB/namespace fault validation."
+  },
+  "native_evidence": "ui-navigator-locale-qa.json",
+  "limits": [
+    "Ignored tests are not counted as passing live tests.",
+    "PostgreSQL row Apply remains disabled; isolated unfinished portal work is outside this checkpoint.",
+    "GitHub CI draft is inactive because the current OAuth credential lacks workflow scope.",
+    "Physical Korean IME and full VoiceOver acceptance remain open."
+  ]
+}

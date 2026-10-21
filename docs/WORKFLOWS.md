@@ -108,6 +108,47 @@ pg_dump parity. Unsupported markers can deliberately block otherwise simple plan
 a future dependency/DDL adapter must model those features before relaxing them.
 External/global dependencies and concurrent DDL still need executor-side checks.
 
+## Ordinary-table rewrite rules: fail closed
+
+`metadata_features::USER_REWRITE_RULES` has the exact value `user rewrite rules`.
+Both full and targeted capture emit it for an ordinary `relkind='r'` table with
+any `pg_rewrite` entry, including ALSO and INSTEAD rules and conservatively disabled
+rules. Normal views' `_RETURN` rules do not produce this ordinary-table marker;
+views remain separately noneditable. The existing generic unsupported-feature
+policy yields `Read-only metadata: user rewrite rules`. The actionable path is to
+inspect the rule definitions and keep the verified row editor read-only, rather
+than assume a direct target table implies one direct DML effect.
+
+The shared PG canonical fingerprint already contains ordered raw `pg_rewrite`
+rows, including rule qualification/action node trees. No fingerprint query/hash
+API change is needed. This captures a rule-definition change even when the table
+OID, typed column/PK metadata and rule-presence marker remain unchanged. The hash
+is a TOCTOU witness, not permission to apply edits to a table whose rules were
+already present at capture; the unsupported marker must still be enforced.
+
+Verification uses an explicitly ignored, exact-owned-URL test:
+
+```sh
+DBIDE_WORKFLOW_TEST_URL='postgresql://postgres:dbide_fixture_only@127.0.0.1:55439/dbide_fixture' \
+  cargo test -p dbide-workflows --test postgres_rewrite_rules -- --ignored
+```
+
+It creates a unique confirmed-owned `dbide_workflow_rules_<pid>_<time>` namespace,
+loads the definition templates in `fixtures/rewrite_rules_base.sql` and
+`fixtures/rewrite_rules.sql`, captures ordinary-table ALSO INSERT/UPDATE/DELETE and
+INSTEAD NOTHING variants, and verifies the view `_RETURN` control. Replacing an
+ALSO action changes the canonical guard hash while the table OID and typed schema
+semantic hash remain stable. The test never executes rule-firing DML; original,
+audit and INSTEAD tables remain empty. Fallible checks return through cleanup,
+which drops only the unique schema whose creation this test confirmed. The
+explicit PostgreSQL 18.6 run passed; no fixture objects remain afterward.
+
+This prerequisite does not enable UI Apply or establish universal server-effects
+safety. Generated/default/constraint expressions and user functions remain an
+explicit limitation; absence of rewrite rules is not proof that every server-side
+operation has only a direct row effect. Later execution/portal guards have their
+own separate acceptance boundary.
+
 ## Compare and fresh validation
 
 `compare_snapshots(desired, actual)` delegates to the offline directional diff.
@@ -202,6 +243,48 @@ verifies incomplete JSON/migration rejection, full/target canonical-hash equalit
 composite outgoing FK fidelity and same-schema incoming CASCADE detection. The
 five explicit owned read-only integration tests and thirteen offline workflow
 tests passed on PostgreSQL 18.6 after this addition; no new fixture DDL was needed.
+
+## Exact view definitions (2026-10-22)
+
+`capture_view(request, schema, name, limits)` returns
+`CapturedView { schema, view: dbide_schema::View }` for exactly one actual view or
+materialized view. This is a partial object-level result, not a schema snapshot
+and not evidence of whole-schema completeness. A missing object or ordinary table
+is rejected. `View.materialized` comes from the actual catalog relation kind.
+
+One metadata SELECT filters exact schema/name and `relkind IN ('v','m')`, then reads
+`pg_get_viewdef`. It does not enumerate other relations, columns, constraints,
+indexes or schema objects. The dedicated session uses a READ ONLY/repeatable-read
+transaction and confirms rollback. The current Session API has no parameterized
+SELECT entry point: schema/name are **data values encoded with the existing
+PostgreSQL E-literal encoder**, not identifiers and not protocol Bind parameters.
+Quotes/backslashes are escaped; NUL, empty/overlong names and system schemas are
+rejected. The static format substitutes each value once, so template-like text in
+a valid name is preserved. No PREPARE/EXECUTE lifecycle or driver changes are used.
+
+A private request copy caps connection timeout at four seconds. A separate limits
+copy caps client/server query timeout at four seconds; shorter caller limits stay
+shorter. Other profile fields and the original profile/limits remain unchanged.
+These are distinct connection and query budgets. Server output is capped by encoded
+payload octet length; driver bytes/events are also bounded. Null-over-budget,
+truncated, duplicate/malformed, wrong-kind/identity or nonterminal transaction
+reports yield no partial definition. The returned definition is display metadata,
+never an executed view query.
+
+Offline tests cover quote/backslash/injection-shaped names, NUL and UTF-8 byte
+bounds, object-only query shape, limit validation, private timeout copies, normal
+and materialized kind decoding, identity and report/cap failures. The explicit owned
+PostgreSQL 18.6 `parent_view` test passed with `max_records=1`, `max_relations=1`
+and `max_columns=1`, where whole-schema capture fails from unrelated metadata.
+The test also rejects ordinary/missing objects and an injection-shaped name. There
+is no materialized-view fixture in the existing owned seed: its kind is covered by
+query/typed decoding tests, with live materialized verification still unclaimed.
+No new DDL, rule/fault experiment or database write was performed for this feature.
+
+```sh
+DBIDE_WORKFLOW_TEST_URL='postgresql://postgres:dbide_fixture_only@127.0.0.1:55439/dbide_fixture' \
+  cargo test -p dbide-workflows --test postgres_readonly live_view_capture_ignores_unrelated_schema_caps_and_rejects_nonviews -- --ignored
+```
 
 ## Plan-only EXPLAIN
 

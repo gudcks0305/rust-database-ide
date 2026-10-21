@@ -52,6 +52,7 @@ cache.get(&key) -> Option<MetadataLease<Value>>
 cache.insert(key, value, owned_heap_bytes, ttl: Duration)
     -> Result<MetadataLease<Value>, AdmissionError>
 cache.invalidate(&key) -> bool
+cache.invalidate_where(|key: &Key| key.inside(&scope)) -> usize
 cache.force_refresh(&key) -> bool
 cache.prune_expired() -> usize
 cache.clear()
@@ -73,6 +74,12 @@ It never returns expired data as a fresh hit and never extends TTL on access.
 `prune_expired`, `invalidate`, `force_refresh` and `clear` remove lookup visibility;
 held snapshots retain their charges. `force_refresh` is only an invalidation
 alias: the caller explicitly starts and validates the next metadata request.
+`invalidate_where` scans only bounded resident keys and removes matching entries
+for a schema/database subtree refresh. It increments invalidations by the number
+removed, preserves unrelated values/TTL/LRU order and keeps held matching leases
+charged until their final Drop. The predicate owns scope semantics; this method
+does not load children or expose payload ownership. A default cache scans at most
+1,024 resident keys (or its explicit configured live-entry bound).
 
 `Clock::now()` uses elapsed Duration in one monotonically increasing epoch. The
 default clock wraps Instant. Manual clocks allow exact-deadline tests without
@@ -107,12 +114,14 @@ proof that server metadata has not changed.
 
 ## Verification
 
-`cargo test -p dbide-catalog-cache`: **12 offline tests**, no sleeps or DB access:
+`cargo test -p dbide-catalog-cache`: **14 offline tests**, no sleeps or DB access:
 weighted LRU touch/order, TTL exact deadline, overflow/oversized rejection, pinned
 lease/clone retention, replacement admission/failure preservation, no partial
 candidate eviction on failure, clear/refresh/prune, live-entry budget independent
 of bytes, cross-thread lease drop/cache destruction, endpoint/database/scope key
-separation, no miss population and invalid config/TTL.
+separation, no miss population, invalid config/TTL and schema-scoped invalidation
+with held/unheld entries, blocked admission until lease release, unrelated TTL
+and LRU preservation.
 
 `cargo clippy -p dbide-catalog-cache --all-targets -- -D warnings`,
 `cargo fmt -p dbide-catalog-cache -- --check` and `git diff --check` pass. No

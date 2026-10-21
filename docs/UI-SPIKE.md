@@ -156,17 +156,23 @@ than arbitrary server SQL; analysis does not gate Run script.
 
 ## Explorer, results and export
 
-After connecting, **Refresh** loads the selected engine's schema/table/view list.
-Clicking an object opens a safely identifier-quoted `SELECT * ... LIMIT 100` in
-a new editor tab; it does not execute that statement. PostgreSQL/SQLite use
-doubled double quotes and MySQL uses doubled backticks. Formatting, current
-statement selection, completion, analysis and rename use the actual selected
-console's dialect. Profile, result-origin and console labels show the engine
-plus configured network target or SQLite file path. The explorer displays
-schema/object/column branches and field details. The connection→database→schema
-lazy hierarchy is still pending host integration; scoped bridge APIs and a
-bounded cache foundation are implemented separately. Schema limits are reported
-as partial snapshots, not complete database indexing.
+The navigator loads connection → database → schema → table/view → column
+branches only when expanded. PostgreSQL uses the schema level; MySQL databases
+lead directly to their objects, and a SQLite file exposes `main` without a fake
+network database layer. Browsing never binds or reconfigures an existing SQL
+console. **SQL** opens a quoted `SELECT * ... LIMIT 100` draft; **Data** explicitly
+runs that bounded read under the branch's captured connection/database in a new
+independent console. PostgreSQL/SQLite quote doubled double quotes and MySQL
+quotes doubled backticks. Formatting and SQL assistance use each console's
+configured target/dialect. MySQL `USE` and arbitrary session SQL can change a
+server default without updating that configured-target label.
+
+Branches show returned counts, snapshot age, expiry after60 seconds, errors and
+partial/truncated flags. Refresh invalidates that scope's subtree; connection
+refresh advances its generation. Search filters only expanded snapshots and
+never requests metadata. At most1,000 matching tree rows render, with an
+explicit subset notice. Collapse other branches or narrow the filter to inspect
+further loaded rows. A partial snapshot is never called complete indexing.
 
 Results preserve script order, including each rowset and command count.
 Previous/next controls select individual results. SQL NULL and empty text remain
@@ -195,30 +201,91 @@ than silently truncating typed input. No import-submit control is provided.
 
 ## Basic explorer and table viewing (2026-10-22)
 
-The default sidebar reserves most of its height for a schema → table/view →
-column tree. Connection rows are compact and their list scrolls independently.
-Search matches loaded schema/object/column names and type names. The explorer
-shows loaded object/column counts and explicitly marks capped metadata subsets;
-it does not silently hide a further UI-only 500-object subset. Every field has
-an accessibility label containing name, full type, NULL, PK/FK and default.
+The sidebar uses one connection/database/object tree, with compact connection
+roots and a per-connection settings action. No duplicate saved-profile card list
+consumes its height. Every loaded field has an accessibility label containing
+its name, full type, NULL, PK/FK, default and generated/identity marker.
 
-After an explicit Connect or Connect & Run, metadata loads once automatically.
-Normal startup still opens no database connection and submits no SQL. Table
-clicks expand fields. **Structure** opens a compact field grid (Name, Type,
-NULL, Key, Default/extra), horizontally scrollable for complete values, with
-**Copy fields**. PostgreSQL adds live FK targets, indexes and view definitions
-through a separate bounded read-only catalog capture. Other adapters explicitly
-state when relationship/index details were not loaded.
+Normal startup creates no metadata worker, opens no database connection and
+submits no SQL. SQL consoles retain their existing bounded completion catalog
+capture; the navigator does not eagerly load every database or column on
+Connect. An explicit legacy browser Connect may expand its database list once.
+SQLite metadata probes enforce read-only/no-create at the bridge boundary,
+including profiles that allow explicit connection-time creation. Navigator
+probes use only credentials from the exact profile ID + endpoint
+fingerprint; an explicit password in a matching console can be reused without
+writing Keychain or silently authorizing a different host/user/TLS endpoint.
 
-**SQL** opens a quoted SELECT draft without executing it. **Data** is an explicit
-read gesture: ordinary PostgreSQL tables use the read-only paged viewer; other
-engines and views open a bounded quoted SELECT result. PostgreSQL metadata that
-cannot support the paged viewer falls back to that same read-only query workflow,
-without relaxing editing identity/type guards. This never executes opened or
-dropped SQL files. The paged viewer reads at most100 rows per page, reports total
-unknown, and labels Find as client search of the loaded page. Concurrent changes
-can shift pages. Its current full-screen presentation closes back to the SQL
-tabs/explorer; embedding data as another workbench tab is pending.
+**Structure** holds the column cache lease and displays the compact field grid
+(Name, Type, NULL, Key, Default/extra), horizontal overflow, and **Copy fields**.
+An explicit PostgreSQL detail action requests indexes, FK targets and view
+definitions in the same two-slot navigator queue. These are separate point-in-time
+snapshots; their capture times can differ from the basic columns. Detail capture
+is read-only and targets exactly one table or view; a view uses one catalog
+SELECT without unrelated table/column scans. Capture is capped at1 MiB/4,096
+records/2,048 columns; connection and query/workflow deadlines are each at most
+4 seconds. Unsupported table kinds, insufficient permissions or capture limits
+keep basic fields visible with a detail error. Other engines explicitly
+leave these advanced details unloaded.
+
+**Data** on an ordinary PostgreSQL table now prepares its captured database in
+an isolated table-reader bridge and reuses the existing100-row paged viewer.
+The pending intent checks navigator generation, full captured profile/database,
+and the exact Configure → Connect → native Idle observation acknowledgements.
+It never rebinds a SQL document or changes saved profile defaults/selection.
+A visible captured-target banner reports preparation, errors and cancellation;
+Retry is explicit. Cancel/Disconnect/Rollback controls own only the table reader.
+A rejected Configure keeps the previous native table session; unknown execution
+outcomes keep a potentially live transaction Unknown until explicit resolution.
+Stale/closed/cancelled intents cannot later open or submit table SQL. An open or
+unknown table transaction blocks changing its target. Existing SQL-console
+transactions remain independent throughout preparation and table disconnection.
+
+The viewer reports an unknown total, exposes Next/Previous and labels Find as
+client search of the current page; concurrent changes can shift pages. Views,
+other engines and unsupported PostgreSQL metadata still use an explicit new
+console LIMIT100 read. That fallback is bounded, not a complete or pageable
+snapshot. Opened/dropped SQL files never execute automatically. Row viewing
+continues to use its older bounded full-schema verification capture; adapting
+that path to target-only metadata remains separate work.
+
+Tree rows now use compact count/partial/expired badges, named accessible icon
+refresh/edit controls, complete-name tooltips, and an object action menu for
+Structure/Data/SQL. Fields stay on one visual line while preserving complete
+accessible names and the full Structure grid. The model, scopes and request
+identity are unchanged by this density pass. Table-view locale changes retain
+the same editor/grid/staging entities; Preferences can open and close alongside
+Tools or Data without discarding those views. Recovery success captions also
+follow the current language; underlying SQL, identifiers and diagnostics remain
+unchanged. The separate console completion snapshot is still captured once;
+navigator refresh does not yet refresh it. Explicit console catalog refresh and
+a Spotlight-compatible completion shortcut are tracked follow-ups.
+
+Navigator resources are bounded independently from SQL-console workers:
+2 metadata request slots,16 queued requests,256 expanded branches,32 polled
+bridge events per UI turn, and a16 MiB/1,024-entry cache budget. Cache keys carry
+profile ID, endpoint fingerprint, database, scope and generation; result
+acceptance also checks slot operation and request ticket. Removed/changed
+profiles, subtree refresh and cache clear invalidate stale acknowledgements.
+Held expanded/inspector leases remain charged after expiry/invalidation. The
+recursive retained-capacity estimate includes key, vector and string capacity;
+it is an accounted payload budget, not a process RSS limit. Rejected admissions
+stay visible rather than claiming to have freed leased memory. **Clear cache**
+releases visible branches and resident entries; in-flight probes keep their
+slot until terminal and cannot silently repopulate cleared branches.
+
+Model tests cover cross-database/schema identity, stale profile/ticket replies,
+remove/re-add generations, scoped refresh of collapsed children, queue/branch
+caps, wrong-scope terminal errors, retained capacity and held-lease admission.
+A real test creates two owned temporary SQLite files with same-named tables and
+checks lazy stages, actual PK/default fields and isolation. A missing-file test
+also verifies that metadata cannot create a SQLite file even when Connect may.
+The pending-reader model adds four operation/identity/cancel regressions; an
+opt-in owned PG read-only test holds console A in an explicit transaction while
+preparing/querying/disconnecting table reader B, then verifies A remains in its
+original database/transaction before explicit rollback. An opt-in owned PG
+read-only test verifies two advertised databases and separate schema branches.
+Native tree/layout/AX validation is pending for this revision.
 
 Row-edit staging/model code remains experimental M2 work. **All row editing
 controls are hidden and Apply is blocked at both the capture and host-dispatch
@@ -347,7 +414,7 @@ Primary source APIs were inspected locally from the exact pinned crates:
 [Input](https://docs.rs/gpui-component/0.8.0/gpui_component/input/),
 [Table](https://docs.rs/gpui-component/0.8.0/gpui_component/table/).
 
-The UI unit suite has 35 tests: virtual range edges, fixed-column translation,
+The UI unit suite covers: virtual range edges, fixed-column translation,
 far-corner generation, ordered multi-result/NULL/partial-error/unknown command
 count conversion, exact Text/NULL transfer and literal marker collision safety,
 atomic failed-write preservation, disconnected/duplicate Run admission,

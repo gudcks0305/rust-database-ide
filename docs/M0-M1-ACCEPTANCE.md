@@ -32,14 +32,14 @@ profile store. It must not inspect user connection settings or databases.
 
 - [x] General profiles, TLS validation, exact Keychain API, explicit session password.
 - [x] Native connection failure feedback, edit settings and reconnect-on-Run.
-- [x] Schema groups, searchable table/view list and expandable field metadata in the main explorer. Full lazy connection/database hierarchy remains a separate follow-on gate.
-- [ ] Structure view: names, types, NULL, defaults, PK/FK and available index definitions.
+- [x] Schema groups, searchable table/view list and expandable field metadata in the main explorer. Lazy connection/database/schema hierarchy and bounded scoped probes passed native PG/SQLite/MySQL navigation checks.
+- [x] Structure view: names, types, NULL, defaults, PK/FK and available index definitions observed on owned PG/SQLite/MySQL fixtures; unsupported engine-specific details remain explicit.
 - [x] SQL tabs, native file open/save and dirty-tab protection observed.
 - [ ] Latest file shortcuts and physical external drag acceptance. Shared loader tests and native Open pass; cross-app drag is unverified.
 - [x] Native PG query, multi-result, error, cancel and transaction state workflows observed on earlier release.
 - [ ] Repeat the complete connection → explorer → SQL → result/error/cancel → history workflow on the basic-explorer release.
 - [x] GUI and CLI concurrent setting changes preserve unrelated profiles; shared locale persistence preserves unknown settings.
-- [x] Core Korean/English switching, Cmd+, and locale persistence after restart. Specialized English views remain.
+- [x] Core Korean/English switching, Cmd+, and locale persistence after restart. Tools runtime switching also preserves form input; table-view runtime switching also preserved page2 and search text. Shared low-level result captions and some GPUI text remain English.
 - [x] Per-console configured DB restoration without opening connections; native PG A/B isolation.
 - [ ] Complete keyboard/focus/AX regression on the same release.
 - [ ] Matched DataGrip task baseline; no speedup claim before it exists.

@@ -1,11 +1,13 @@
 //! Native, bounded, read-only database tools. Parent owns GPUI/component initialization.
 mod drafts;
+mod i18n;
 mod model;
 mod objects;
 mod render;
 mod worker;
 
 use dbide_data::{DataDiff, TabularData};
+use dbide_i18n::{Locale, Message};
 use dbide_profiles::{ConnectionProfile, ConnectionRequest, DatabaseEngine};
 use dbide_schema::{DatabaseIdentity, MigrationPlan, SchemaSnapshot, explain::ExplainDocument};
 use gpui::{prelude::*, *};
@@ -33,6 +35,7 @@ pub enum ToolsEvent {
 impl EventEmitter<ToolsEvent> for ToolsPanel {}
 
 pub struct ToolsPanel {
+    locale: Locale,
     request: Option<ConnectionRequest>,
     label: String,
     tab: Tab,
@@ -49,7 +52,7 @@ pub struct ToolsPanel {
     object_draft: Option<drafts::SqlDraft>,
     operation: OperationState,
     cancel: Option<Arc<AtomicBool>>,
-    error: Option<String>,
+    error: Option<i18n::Diagnostic>,
     status: String,
     actual: Option<Arc<SchemaSnapshot>>,
     desired: Option<Arc<SchemaSnapshot>>,
@@ -78,6 +81,7 @@ enum Completed {
     Draft(drafts::SqlDraft),
     Saved,
     Cancelled,
+    ExternalError(String),
 }
 impl ToolsPanel {
     pub fn new(
@@ -86,10 +90,22 @@ impl ToolsPanel {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
+        Self::new_with_locale(request, initial_sql, Locale::default(), window, cx)
+    }
+    /// Explicit per-panel locale. Does not alter GPUI globals, profiles or the SQL source.
+    pub fn new_with_locale(
+        request: Option<ConnectionRequest>,
+        initial_sql: String,
+        locale: Locale,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let label = request
             .as_ref()
-            .map(|r| model::target_label(&r.profile))
-            .unwrap_or_else(|| "No profile captured · offline tools available".into());
+            .map(|r| model::target_label_with_locale(&r.profile, locale))
+            .unwrap_or_else(|| {
+                i18n::text(locale, "No profile captured · offline tools available").into()
+            });
         let field = |value: String, window: &mut Window, cx: &mut Context<Self>| {
             cx.new(|cx| {
                 let mut input = InputState::new(window, cx);
@@ -98,6 +114,7 @@ impl ToolsPanel {
             })
         };
         Self {
+            locale,
             request,
             label,
             tab: Tab::Schema,
@@ -138,13 +155,54 @@ impl ToolsPanel {
             data_diff: None,
         }
     }
+    /// Repaint all app-owned messages, including stored status/errors, without retargeting work.
+    pub fn set_locale(&mut self, locale: Locale, cx: &mut Context<Self>) {
+        if self.locale == locale {
+            return;
+        }
+        self.locale = locale;
+        self.label = self
+            .request
+            .as_ref()
+            .map(|r| model::target_label_with_locale(&r.profile, locale))
+            .unwrap_or_else(|| {
+                i18n::text(locale, "No profile captured · offline tools available").to_owned()
+            });
+        cx.notify();
+    }
+    pub fn locale(&self) -> Locale {
+        self.locale
+    }
+    fn t<'a>(&self, source: &'a str) -> &'a str {
+        i18n::text(self.locale, source)
+    }
+    fn f(&self, message: Message, args: &[(&str, String)]) -> String {
+        i18n::format(self.locale, message, args)
+    }
+    fn flag(&self, value: bool) -> String {
+        dbide_i18n::tr(
+            self.locale,
+            if value {
+                Message::ToolsYes
+            } else {
+                Message::ToolsNo
+            },
+        )
+        .to_owned()
+    }
+    fn localized_error(&self, error: &i18n::Diagnostic) -> String {
+        self.f(
+            Message::ToolsToolsOperationFailedError,
+            &[("error", error.body(self.locale).to_owned())],
+        )
+    }
     fn live_enabled(&self) -> bool {
         self.request
             .as_ref()
             .is_some_and(|r| r.profile.engine == DatabaseEngine::PostgreSql)
     }
     fn fail(&mut self, error: impl Into<String>, cx: &mut Context<Self>) {
-        self.error = Some(error.into());
+        self.error = Some(i18n::Diagnostic::Owned(error.into()));
         self.status = "Action needs attention".into();
         cx.notify();
     }
@@ -215,8 +273,12 @@ impl ToolsPanel {
                     "Export saved atomically · existing files are never overwritten".into()
             }
             Ok(Completed::Cancelled) => self.status = "File selection cancelled".into(),
+            Ok(Completed::ExternalError(error)) => {
+                self.error = Some(i18n::Diagnostic::Raw(error));
+                self.status = "Operation failed · previous successful inputs retained".into();
+            }
             Err(error) => {
-                self.error = Some(error);
+                self.error = Some(i18n::Diagnostic::Owned(error));
                 self.status = "Operation failed · previous successful inputs retained".into();
             }
         }
@@ -264,9 +326,13 @@ impl ToolsPanel {
             id,
             cancel,
             async move {
-                let value = dbide_workflows::capture_schema(&request, &scope, Default::default())
-                    .await
-                    .map_err(|e| e.to_string())?;
+                let value =
+                    match dbide_workflows::capture_schema(&request, &scope, Default::default())
+                        .await
+                    {
+                        Ok(value) => value,
+                        Err(error) => return Ok(Completed::ExternalError(error.to_string())),
+                    };
                 let er = dbide_schema::er::graph(&value, model::er_limits())
                     .and_then(|graph| {
                         dbide_schema::er::export_svg(&value, model::er_limits())
@@ -296,10 +362,14 @@ impl ToolsPanel {
             id,
             cancel,
             async move {
-                dbide_workflows::explain_plan(&request, &sql, false, Default::default())
-                    .await
-                    .map(Completed::Explain)
-                    .map_err(|e| e.to_string())
+                Ok(
+                    match dbide_workflows::explain_plan(&request, &sql, false, Default::default())
+                        .await
+                    {
+                        Ok(value) => Completed::Explain(value),
+                        Err(error) => Completed::ExternalError(error.to_string()),
+                    },
+                )
             },
             cx,
         );
@@ -370,7 +440,7 @@ impl ToolsPanel {
             files: true,
             directories: false,
             multiple: false,
-            prompt: Some("Open local schema or tagged JSON".into()),
+            prompt: Some(self.t("Open local schema or tagged JSON").into()),
         });
         cx.spawn_in(window, async move |view, cx| {
             let choice = receiver.await;

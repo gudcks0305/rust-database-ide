@@ -1375,3 +1375,72 @@ fn lazy_metadata_validation_is_bounded_and_operation_targeted() {
         matches!(next(&mut bridge),BridgeEvent::Error{operation:Some(operation),message} if operation==id&&message.contains("scope is invalid"))
     );
 }
+
+#[test]
+fn sqlite_metadata_probes_never_create_missing_file_or_change_configured_policy() {
+    let mut bridge = DatabaseBridge::new().unwrap();
+    for explicit_connect in [true, false] {
+        let file = File::new();
+        configure(&mut bridge, file.request());
+        assert!(!file.0.exists());
+        for metadata_api in 0..6 {
+            let id = match metadata_api {
+                0 => bridge.inspect_schema(),
+                1 => bridge.list_databases(),
+                2 => bridge.refresh_databases(),
+                3 => bridge.list_schemas(),
+                4 => bridge.list_objects("main".into()),
+                _ => bridge.list_columns(dbide_bridge::RelationRef {
+                    schema: "main".into(),
+                    name: "fixture".into(),
+                }),
+            }
+            .unwrap();
+            assert!(
+                matches!(next(&mut bridge),BridgeEvent::Connecting{operation,..} if operation==id)
+            );
+            assert!(
+                matches!(next(&mut bridge),BridgeEvent::ConnectionFailed{operation,diagnostic} if operation==id&&diagnostic.kind==dbide_bridge::ConnectionErrorKind::DatabaseMissing)
+            );
+            assert!(
+                !file.0.exists(),
+                "metadata API {metadata_api} created its missing SQLite target"
+            );
+        }
+        if explicit_connect {
+            let id = bridge.connect().unwrap();
+            assert!(
+                matches!(next(&mut bridge),BridgeEvent::Connecting{operation,..} if operation==id)
+            );
+            assert!(matches!(next(&mut bridge),BridgeEvent::Connected{operation} if operation==id));
+            assert!(
+                file.0.exists(),
+                "explicit Connect retains authorized create policy"
+            );
+        }
+        completed(execute(
+            &mut bridge,
+            "CREATE TABLE fixture(v INTEGER);INSERT INTO fixture VALUES(81)",
+        ));
+        assert!(
+            file.0.exists(),
+            "explicit Run retains authorized create policy"
+        );
+        assert_eq!(
+            scalar(&completed(execute(&mut bridge, "SELECT v FROM fixture"))),
+            "81"
+        );
+        let id = bridge.disconnect().unwrap();
+        assert!(
+            matches!(next(&mut bridge),BridgeEvent::Disconnected{operation:Some(operation)} if operation==id)
+        );
+    }
+    let file = File::new();
+    let id = bridge.test_connection(file.request()).unwrap();
+    assert!(matches!(next(&mut bridge),BridgeEvent::Connecting{operation,..} if operation==id));
+    assert!(matches!(next(&mut bridge),BridgeEvent::ConnectionTested{operation} if operation==id));
+    assert!(
+        file.0.exists(),
+        "explicit TestConnection retains its requested create policy"
+    );
+}

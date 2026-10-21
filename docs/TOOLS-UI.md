@@ -133,3 +133,42 @@ injection resistance, exact captured index columns, constraint-owned index
 refusal, exactly-one-query view definitions, explicit destructive replacement /
 DROP RESTRICT and materialized-view rejection. Native GUI behavior remains an
 unperformed manual validation gate.
+
+## Korean and English
+
+`ToolsPanel::new(request, initial_sql, window, cx)` remains compatible and uses
+`Locale::default()` (Korean). Hosts with an explicit preference use:
+
+```rust
+ToolsPanel::new_with_locale(request, initial_sql, locale, window, cx)
+// Existing Entity<ToolsPanel>, including while a read-only operation is pending:
+tools.update(cx, |panel, cx| panel.set_locale(locale, cx));
+```
+
+`locale()` returns the panel's current `dbide_i18n::Locale`. Locale is explicit
+per panel; this crate does not mutate global GPUI state or persist preferences.
+Changing language repaints headings, tabs, actions, ARIA labels, forms, empty
+states, progress/status text, draft descriptions, boolean labels and diagnostic
+wrappers. It preserves the captured connection, selected tab/object, SQL/editor
+values, results and operation revision/cancellation state. Async completions use
+the current display locale rather than capturing the language at submission.
+
+Tools messages and summary templates live in the shared typed `dbide-i18n`
+catalog. Its existing completeness, per-language formatting and placeholder
+parity tests cover the additional entries. Summary interpolation is a bounded
+UI preview and may show an ellipsis for arguments exceeding 4096 UTF-8 bytes;
+file exports, clipboard SQL and `ToolsEvent` SQL remain the original payload.
+Application validation/worker errors are translated at display time. PostgreSQL
+workflow diagnostics have an explicit raw origin: even a raw diagnostic equal
+to an application message stays verbatim, under a translated error wrapper.
+
+SQL, identifiers, profile names, filenames/paths, data cells, PostgreSQL plan
+node names and server diagnostics remain unchanged. Schema/workflow library
+warnings, canonical SQL keywords/type names, provenance/debug metadata and
+unsupported-feature markers may remain English as source metadata. The GPUI
+component package does not ship a Korean built-in locale in this version;
+component-owned context menus/prompts and OS dialogs may retain English or the
+OS language. This is application-message coverage, not a claim that every native
+or third-party component is fully localized. Interactive language switching,
+VoiceOver and keyboard checks remain a separate GUI gate; no native app is
+launched by these crate checks.
