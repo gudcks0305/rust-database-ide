@@ -75,6 +75,7 @@ bash scripts/fixture-pg.sh stop
 
 현재 자동 검증은 `bash scripts/verify-current.sh`, 준비된 owned fixture의 실제 DB 검증까지 포함하려면 `bash scripts/verify-current.sh --owned-live`.
 GUI/IME/VoiceOver와 DataGrip 비교 측정은 별도. `scripts/verify-m0.sh`는 초기 실험 보고서 재생성용이다.
+GitHub macOS ARM64 자동 검사 초안은 [CI 문서](docs/CI.md)에 있다. 현재 OAuth의 `workflow` 권한이 없어 원격 CI는 아직 활성화되지 않았다.
 
 ## CLI
 

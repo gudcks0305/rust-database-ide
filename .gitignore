@@ -1,4 +1,5 @@
 /target/
+/vendor/tokio-postgres/target/
 /outputs/
 /tmp/
 /evidence/raw/
