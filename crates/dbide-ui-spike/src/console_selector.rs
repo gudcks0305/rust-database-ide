@@ -151,7 +151,7 @@ impl Workbench {
             .unwrap();
         let mut bar = div()
             .px_3()
-            .py_2()
+            .py_1()
             .bg(rgb(PANEL))
             .border_b_1()
             .border_color(rgb(BORDER))
@@ -164,7 +164,6 @@ impl Workbench {
                     .items_center()
                     .gap_2()
                     .flex_wrap()
-                    .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child("SQL"))
                     .child(connection)
                     .child(database)
                     .when(

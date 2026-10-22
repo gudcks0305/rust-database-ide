@@ -15,11 +15,10 @@ impl Workbench {
         panel.update(cx, |panel, cx| panel.request_cancel(cx));
         self.stream_export_visible = true;
         self.recovery.close_after = false;
-        self.quit_after_close = false;
         self.status = if self.locale == Locale::Ko {
-            "CSV 작업 종료를 기다린 뒤 창을 다시 닫으세요. 파일 선택 중이면 선택창을 먼저 닫으세요."
+            "닫는 중 · CSV 작업을 정리하고 있습니다."
         } else {
-            "Wait for CSV export to stop, then close again. Dismiss any open file picker first."
+            "Closing · finishing CSV cleanup."
         }
         .into();
         cx.notify();
@@ -36,6 +35,9 @@ impl Workbench {
             return;
         }
         if !self.sql_view_active() {
+            return;
+        }
+        if self.close_after_streams || self.recovery.close_after || self.close_prompt_open {
             return;
         }
         if let Err(error) = self.prepare_console_password(cx) {

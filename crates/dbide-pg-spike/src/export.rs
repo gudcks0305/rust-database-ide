@@ -224,9 +224,9 @@ async fn watch<T>(
     }
 }
 
-struct Driver(tokio::task::JoinHandle<()>);
+pub(crate) struct Driver(tokio::task::JoinHandle<()>);
 impl Driver {
-    async fn retire(mut self) {
+    pub(crate) async fn retire(mut self) {
         self.0.abort();
         // Waiting confirms the owned socket task has actually been dropped.
         let _ = (&mut self.0).await;
@@ -238,7 +238,7 @@ impl Drop for Driver {
     }
 }
 
-async fn connect(
+pub(crate) async fn connect(
     request: &ConnectionRequest,
 ) -> Result<(Client, Driver, Option<MakeTlsConnector>), StreamError> {
     let p = &request.profile;
@@ -291,7 +291,7 @@ async fn connect(
     }
 }
 
-fn contains_bytea(ty: &Type) -> bool {
+pub(crate) fn contains_bytea(ty: &Type) -> bool {
     if *ty == Type::BYTEA {
         return true;
     }
@@ -303,14 +303,14 @@ fn contains_bytea(ty: &Type) -> bool {
         _ => false,
     }
 }
-fn numeric_scalar(ty: &Type) -> bool {
+pub(crate) fn numeric_scalar(ty: &Type) -> bool {
     if let Kind::Domain(base) = ty.kind() {
         return numeric_scalar(base);
     }
     matches!(*ty, Type::FLOAT4 | Type::FLOAT8 | Type::NUMERIC)
 }
 
-fn validate(
+pub(crate) fn validate(
     request: &ConnectionRequest,
     sql: &str,
     limits: &StreamLimits,

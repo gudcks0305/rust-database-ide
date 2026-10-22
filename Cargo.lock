@@ -1493,13 +1493,17 @@ dependencies = [
 name = "dbide-result-store"
 version = "0.1.0"
 dependencies = [
+ "arc-swap",
  "dbide-driver-api",
  "dbide-export",
+ "dbide-pg-spike",
  "dbide-profiles",
+ "dbide-project",
  "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]

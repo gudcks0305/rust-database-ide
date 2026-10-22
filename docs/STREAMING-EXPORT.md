@@ -4,7 +4,7 @@
 a **new** CSV file. It uses a separate connection with native read-only settings
 or a READ ONLY transaction. It does not continue an older displayed result or
 automatically replay a query. [Stored result pages](RESULT-PAGES.md) provide
-same-execution browsing through a separate, explicit query operation.
+same-execution live browsing through a separate, explicit query operation.
 
 ## GUI
 
@@ -31,8 +31,8 @@ untranslated.
 
 **Cancel** requests cancellation and waits for the worker's actual outcome. Panel
 close and destination changes are disabled while working. A graceful window/app
-close requests cancellation and keeps the window open until completion is observed;
-close again afterwards. This also protects against a close racing local recovery.
+close requests cancellation and keeps the window open until completion is observed,
+then closes automatically. This also protects against a close racing local recovery.
 A crash or force kill cannot provide this graceful-cleanup guarantee. There is no
 automatic retry. A lost worker result is shown as unknown, with instructions to
 check the destination before explicitly selecting another output.

@@ -109,7 +109,7 @@ cargo run -p dbide-cli --bin dbide -- --help
 
 프로필·설정·쿼리·schema·파일 export 명령은 [CLI 가이드](docs/CLI.md)에 정리했다.
 SQLite·PostgreSQL·MySQL 대량 CSV는 [독립 읽기 전용 스트리밍 export](docs/STREAMING-EXPORT.md)를 사용한다.
-같은 실행 결과의 다음/이전 페이지는 [저장 결과 페이지 조회](docs/RESULT-PAGES.md)에서 제공한다.
+[실시간 결과 조회](docs/RESULT-PAGES.md)는 실행 중 받은 행부터 표시한다. PostgreSQL은 같은 서버 커서에서 다음 묶음을 가져오며, SQLite/MySQL은 수신 중에도 캐시 페이지를 탐색한다.
 GUI에서도 **SQL 도구 → 편집기 SQL을 CSV로 실행…**으로 같은 기능을 사용한다. 캡처한 SQL·대상을 검토한 뒤 새 파일에 별도 실행하며 진행 상태·취소를 제공한다.
 GUI와 같은 설정을 쓰며 비밀번호는 명시한 환경변수/stdin/Keychain으로만 제공한다.
 

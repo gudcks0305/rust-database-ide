@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-22",
+  "base_commit": "4f53b2c44f1c4023d5568b96105261bdddf7f4f3",
+  "guidelines_commit": "4f53b2c",
+  "workspace_tests": {
+    "passed": 510,
+    "failed": 0,
+    "ignored": 73
+  },
+  "explicit_live_suites": {
+    "pg_sql_cursor_contract": {
+      "passed": 3,
+      "live_cases": 2
+    },
+    "result_store_lib_including_live": {
+      "passed": 25,
+      "live_cases": 1
+    }
+  },
+  "source_timing": {
+    "engine": "owned PostgreSQL 18.6",
+    "fixture": "SELECT i::text AS id, repeat('x',{payload_bytes}) AS payload, pg_sleep(0.03)::text AS wait, pg_backend_pid() AS backend FROM generate_series(1,401) i",
+    "logical_demand_rows": 200,
+    "wire_fetch_sizes": [
+      16,
+      64,
+      64,
+      56
+    ],
+    "final_run": [
+      {
+        "payload_bytes": 512,
+        "first_driver_row_ms": 578,
+        "logical_batch_end_ms": 6656,
+        "first_callback_backend_state": "active"
+      },
+      {
+        "payload_bytes": 4096,
+        "first_driver_row_ms": 594,
+        "logical_batch_end_ms": 6794,
+        "first_callback_backend_state": "active"
+      }
+    ],
+    "earlier_single_fetch_200_observations": [
+      {
+        "payload_bytes": 512,
+        "first_driver_row_ms": 6670,
+        "batch_end_ms": 6671
+      },
+      {
+        "payload_bytes": 4096,
+        "first_driver_row_ms": 6678,
+        "batch_end_ms": 6685
+      }
+    ],
+    "limits": "Synthetic driver callback observations; not physical display latency or a general benchmark. Blocking query plans can delay first output."
+  },
+  "native_ui": {
+    "isolated_generated_profiles_only": true,
+    "bundle_id": "com.local.rust-database-ide.live-qa",
+    "pg_first_visible_rows_1_to_16_while_receiving": true,
+    "pg_first_ax_observation_ms": 923,
+    "pg_next_visible_row_201_while_receiving": true,
+    "pg_next_ax_observation_ms": 839,
+    "pg_fast_double_click_requested_only_one_logical_batch": true,
+    "pg_final_row_401_and_complete": true,
+    "pg_idle_expiry_retained_visible_prefix": true,
+    "right_click_from_sql_focus_copied_exact_201": true,
+    "mysql_first_row_visible_while_receiving": true,
+    "mysql_first_ax_observation_ms": 1208,
+    "mysql_one_click_close_returned_to_editor": true,
+    "mysql_close_observation_ms": 701,
+    "mysql_backend_567_gone_after_close": true,
+    "missing_sqlite_file_showed_error_and_retry_button": true,
+    "valid_target_retry_returned_one_row_value_7_and_cleared_error": true,
+    "run_current_menu_executed_second_statement_value_2": true,
+    "run_current_shortcut_executed_second_statement_value_3": true,
+    "one_cmd_q_during_pg_active_fetch_exited_process_0": true,
+    "pg_cursor_backends_after_quit": 0,
+    "observation_limits": "CUA click-to-AX observation includes tool overhead; not exact paint/input latency. Early-row/copy/basic flow scenarios preceded the final one-line window-close routing fix; one-Cmd-Q scenario tested the final packaged code."
+  },
+  "regressions_fixed": [
+    "fetch admission published only after pending reset; deterministic concurrent-click regression",
+    "every committed row visible even when producer stalls before next row",
+    "cursor native FETCH split to expose early prefix",
+    "context-menu copy focus routes to its own grid",
+    "window close retains intent through transient local work and suppresses tail-refresh rescheduling",
+    "safe SQLSTATE and bounded owned-storage error reasons instead of silent generic failure"
+  ],
+  "ui_changes": [
+    "compact live result header and footer",
+    "SQL and provenance in expandable details",
+    "no large centered empty-result icon",
+    "Run current moved to SQL menu; shortcut preserved",
+    "partial/paused/complete/error states distinguished"
+  ],
+  "binary_sha256": {
+    "packaged_ui": "e22c1c8124673c2b155cae97a4bb21e40f89d88f55913619c71050981bd5569c",
+    "qa_ui": "c08155f994b76136f0df81bd96d1060cd5e940dd417b610cb42677951da2d705"
+  },
+  "screenshot": {
+    "local_path": "outputs/live-cursor-receiving.png",
+    "sha256": "c720e58c3ef687ba49ebcbaaa8184a510ce8a7b5667d0c44780479e32b86af78",
+    "note": "Local-only native screenshot during partial receipt; not checked into git."
+  },
+  "checks": [
+    "cargo test --workspace",
+    "cargo test -p dbide-pg-spike --test sql_cursor_contract -- --include-ignored --nocapture",
+    "cargo test -p dbide-result-store --lib -- --include-ignored",
+    "cargo clippy --workspace --all-targets -- -D warnings",
+    "cargo fmt --all -- --check",
+    "bash scripts/package-ui.sh",
+    "uv run --python >=3.14 scripts/verify_project.py",
+    "git diff --check"
+  ],
+  "limitations": [
+    "PostgreSQL SQL cursor only; MySQL/SQLite use progressive streaming, not server cursors.",
+    "Normal Run remains bounded; this mode does not recover already discarded rows from a past execution.",
+    "Native database query plans and blocking OS calls can delay output; incoming driver frame memory is separate.",
+    "Cursor defaults: active30s, idle60s, lifetime300s; native cleanup extra3s. No implicit retry or reconnect.",
+    "Remote CI remains inactive. Existing blocked PG namespace/row Apply/vendor work untouched."
+  ]
+}

@@ -1,6 +1,10 @@
 //! One successful independent query, captured once in a private temporary file.
 //! Browsing reads this completed capture; it never executes SQL or retains a
 //! database connection. Call both query execution and page reads off the UI thread.
+//! Progressive partial captures are provided separately by [`live`].
+
+pub mod live;
+pub use live::{LiveMode, LiveQuery, LiveSnapshot, LiveState, start_live_query};
 
 use dbide_driver_api::stream::StreamEvent;
 use dbide_export::{ExportError, ExportErrorKind, ExportProgress, QueryRequest, QuerySummary};

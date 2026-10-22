@@ -225,12 +225,6 @@ impl Workbench {
                 .disabled(!can_run)
                 .on_click(cx.listener(|s, _, _, cx| s.submit_query(cx))),
             )
-            .child(
-                self.button("run-current", "Run current")
-                    .tooltip("⌘⇧Enter")
-                    .disabled(!can_run)
-                    .on_click(cx.listener(|s, _, w, cx| s.run_current_action(&RunCurrent, w, cx))),
-            )
             .when(cancel.is_some(), |el| {
                 el.child(
                     self.button("cancel", "Cancel")
@@ -276,6 +270,7 @@ impl Workbench {
     }
     fn sql_command_menu(&self, cx: &mut Context<Self>) -> AnyElement {
         let ko = self.locale == Locale::Ko;
+        let can_run = self.can_run(cx);
         let has_export = self.stream_export.is_some();
         let has_pages = self.paged_query.is_some();
         let weak = cx.weak_entity();
@@ -301,6 +296,15 @@ impl Workbench {
                 let stream = weak.clone();
                 let pages = weak.clone();
                 menu.item(
+                    PopupMenuItem::new(if ko {
+                        "현재 구문 실행"
+                    } else {
+                        "Run current statement"
+                    })
+                    .disabled(!can_run)
+                    .action(Box::new(RunCurrent)),
+                )
+                .item(
                     PopupMenuItem::new(if ko {
                         "선택 영역 실행"
                     } else {

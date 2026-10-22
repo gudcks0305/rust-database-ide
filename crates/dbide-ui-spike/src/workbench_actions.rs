@@ -1149,7 +1149,8 @@ impl Workbench {
         self.quit_after_close = true;
         if self.request_window_close(window, cx) {
             cx.quit();
-        } else if !self.close_prompt_open && !self.recovery.close_after {
+        } else if !self.close_prompt_open && !self.recovery.close_after && !self.close_after_streams
+        {
             self.quit_after_close = false;
         }
     }
@@ -1157,6 +1158,7 @@ impl Workbench {
         let wait_csv = self.defer_close_for_stream_export(cx);
         let wait_pages = self.defer_close_for_paged_query(cx);
         if wait_csv || wait_pages {
+            self.close_when_streams_settle(window, cx);
             return;
         }
         self.abort_table_open("Window closed before table reading.".into(), true, cx);
@@ -1174,6 +1176,7 @@ impl Workbench {
         let wait_csv = self.defer_close_for_stream_export(cx);
         let wait_pages = self.defer_close_for_paged_query(cx);
         if wait_csv || wait_pages {
+            self.close_when_streams_settle(window, cx);
             return false;
         }
         if self.profile_write_busy
@@ -1433,13 +1436,9 @@ impl Workbench {
             return;
         }
         if self.paged_query_visible {
-            if self.defer_close_for_paged_query(cx) {
-                return;
+            if let Some(panel) = &self.paged_query {
+                panel.update(cx, |panel, cx| panel.request_close(cx));
             }
-            self.paged_query = None;
-            self.paged_query_subscription = None;
-            self.paged_query_visible = false;
-            cx.notify();
             return;
         }
         if let Some(id) = self.active_table_tab {

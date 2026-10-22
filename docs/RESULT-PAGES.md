@@ -1,64 +1,101 @@
-# Stored result pages
+# Live result pages and PostgreSQL cursors
 
-**SQL 도구 → 읽기 전용 페이지 조회…** / **SQL tools → Read-only paged query…**
-captures the full editor SQL, target and in-memory credential for review. Pressing
-Run starts one independent read-only query. SQLite, PostgreSQL and MySQL use the
-same sources as [CSV streaming](STREAMING-EXPORT.md), including their supported
-SQL/type restrictions and cancellation contracts.
+Open **SQL 도구 → 읽기 전용 페이지 조회…** / **SQL tools → Read-only paged query…**.
+Review the captured SQL and target, then press Run. Rows appear as they arrive;
+the view does not wait for the entire query to complete. The original SQL and
+connection credential are captured once, separately from console transactions.
+This does not resume an older, already-truncated normal Run result.
 
-The entire successful result is written once to a private temporary file. Only
-then is its first page shown. Next/Previous read this file; they never execute SQL
-again, change offsets in a new SQL query, or retain a live database connection.
-This provides consistent browsing of that completed execution. It is **not** a
-suspended server cursor, partial-results streaming while the query is running,
-or continuation of an older normal Run result. The existing console Run and its
-retention limits remain unchanged.
+## Reading and fetching
 
-## Bounds and ownership
+SQLite and MySQL stream automatically on an independent read-only connection.
+PostgreSQL opens a new READ ONLY transaction and declares one `NO SCROLL` SQL
+cursor. The first logical batch contains at most 200 rows. At its end, the cursor
+waits for an explicit **다음 가져오기 / Fetch next** request. Browsing previously
+received pages reads the local cache; it does not FETCH or rerun SQL.
 
-- Source: at most 1,000,000 rows,64 MiB payload,512 KiB source row and 30 seconds.
-- Spool: at most 64 MiB actual bytes, including JSON escaping/header/newlines.
-- Page: at most 200 rows **and**512 KiB encoded records, so boundaries vary for wide rows.
-- Header: at most 64 KiB; page index: at most65,536 entries.
-- An oversized single row fails the query; no silent truncation or successful prefix.
-- Empty results have one empty page so column names remain available.
+PostgreSQL SQL FETCH materializes a requested wire batch before returning it.
+To show a prefix earlier, a logical 200-row request uses wire FETCH sizes
+16, 64, 64 and 56. These all advance the same cursor. Normal command completion
+and row counts are checked for every wire FETCH; only the complete logical batch
+opens admission for the next user request. Duplicate/stale demands are refused.
+An exact 200-row boundary may require an additional empty fetch to establish EOF.
+The original SELECT is declared once, never rewritten with OFFSET or replayed.
 
-Only one raw page, one converted source row, column metadata and the bounded
-page index are retained in application memory. Native driver/server working
-memory is separate. JSON records preserve UTF-8, NULL and empty text. Values are
-native textual representations, not typed database values.
+In the owned PostgreSQL 18.6 slow-row fixture (`pg_sleep(0.03)` per row), the old
+single FETCH 200 delivered its first row at approximately 6.7 seconds. The small
+wire batches delivered the first driver callback in 578–594 ms, while the logical
+batch finished at 6.66–6.79 seconds and the backend was still active at that first
+callback. These are synthetic driver measurements, not physical display latency
+or general performance comparisons. PostgreSQL's [utility-result execution](https://github.com/postgres/postgres/blob/REL_18_STABLE/src/backend/tcop/pquery.c)
+explains the materialization behavior. Blocking sorts, aggregates and slow source
+operations can still delay first rows.
 
-The capture receives an execution ID, SQL SHA-256, captured endpoint fingerprint
-and total row count. The private file stores no credentials or SQL text. The last
-owner dropping it removes the file. Closing a result panel releases its capture;
-normal crash/force-kill recovery of these ephemeral files is not provided.
+## Partial data and limits
 
-## UI behavior
+- Fully written row prefixes become readable immediately, including when the
+  producer stops producing rows temporarily. The growing last page refreshes
+  without resetting column widths, selection or scroll.
+- During receipt, cursor wait, errors and cancellation, the UI shows **partial**
+  data and received rows; it does not claim a known final total.
+- Complete means native EOF **and** cursor/transaction/connection cleanup succeeded.
+  A late error, cancellation, expiry or byte limit preserves received pages and
+  reports the failure. There is no automatic reconnect or SQL replay.
+- Source cap: 1,000,000 rows and64 MiB. A page holds at most200 rows and512 KiB of
+  encoded records; wide rows can split a FETCH across several cached pages.
+- Actual spool cap:64 MiB including JSON escaping/header/newlines. Header cap:64 KiB;
+  index cap:65,536 pages. A single oversized row fails without silent truncation.
+- Ordinary streams have a30-second total budget. PG cursors have30 seconds of
+  aggregate active work,60 seconds idle between demands, and300 seconds total
+  lifetime. Cache browsing does not extend either cursor timer. Native cleanup
+  has one additional bounded3-second allowance.
 
-The page result has its own grid and state; it does not replace a different
-console's result. Switching SQL/table tabs hides the result panel while retaining
-its captured job and file. **도구 → 페이지 조회 보기…** / **Tools → Show paged query…**
-returns to it. Close the idle panel before opening another independent capture.
-The displayed row range uses global row positions; Next/Previous reset the
-vertical view to the new page's start.
+The private temporary file stores rows and columns, not SQL or credentials. It is
+removed after its last owner is released. Read/write failures preserve the last
+valid displayed page; they never trigger a new SQL execution. Native driver/server
+working memory and blocked OS calls are outside the payload/time guarantees.
+Crash/force-kill cleanup is not guaranteed. The old success-only `query_pages` API
+remains available for callers requiring a fully completed capture.
 
-Page reads run off the UI thread. A failed/cancelled read preserves the last good
-page; it never recovers by rerunning SQL. Cancellation/close wait for the worker's
-actual outcome. A graceful window-close request cancels an active job and keeps
-the window until it stops; close again afterwards. The existing console can run
-separately, and the visible page panel's cancel/focus/copy actions are routed to
-that panel. Copy cell preserves its raw text (SQL NULL is copied as `\N`).
+## UI and lifecycle
 
-The model tests cover full-page walks and roundtrips after changing the source
-database, JSON escaping, byte boundaries, empty results, late errors, cancel,
-deadline, corrupt reads and last-owner file cleanup. Owned live tests additionally
-walk 5,001 PG rows/26 pages and 5,000 MySQL rows/25 pages, checking every ID/value,
-NULL/empty, a single captured native connection ID, and identical first-page return.
-Native UI acceptance remains separate from these source/store tests; see dated
-validation evidence for the current verification status.
+The result view is independent of the normal console grid. Switching tabs hides
+it while preserving the captured query; **Tools → Show paged query…** restores it.
+Cached Next/Previous take precedence over another server FETCH. One outstanding
+demand and one page-read worker prevent duplicated reads and stale installs.
+
+The compact header holds connection/document context and actions. SQL, limits,
+full target and execution details are expandable. The grid fills the remaining
+area; the footer shows row range, loaded pages, received rows and state. Cell
+copy uses the original value (`\N` for SQL NULL), including Cmd+C and right-click.
+Cancel and result-focus shortcuts target this visible result, not a hidden console.
+
+Close requests cancellation, waits for the worker and backend cleanup, then closes
+automatically. Window close retains its intent while related local storage settles;
+existing unsaved-content prompts still apply. Cursor expiry keeps the partial data
+but cannot reconnect to the old cursor. Start another explicit query to read again.
+
+PostgreSQL is the only server-cursor mode in this release. MySQL/SQLite provide
+progressive streaming and local cached-page navigation. All modes retain the
+[engine-specific SQL/type restrictions](STREAMING-EXPORT.md). Native READ ONLY
+transactions do not sandbox every database function's other effects.
+
+## Verification
+
+Tests cover first and second rows while the producer is paused before EOF, growing
+pages, immutable prefixes, immediate repeated Fetch clicks, byte boundaries, late
+SQL/storage errors, cancellation, empty results, stale reads, controller Drop and
+file cleanup. Owned PG contracts cover paused backends, 401/400/0 row boundaries,
+active/idle/lifetime limits, source receiver closure and native retirement.
 
 ```sh
-cargo test -p dbide-result-store
-# Only after checking the project-owned Docker fixture labels and loopback ports:
-DBIDE_STREAM_OWNED_LIVE=1 cargo test -p dbide-result-store --test network_pages -- --ignored
+cargo test -p dbide-result-store --lib
+cargo test -p dbide-pg-spike --test sql_cursor_contract
+# Only the checked project-owned PG loopback fixture:
+cargo test -p dbide-pg-spike --test sql_cursor_contract -- --include-ignored
+cargo test -p dbide-result-store --lib -- --include-ignored
 ```
+
+See the [dated live-result validation artifact](../evidence/live-cursor-ui-validation.json) for the exact native UI checks and
+current local-test counts. Defaults do not imply any entire database IDE milestone
+or DataGrip parity is complete.

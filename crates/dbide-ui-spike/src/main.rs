@@ -536,6 +536,7 @@ struct Workbench {
     paged_query: Option<Entity<paged_query_panel::PagedQueryPanel>>,
     paged_query_visible: bool,
     paged_query_subscription: Option<Subscription>,
+    close_after_streams: bool,
     stream_export_subscription: Option<Subscription>,
     range_copy: Option<result_tools::RangeCopyDraft>,
     object_finder: Option<Entity<object_finder::ObjectFinder>>,
@@ -795,6 +796,7 @@ impl Workbench {
             paged_query: None,
             paged_query_visible: false,
             paged_query_subscription: None,
+            close_after_streams: false,
             stream_export_subscription: None,
             range_copy: None,
             object_finder: None,
@@ -2038,19 +2040,14 @@ impl Render for Workbench {
                         .size_full()
                         .flex()
                         .flex_col()
-                        .items_center()
-                        .justify_center()
-                        .gap_3()
-                        .child(
-                            div()
-                                .text_size(px(28.))
-                                .text_color(rgb(0x586984))
-                                .child("▤"),
-                        )
+                        .items_start()
+                        .justify_start()
+                        .p_4()
+                        .gap_1()
                         .child(
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .text_size(px(15.))
+                                .text_size(px(12.))
                                 .child(self.ui_label(if query_busy {
                                     "Query in progress"
                                 } else {
