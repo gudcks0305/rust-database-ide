@@ -134,6 +134,10 @@ pub struct TableEditor {
 }
 impl EventEmitter<TableEditorEvent> for TableEditor {}
 impl TableEditor {
+    pub(super) fn result_grid(&self) -> Entity<TableState<ResultGrid>> {
+        self.grid.clone()
+    }
+
     pub(super) fn focus_results(&self, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.grid.focus_handle(cx), cx);
     }
@@ -178,12 +182,21 @@ impl TableEditor {
             .col_movable(false)
         });
         let subscription = cx.subscribe_in(&grid, window, |s, grid, event, w, cx| {
-            if let TableEvent::SelectCell(row, col) = event {
+            if let TableEvent::SelectCell(row, col)
+            | TableEvent::RightClickedCell(row, col)
+            | TableEvent::DoubleClickedCell(row, col) = event
+            {
                 grid.update(cx, |g, cx| {
+                    if matches!(event, TableEvent::RightClickedCell(..)) {
+                        g.set_selected_cell(*row, *col, cx);
+                    }
                     g.delegate_mut().selected_cell = Some((*row, *col));
                     cx.notify();
                 });
                 s.select_row(*row, w, cx);
+            }
+            if matches!(event, TableEvent::DoubleClickedCell(..)) {
+                w.dispatch_action(Box::new(InspectValue), cx);
             }
         });
         let mut state = Self {
@@ -1286,6 +1299,12 @@ impl TableEditor {
 impl Render for TableEditor {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let locale = self.locale;
+        if self.grid.read(cx).delegate().locale != locale {
+            self.grid.update(cx, |grid, cx| {
+                grid.delegate_mut().locale = locale;
+                cx.notify();
+            });
+        }
         if self.search_locale != locale {
             self.search.update(cx, |input, cx| {
                 input.set_placeholder(
@@ -1596,7 +1615,7 @@ impl Render for TableEditor {
                         .min_h_0()
                         .flex()
                         .child(
-                            div().flex_1().min_w_0().child(
+                            div().flex_1().min_w_0().key_context("ResultGrid").child(
                                 DataTable::new(&self.grid)
                                     .small()
                                     .stripe(false)

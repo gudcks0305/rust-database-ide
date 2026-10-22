@@ -1,6 +1,6 @@
 # 기능 범위 / 구현 추적
 
-상태: 2026-10-21. **42개 기능군의 전체 완료 항목은 아직 없음.** 현재 구현·실연동·UI 검증과 남은 조건은 [CURRENT-STATUS.md](CURRENT-STATUS.md)에 구분한다. 아래 기능군 상태는 전체 완료 판정이 아니다.
+상태: 2026-10-22. **42개 기능군의 전체 완료 항목은 아직 없음.** 현재 구현·실연동·UI 검증과 남은 조건은 [CURRENT-STATUS.md](CURRENT-STATUS.md)에 구분한다. 아래 기능군 상태는 전체 완료 판정이 아니다. DataGrip 2026.2 공식 문서와 현재 코드의 gap 대조는 [DATAGRIP-GAPS-2026-10-22.md](DATAGRIP-GAPS-2026-10-22.md)를 참고한다.
 단계는 목표 순서이며 출시 약속이 아님. 완료 시 각 행에 테스트/버전/제약 링크 추가.
 참조 번호는 [SOURCES.md](SOURCES.md). 표는 사용자 요구를 구현 가능한 계약으로 분해한 계획이며 DataGrip 내부 코드의 복원본이 아니다.
 
@@ -11,8 +11,8 @@
 | F03 | 연결 lifecycle·keepalive·timeout·startup script | M1–M2 | 연결 generation 갱신, 활성 transaction 무단 재실행 없음 | D01,D03 | partial — reconnect/cancel/timeout; startup script/keepalive 남음 |
 | F04 | console별 session·공유/전용·metadata session | M1 | temp table/session variable 격리와 의도한 공유 검증 | D03 | experimental |
 | F05 | Auto/Manual transaction·isolation·savepoint·read-only | M1–M2 | submit/commit/rollback 구별, 실패한 transaction 복구 | D04 | partial — 실제 state/Auto/Manual/rollback; isolation UI 남음 |
-| F06 | schema/catalog introspection·범위·증분 refresh | M1–M2 | 전체/선택/변경분 조회와 취소, cache generation 검증 | D05 | partial — PG bounded catalog, 3-engine basic metadata; 증분/lazy 남음 |
-| F07 | Explorer·객체 검색·필터·DDL/source | M1–M2 | lazy tree, stale/미조회 상태, object identity 보존 | D05 | planned |
+| F06 | schema/catalog introspection·범위·증분 refresh | M1–M2 | 전체/선택/변경분 조회와 취소, cache generation 검증 | D05 | partial — PG/MySQL/SQLite lazy scoped metadata, private cache; 사용자 선택 schema scope와 변경분 introspection 남음 |
+| F07 | Explorer·객체 검색·필터·DDL/source | M1–M2 | lazy tree, stale/미조회 상태, object identity 보존 | D05 | partial — lazy tree·loaded-object search·저장 메타데이터 finder와 일부 DDL; schema/object scope filter와 전체 DDL/source workflow 남음 |
 | F08 | SQL 탭·console·scratch·datasource/schema context | M1 | 저장/재시작 복구, 잘못된 DB 실행 방지하는 명확한 context | D06 | partial — SQL 파일 탭·dirty 보호; restart 복원 통합 중 |
 | F09 | dialect syntax·highlight·statement boundary | M1–M3 | quotes/comments/procedure/dollar quote/미완성 구문 corpus | D06,D09 | experimental |
 | F10 | semantic completion·alias/CTE/scope·type resolution | M3 | catalog/context별 정답 fixture, stale 결과 폐기 | D09,D10 | partial — catalog/alias/CTE 명시 completion; type resolution 제한 |
@@ -23,11 +23,11 @@
 | F15 | parameter prompt/binding·named/positional | M1–M2 | NULL/타입/반복 marker/escaping, raw SQL과 구분 | D06 | planned |
 | F16 | current/selected/script execution·multi-result | M1 | 실행 순서, update count, notices, partial failure 보존 | D06 | experimental |
 | F17 | 취소·강제 연결 종료·실행 상태 | M1 | cancel≠future drop, next-query race 없음 | D06 | experimental |
-| F18 | history·검색·재실행·즐겨찾기 | M1–M2 | context 보존, 민감값 처리, 자동 재실행 없음 | D06 | partial — context 기록/재열기; 검색/즐겨찾기 남음 |
+| F18 | history·검색·재실행·즐겨찾기 | M1–M2 | context 보존, 민감값 처리, 자동 재실행 없음 | D06 | partial — SQL/profile/database 검색, profile/outcome filter, 원래 대상의 초안 열기; 즐겨찾기·저장 쿼리 분류 남음 |
 | F19 | 결과 grid·paging/limit·가상화·결과 탭 | M1 | 양축 가상화, row/byte limit, multi-result별 상태 | D07 | experimental |
-| F20 | JSON/tree/text/transpose·LOB/value editor | M2 | 타입 구분, lazy 큰 값, 표시 제한 | D07 | planned |
+| F20 | JSON/tree/text/transpose·LOB/value editor | M2 | 타입 구분, lazy 큰 값, 표시 제한 | D07 | partial — read-only value/record·lossless JSON display·loaded range copy; tree/transpose/LOB lazy editing 남음 |
 | F21 | grid CRUD·paste·NULL/default·clone | M2 | key 기반 edit, optimistic conflict, generated column | D07 | partial — PG typed CRUD/batch 실검증; UI 통합 중 |
-| F22 | filter/sort/search·서버/로컬 구분 | M2 | fetched subset 정렬과 전체 DB 정렬 구별 | D07 | planned |
+| F22 | filter/sort/search·서버/로컬 구분 | M2 | fetched subset 정렬과 전체 DB 정렬 구별 | D07 | partial — PG table viewer typed AND server filters/raw-column sort/page sizes와 loaded-page Find; generic query result server filter/sort와 전체 결과 검색 남음 |
 | F23 | staged/submitted/committed·revert | M2 | Auto/Manual commit에 맞는 실제 DB 상태 반영 | D04,D07 | partial — PG transaction/savepoint batch; staged UI 통합 중 |
 | F24 | CSV/TSV/JSON 및 후속 XML/Markdown/XLSX export | M2–M4 | streaming·escaping·encoding·취소·partial 파일 표시 | D08 | partial — CSV/TSV/JSON snapshot; 전체 streaming export 남음 |
 | F25 | import·column/type mapping·preview·batch | M2–M4 | 타입 손실/중단 처리 범위·transaction 정책 검증 | D08 | partial — preview/mapping core; DB import 적용 남음 |

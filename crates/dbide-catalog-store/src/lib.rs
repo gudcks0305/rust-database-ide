@@ -1,6 +1,8 @@
 //! Private, bounded, independently readable historical catalog shards.
 //! Call only from a worker. No credentials, SQL editor buffers, row data, or database I/O.
 //! Schema definitions are metadata and are never executed by this store.
+mod search;
+pub use search::{SearchLimits, SearchMatch, SearchPage, SearchProfile, SearchQuery};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 #[cfg(unix)]

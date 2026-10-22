@@ -228,6 +228,7 @@ impl Workbench {
                     row_count: Some(summary.retained_rows as u64),
                 };
                 let _ = self.workspace.record_history(entry.clone());
+                self.sync_history_panel(cx);
                 if self.workspace.persist_history {
                     self.persist_profile_mutation(ProfileMutation::History(entry), cx);
                 }

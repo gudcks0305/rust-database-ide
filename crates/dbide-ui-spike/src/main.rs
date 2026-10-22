@@ -1,8 +1,13 @@
 mod completion_model;
+mod discovery_tools;
 mod documents;
+mod history_panel;
 mod native_menus;
+mod object_finder;
 mod preferences;
+mod result_tools;
 mod table_tabs;
+mod value_inspector;
 mod workbench_shell;
 use dbide_i18n::{Locale, Message, tr};
 mod object_inspector;
@@ -61,6 +66,14 @@ actions!(
         CopyCell,
         RunQuery,
         RunCurrent,
+        RunSelection,
+        InspectValue,
+        InspectRecord,
+        CopyResultRow,
+        CopyResultColumn,
+        CopyResultRange,
+        FindDatabaseObject,
+        OpenQueryHistory,
         CancelQuery,
         OpenPreferences,
         FormatSql,
@@ -94,6 +107,7 @@ enum GridSource {
     Postgres(Rc<ResultPage>),
 }
 struct ResultGrid {
+    locale: Locale,
     source: GridSource,
     selected_cell: Option<(usize, usize)>,
     columns: Vec<Column>,
@@ -108,6 +122,7 @@ impl ResultGrid {
             GridSource::Postgres(page) => page.columns.clone(),
         };
         Self {
+            locale: Locale::default(),
             columns: dbide_ui_spike::result_grid_columns(names),
             source,
             selected_cell: None,
@@ -145,6 +160,63 @@ impl ResultGrid {
     }
 }
 impl TableDelegate for ResultGrid {
+    fn context_menu(
+        &mut self,
+        _row: usize,
+        menu: gpui_component::menu::PopupMenu,
+        _w: &mut Window,
+        _cx: &mut Context<TableState<Self>>,
+    ) -> gpui_component::menu::PopupMenu {
+        use gpui_component::menu::PopupMenuItem;
+        let selected = self.selected_cell.is_some();
+        let ko = self.locale == Locale::Ko;
+        menu.item(
+            PopupMenuItem::new(if ko {
+                "값 상세 보기"
+            } else {
+                "Inspect value"
+            })
+            .disabled(!selected)
+            .action(Box::new(InspectValue)),
+        )
+        .item(
+            PopupMenuItem::new(if ko {
+                "레코드 보기"
+            } else {
+                "Inspect record"
+            })
+            .disabled(!selected)
+            .action(Box::new(InspectRecord)),
+        )
+        .separator()
+        .item(
+            PopupMenuItem::new(if ko {
+                "행 복사 · TSV"
+            } else {
+                "Copy row · TSV"
+            })
+            .disabled(!selected)
+            .action(Box::new(CopyResultRow)),
+        )
+        .item(
+            PopupMenuItem::new(if ko {
+                "열 복사 · TSV"
+            } else {
+                "Copy column · TSV"
+            })
+            .disabled(!selected)
+            .action(Box::new(CopyResultColumn)),
+        )
+        .item(
+            PopupMenuItem::new(if ko {
+                "범위 복사…"
+            } else {
+                "Copy range…"
+            })
+            .disabled(self.row_count() == 0)
+            .action(Box::new(CopyResultRange)),
+        )
+    }
     fn columns_count(&self, _: &App) -> usize {
         self.columns.len()
     }
@@ -191,8 +263,10 @@ impl TableDelegate for ResultGrid {
         row: usize,
         col: usize,
         _: &mut Window,
-        _cx: &mut Context<TableState<Self>>,
+        cx: &mut Context<TableState<Self>>,
     ) -> impl IntoElement {
+        use gpui_component::menu::ContextMenuExt;
+        let grid = cx.entity();
         self.cell_render_calls += 1;
         let value = self.value(row, col);
         let selected = self.selected_cell == Some((row, col));
@@ -219,6 +293,13 @@ impl TableDelegate for ResultGrid {
             .text_size(px(12.))
             .text_color(rgb(if self.is_null(row, col) { MUTED } else { TEXT }))
             .child(value)
+            .context_menu(move |menu, window, cx| {
+                grid.update(cx, |state, cx| {
+                    state.set_selected_cell(row, col, cx);
+                    state.delegate_mut().selected_cell = Some((row, col));
+                    state.delegate_mut().context_menu(row, menu, window, cx)
+                })
+            })
     }
     fn visible_rows_changed(
         &mut self,
@@ -314,7 +395,7 @@ struct Workbench {
     active_document: u64,
     tab_scroll: ScrollHandle,
     last_visible_tab: Option<(bool, u64)>,
-    last_tab_space: Option<(u16, u16, bool, bool, bool)>,
+    last_tab_space: Option<(u16, u16, bool, u8, bool)>,
     next_document: u64,
     pending_owner: Option<ResultOwner>,
     result_owner: Option<ResultOwner>,
@@ -369,6 +450,14 @@ struct Workbench {
     schema_truncated: bool,
     schema_operation: Option<dbide_bridge::OperationId>,
     show_history: bool,
+    history_panel: Option<Entity<history_panel::HistoryPanel>>,
+    value_inspector: Option<Entity<value_inspector::ValueInspector>>,
+    range_copy: Option<result_tools::RangeCopyDraft>,
+    object_finder: Option<Entity<object_finder::ObjectFinder>>,
+    pending_object_reveal: Option<(
+        dbide_ui_spike::navigator::Key,
+        dbide_ui_spike::navigator::Relation,
+    )>,
     show_tools: bool,
     tools: Option<Entity<dbide_tools_ui::ToolsPanel>>,
     tools_label: String,
@@ -460,12 +549,21 @@ impl Workbench {
                 }
             }),
             cx.observe(&grid, |_, _, cx| cx.notify()),
-            cx.subscribe(&grid, |_, grid, event, cx| {
-                if let TableEvent::SelectCell(row, col) = event {
+            cx.subscribe_in(&grid, window, |s, grid, event, w, cx| {
+                if let TableEvent::SelectCell(row, col)
+                | TableEvent::RightClickedCell(row, col)
+                | TableEvent::DoubleClickedCell(row, col) = event
+                {
                     grid.update(cx, |state, cx| {
+                        if matches!(event, TableEvent::RightClickedCell(..)) {
+                            state.set_selected_cell(*row, *col, cx);
+                        }
                         state.delegate_mut().selected_cell = Some((*row, *col));
                         cx.notify();
                     });
+                }
+                if matches!(event, TableEvent::DoubleClickedCell(..)) {
+                    s.inspect_value_action(&InspectValue, w, cx);
                 }
             }),
         ];
@@ -594,6 +692,11 @@ impl Workbench {
             schema_truncated: false,
             schema_operation: None,
             show_history: false,
+            history_panel: None,
+            value_inspector: None,
+            range_copy: None,
+            object_finder: None,
+            pending_object_reveal: None,
             show_tools: false,
             tools: None,
             tools_label: String::new(),
@@ -828,6 +931,7 @@ impl Workbench {
         self.check_table_open_context(cx);
         if self.navigator.poll() {
             self.sync_navigator_inspector(cx);
+            self.finish_object_reveal(cx);
             cx.notify();
         }
         // At most 32 events per turn; all DB/network work belongs to the private runtime.
@@ -1313,12 +1417,28 @@ impl Workbench {
         self.status = "Metrics written to stdout".into();
         cx.notify();
     }
-    fn copy_cell(&mut self, _: &CopyCell, _: &mut Window, cx: &mut Context<Self>) {
-        if let Some((row, col)) = self.grid.read(cx).selected_cell() {
-            let text = self.grid.read(cx).delegate().value(row, col);
-            cx.write_to_clipboard(ClipboardItem::new_string(text));
-            self.status = format!("Copied row {}, column {}", row + 1, col + 1);
-            cx.notify();
+    fn copy_cell(&mut self, _: &CopyCell, w: &mut Window, cx: &mut Context<Self>) {
+        if self.sql_view_active() && self.logical_mode {
+            if let Some((row, col)) = self.grid.read(cx).selected_cell() {
+                cx.write_to_clipboard(ClipboardItem::new_string(
+                    self.grid.read(cx).delegate().value(row, col),
+                ));
+            }
+            return;
+        }
+        if let Some((page, Some((row, column)), _)) = self.active_loaded_result(cx) {
+            use dbide_ui_spike::value_selection::{CopySelection, SelectionLimits, copy_selection};
+            match copy_selection(
+                &page,
+                CopySelection::Cell { row, column },
+                SelectionLimits::default(),
+            ) {
+                Ok(text) => cx.write_to_clipboard(ClipboardItem::new_string(text)),
+                Err(error) => {
+                    use gpui_component::{WindowExt, notification::Notification};
+                    w.push_notification(Notification::error(error.to_string()), cx);
+                }
+            }
         }
     }
     fn jump(&mut self, last: bool, window: &mut Window, cx: &mut Context<Self>) {
@@ -1535,7 +1655,21 @@ impl Render for Workbench {
             f32::from(window.viewport_size().width) as u16,
             self.app_settings.sidebar_width,
             self.preferences.is_some(),
-            self.structure.is_some(),
+            if self.object_finder.is_some()
+                || self.value_inspector.is_some()
+                || self.range_copy.is_some()
+            {
+                3
+            } else if self.show_history {
+                2
+            } else if self.structure.is_some()
+                || self.form.is_some()
+                || self.pending_object_reveal.is_some()
+            {
+                1
+            } else {
+                0
+            },
             self.catalog_collapsed,
         );
         if self.last_visible_tab != Some(visible) || self.last_tab_space != Some(tab_space) {
@@ -1587,6 +1721,12 @@ impl Render for Workbench {
                     .push_back((now - last).as_secs_f64() * 1000.);
             }
             window.request_animation_frame();
+        }
+        if self.grid.read(cx).delegate().locale != self.locale {
+            self.grid.update(cx, |grid, cx| {
+                grid.delegate_mut().locale = self.locale;
+                cx.notify();
+            });
         }
         let table = self.grid.read(cx);
         let grid = table.delegate();
@@ -1701,17 +1841,9 @@ impl Render for Workbench {
                     .flex()
                     .flex_wrap()
                     .gap_2()
-                    .child(
-                        self.button("history-toggle", "History")
-                            .on_click(cx.listener(|s, _, _, cx| {
-                                s.show_history = !s.show_history;
-                                if s.show_history {
-                                    s.show_sql_tools = false;
-                                    s.transfer_preview = None;
-                                }
-                                cx.notify();
-                            })),
-                    )
+                    .child(self.button("history-toggle", "History").on_click(
+                        cx.listener(|s, _, w, cx| s.open_query_history(&OpenQueryHistory, w, cx)),
+                    ))
                     .child(self.sidebar_tools_menu(cx)),
             );
 
@@ -2043,6 +2175,28 @@ impl Render for Workbench {
             body = body.child(self.preferences_panel(preferences, cx));
         } else if self.form.is_some() {
             body = body.child(self.connection_form_panel(cx));
+        } else if let Some(finder) = &self.object_finder {
+            body = body.child(
+                div()
+                    .w(px(570.))
+                    .max_w(relative(0.65))
+                    .flex_shrink_0()
+                    .min_h_0()
+                    .child(finder.clone()),
+            );
+        } else if self.pending_object_reveal.is_some() {
+            body = body.child(self.object_reveal_panel(cx));
+        } else if let Some(inspector) = &self.value_inspector {
+            body = body.child(
+                div()
+                    .w(px(570.))
+                    .max_w(relative(0.65))
+                    .flex_shrink_0()
+                    .min_h_0()
+                    .child(inspector.clone()),
+            );
+        } else if self.range_copy.is_some() {
+            body = body.child(self.range_copy_panel(cx));
         } else if let Some(inspector) = &self.structure {
             body = body.child(
                 div()
@@ -2081,107 +2235,7 @@ impl Render for Workbench {
         } else if self.show_sql_tools {
             body = body.child(self.sql_tools_panel(cx));
         } else if self.show_history {
-            body = body.child(
-                div()
-                    .w(px(340.))
-                    .flex_shrink_0()
-                    .bg(rgb(PANEL))
-                    .border_l_1()
-                    .border_color(rgb(BORDER))
-                    .flex()
-                    .flex_col()
-                    .child(
-                        div()
-                            .p_4()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .child(self.ui_label("Query history")),
-                    )
-                    .child(
-                        div()
-                            .px_4()
-                            .text_size(px(11.))
-                            .text_color(rgb(MUTED))
-                            .child(if self.workspace.persist_history {
-                                "History saved locally. SQL text may contain sensitive values."
-                            } else {
-                                "Session only. SQL history is not written to disk."
-                            }),
-                    )
-                    .child(
-                        div().p_3().child(
-                            self.button(
-                                "persist-history",
-                                if self.workspace.persist_history {
-                                    "Stop saving history"
-                                } else {
-                                    "Save history locally"
-                                },
-                            )
-                            .on_click(cx.listener(|s, _, _, cx| {
-                                s.workspace.persist_history = !s.workspace.persist_history;
-                                s.persist_profile_mutation(
-                                    ProfileMutation::PersistHistory(
-                                        s.workspace.persist_history,
-                                        s.workspace.history.clone(),
-                                    ),
-                                    cx,
-                                );
-                                cx.notify();
-                            })),
-                        ),
-                    )
-                    .child(
-                        div()
-                            .id("history-list")
-                            .flex_1()
-                            .min_h_0()
-                            .overflow_y_scroll()
-                            .px_3()
-                            .children(self.workspace.history.iter().rev().enumerate().map(
-                                |(ix, entry)| {
-                                    let sql = entry.sql.clone();
-                                    let history_profile=entry.profile_id.clone();
-                                    let history_target=entry.execution_target.clone();
-                                    div()
-                                        .id(("history", ix))
-                                        .role(Role::Button)
-                                        .aria_label(format!("Load query: {}", entry.sql))
-                                        .p_3()
-                                        .mb_2()
-                                        .rounded_md()
-                                        .border_1()
-                                        .border_color(rgb(BORDER))
-                                        .cursor_pointer()
-                                        .hover(|s| s.bg(rgb(0x252a33)))
-                                        .on_click(cx.listener(move |s, _, w, cx| {
-                                            if s.documents.len()>=32 {s.show_sql_tab_limit(cx);return;}
-                                            s.new_document(sql.clone(),"history.sql".into(),false,w,cx);
-                                            let request=history_target.as_ref().and_then(|t|s.workspace.profiles.iter().find(|p|p.id==t.profile_id).and_then(|p|t.resolve(p).ok())).map(|profile|ConnectionRequest{profile,password:String::new()});
-                                            if let Some(doc)=s.documents.iter_mut().find(|d|d.model.id==s.active_document){doc.required_profile_id=Some(history_profile.clone());doc.session=ConsoleSession::new(doc.model.id);if let Some(request)=request{let _=doc.session.bind(doc.session.route(),request);}let database=doc.session.target().map(|p|p.database.clone()).unwrap_or_default();doc.database_draft.update(cx,|input,cx|input.set_value(database,w,cx));doc.password_draft.update(cx,|input,cx|input.set_value(String::new(),w,cx));}
-                                            s.status="History SQL opened without execution; Run requires its original profile.".into();
-                                        }))
-                                        .child(
-                                            div().text_color(rgb(MUTED)).text_size(px(10.)).child(
-                                                format!(
-                                                    "{} · {} rows",
-                                                    entry.outcome,
-                                                    entry.row_count.unwrap_or(0)
-                                                ),
-                                            ),
-                                        )
-                                        .child(
-                                            div()
-                                                .mt_2()
-                                                .max_h(px(75.))
-                                                .overflow_hidden()
-                                                .font_family("Menlo")
-                                                .text_size(px(11.))
-                                                .child(entry.sql.clone()),
-                                        )
-                                },
-                            )),
-                    ),
-            );
+            body = body.child(self.history_view(cx));
         }
         div()
             .size_full()
@@ -2204,6 +2258,15 @@ impl Render for Workbench {
             .on_action(cx.listener(Self::run_query))
             .on_action(cx.listener(Self::cancel_query_action))
             .on_action(cx.listener(Self::run_current_action))
+            .on_action(cx.listener(Self::run_selection_action))
+            .on_action(cx.listener(Self::copy_cell))
+            .on_action(cx.listener(Self::inspect_value_action))
+            .on_action(cx.listener(Self::inspect_record_action))
+            .on_action(cx.listener(Self::copy_result_row))
+            .on_action(cx.listener(Self::copy_result_column))
+            .on_action(cx.listener(Self::open_range_copy))
+            .on_action(cx.listener(Self::find_database_object))
+            .on_action(cx.listener(Self::open_query_history))
             .on_action(cx.listener(Self::format_sql_action))
             .on_action(cx.listener(Self::complete_sql_action))
             .on_action(cx.listener(Self::refresh_completion_metadata_action))
@@ -2288,6 +2351,13 @@ fn main() {
         });
         cx.bind_keys([
             KeyBinding::new("cmd-q", Quit, None),
+            KeyBinding::new("cmd-alt-enter", RunSelection, None),
+            KeyBinding::new("cmd-alt-enter", RunSelection, Some("Input")),
+            KeyBinding::new("cmd-shift-o", FindDatabaseObject, None),
+            KeyBinding::new("cmd-shift-h", OpenQueryHistory, None),
+            KeyBinding::new("space", InspectValue, Some("FixtureGrid")),
+            KeyBinding::new("space", InspectValue, Some("ResultGrid")),
+            KeyBinding::new("cmd-c", CopyCell, Some("ResultGrid")),
             KeyBinding::new("ctrl-tab", NextWorkspaceTab, None),
             KeyBinding::new("ctrl-shift-tab", PreviousWorkspaceTab, None),
             KeyBinding::new("cmd-shift-l", FocusCatalog, None),
@@ -2376,6 +2446,14 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                 fallback_action!(CloseSqlTab, close_sql_action, false);
                 fallback_action!(RunQuery, run_query, true);
                 fallback_action!(RunCurrent, run_current_action, true);
+                fallback_action!(RunSelection, run_selection_action, true);
+                fallback_action!(InspectValue, inspect_value_action, false);
+                fallback_action!(InspectRecord, inspect_record_action, false);
+                fallback_action!(CopyResultRow, copy_result_row, false);
+                fallback_action!(CopyResultColumn, copy_result_column, false);
+                fallback_action!(CopyResultRange, open_range_copy, false);
+                fallback_action!(FindDatabaseObject, find_database_object, false);
+                fallback_action!(OpenQueryHistory, open_query_history, false);
                 fallback_action!(FormatSql, format_sql_action, true);
                 fallback_action!(CompleteSql, complete_sql_action, true);
                 fallback_action!(

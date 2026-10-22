@@ -721,7 +721,12 @@ impl Workbench {
             .text_color(rgb(MUTED))
             .child(text.to_owned())
     }
-    fn open_branch_structure(&mut self, key: &Key, relation: &Relation, cx: &mut Context<Self>) {
+    pub(super) fn open_branch_structure(
+        &mut self,
+        key: &Key,
+        relation: &Relation,
+        cx: &mut Context<Self>,
+    ) {
         let (Some(request), Some(snapshot)) =
             (self.navigator_request(key), self.navigator.snapshot(key))
         else {

@@ -320,6 +320,13 @@ impl Workbench {
         if let Some(inspector) = &self.structure {
             inspector.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }
+        if let Some(panel) = &self.value_inspector {
+            panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+        }
+        if let Some(panel) = &self.object_finder {
+            panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+        }
+        self.sync_history_panel(cx);
         self.menu_state = None;
         self.settings_error = None;
         self.sync_preferences(cx);

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-22",
+  "base_commit": "1ba3e2de96b13864276b0c53e18da4fcd2fbcf0a",
+  "scope": "Read-only result inspection and copy, saved metadata search, query history search, explicit selected SQL execution. Owned fixtures only.",
+  "checks": {
+    "workspace_tests_before_final_ui_fixes": {
+      "passed": 411,
+      "failed": 0,
+      "ignored": 62
+    },
+    "final_ui_tests": {
+      "passed": 103,
+      "failed": 0,
+      "ignored": 3
+    },
+    "workspace_all_targets_clippy": "passed",
+    "release_package": "passed",
+    "independent_review": "Read-only review found panel priority, keyboard scrolling, right-click selection and table copy routing issues; corrected. Final native check caught missing root CopyCell handler, fixed and retested."
+  },
+  "native_runs": [
+    {
+      "binary_sha256": "0780a42f50f2aa178cd529228fd10f99ea1dccc705f6e88ff1d5a3ce3013a885",
+      "passed": [
+        "Saved object search found items while explorer roots were collapsed; Enter opened cached fields.",
+        "History search and Down/Enter opened exact captured dbide_console_b draft without execution."
+      ]
+    },
+    {
+      "binary_sha256": "fbac72265840e98ef3f2af09bbefd8441be4c7082ceec70795d292258302f61a",
+      "passed": [
+        "Two-statement SQL buffer: explicit selection returned selected only; surrounding statement absent from results/history.",
+        "Clicked JSON then right-clicked NULL: cell menu inspected NULL, not previous cell.",
+        "Double-click value inspector and JSON formatter retained 9007199254740993, 1.2300 and Korean text.",
+        "Record view distinguished SQL NULL from empty string.",
+        "Range columns1..3 copied TSV with quoted JSON, NULL marker and trailing empty field; pasted into unexecuted scratch editor and restored."
+      ]
+    },
+    {
+      "binary_sha256": "c05b52ae233ca689046fc561ed8c18c2949eab7827d2773400bcd0713ef6545d",
+      "passed": [
+        "Object finder rendered readable UTC capture time; selected correct dbide_console_b table structure.",
+        "Table cell Cmd+C copied B marker 2, confirmed by pasting into an unexecuted SQL draft then undoing.",
+        "History accessible rows, substring search for selected only and Escape close passed.",
+        "Final value inspector JSON rendering passed."
+      ]
+    }
+  ],
+  "screenshot": {
+    "local_path": "outputs/datagrip-features-2026-10-22/value-inspector.png",
+    "sha256": "a9c2962ba68791efa689507d0a4561a7158f5fbf6e1733d269ee0e777f13428c"
+  },
+  "limits": [
+    "62 workspace integration tests ignored; not counted as live passes.",
+    "Loaded-page TSV only:10000cells/1MiB. Inspector64KiB preview,1MiB snapshot,256fields.",
+    "Finder100matches/64Objects payloads/4MiB plus bounded manifest; partial results explicit, no continuation.",
+    "Finder search itself does not connect; selecting an uncached structure can request metadata and shows authentication failures.",
+    "No full accessibility, physical IME, all viewport or DataGrip parity claim.",
+    "PostgreSQL row Apply remains disabled. CI not activated; validation local."
+  ]
+}

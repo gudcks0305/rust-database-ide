@@ -197,6 +197,15 @@ impl Workbench {
             .dropdown_menu(move |menu, _, _| {
                 let inspect = weak.clone();
                 menu.item(
+                    PopupMenuItem::new(if ko {
+                        "선택 영역 실행"
+                    } else {
+                        "Run selection"
+                    })
+                    .action(Box::new(RunSelection)),
+                )
+                .separator()
+                .item(
                     PopupMenuItem::new(if ko { "SQL 서식" } else { "Format SQL" })
                         .action(Box::new(FormatSql)),
                 )
@@ -329,6 +338,15 @@ impl Workbench {
                 let diagnostics = weak.clone();
                 let cache = weak.clone();
                 menu.item(
+                    PopupMenuItem::new(if ko {
+                        "객체 찾기…"
+                    } else {
+                        "Find object…"
+                    })
+                    .action(Box::new(FindDatabaseObject)),
+                )
+                .separator()
+                .item(
                     PopupMenuItem::new(if ko {
                         "데이터베이스 도구"
                     } else {

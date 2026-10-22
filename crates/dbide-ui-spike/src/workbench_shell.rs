@@ -16,25 +16,73 @@ impl Workbench {
                 .get(self.selected_page)
                 .is_some_and(|p| !p.command_only);
         let locale = self.locale;
+        let selected = self.result_has_selection(cx);
+        let rows = self.result_has_rows(cx);
         Button::new("result-more")
             .small()
             .ghost()
             .label("⋯")
             .accessibility_label(if locale == Locale::Ko {
-                "결과 가져오기·내보내기"
+                "결과 작업"
             } else {
-                "Result import and export"
+                "Result actions"
             })
             .tooltip(if locale == Locale::Ko {
-                "가져오기·JSON·CSV 내보내기"
+                "값 보기·복사·가져오기·내보내기"
             } else {
-                "Import, JSON and CSV export"
+                "Inspect, copy, import and export"
             })
             .dropdown_menu(move |menu, _, _| {
                 let import_view = import_view.clone();
                 let json_view = json_view.clone();
                 let csv_view = csv_view.clone();
                 menu.item(
+                    PopupMenuItem::new(if locale == Locale::Ko {
+                        "값 상세 보기"
+                    } else {
+                        "Inspect value"
+                    })
+                    .disabled(!selected)
+                    .action(Box::new(InspectValue)),
+                )
+                .item(
+                    PopupMenuItem::new(if locale == Locale::Ko {
+                        "레코드 보기"
+                    } else {
+                        "Inspect record"
+                    })
+                    .disabled(!selected)
+                    .action(Box::new(InspectRecord)),
+                )
+                .item(
+                    PopupMenuItem::new(if locale == Locale::Ko {
+                        "행 복사 · TSV"
+                    } else {
+                        "Copy row · TSV"
+                    })
+                    .disabled(!selected)
+                    .action(Box::new(CopyResultRow)),
+                )
+                .item(
+                    PopupMenuItem::new(if locale == Locale::Ko {
+                        "열 복사 · TSV"
+                    } else {
+                        "Copy column · TSV"
+                    })
+                    .disabled(!selected)
+                    .action(Box::new(CopyResultColumn)),
+                )
+                .item(
+                    PopupMenuItem::new(if locale == Locale::Ko {
+                        "범위 복사…"
+                    } else {
+                        "Copy range…"
+                    })
+                    .disabled(!rows)
+                    .action(Box::new(CopyResultRange)),
+                )
+                .separator()
+                .item(
                     PopupMenuItem::new(if locale == Locale::Ko {
                         "가져오기 미리보기…"
                     } else {

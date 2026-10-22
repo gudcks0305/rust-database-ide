@@ -41,6 +41,15 @@ pub(super) fn menus(locale: Locale, normal: bool, can_run: bool, cancellable: bo
             )
             .disabled(!can_run),
             MenuItem::action(tr(locale, Message::Cancel), CancelQuery).disabled(!cancellable),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "선택 영역 실행"
+                } else {
+                    "Run selection"
+                },
+                RunSelection,
+            )
+            .disabled(!normal || !can_run),
             MenuItem::separator(),
             MenuItem::action(
                 if locale == Locale::Ko {
@@ -93,6 +102,22 @@ pub(super) fn menus(locale: Locale, normal: bool, can_run: bool, cancellable: bo
                 PreviousWorkspaceTab,
             ),
             MenuItem::separator(),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "객체 찾기…"
+                } else {
+                    "Find object…"
+                },
+                FindDatabaseObject,
+            ),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "쿼리 기록 검색"
+                } else {
+                    "Search query history"
+                },
+                OpenQueryHistory,
+            ),
             MenuItem::action(
                 if locale == Locale::Ko {
                     "탐색기로 이동"

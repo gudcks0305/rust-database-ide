@@ -1,8 +1,11 @@
 //! Deterministic logical data source with no retained row collection.
 pub mod console_session;
 pub mod explorer_model;
+pub mod history_model;
 pub mod navigator;
+pub mod object_finder_model;
 pub mod recovery_model;
+pub mod selection_execution;
 pub mod session_credentials;
 pub mod table_open_model;
 pub mod workbench_model;
@@ -423,6 +426,7 @@ mod file_tests {
 }
 pub mod sql_files;
 pub mod table_edit_model;
+pub mod value_selection;
 /// Column keys are positional because SQL may return empty/duplicate labels.
 pub fn result_grid_columns(names: Vec<String>) -> Vec<gpui_component::table::Column> {
     names

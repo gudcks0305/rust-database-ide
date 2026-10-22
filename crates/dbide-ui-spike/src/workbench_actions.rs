@@ -1367,6 +1367,27 @@ impl Workbench {
             cx.notify();
             return;
         }
+        if self.form.take().is_some() {
+            cx.notify();
+            return;
+        }
+        if self.pending_object_reveal.is_some() {
+            self.cancel_object_reveal();
+            cx.notify();
+            return;
+        }
+        if self.object_finder.take().is_some()
+            || self.value_inspector.take().is_some()
+            || self.range_copy.take().is_some()
+        {
+            cx.notify();
+            return;
+        }
+        if self.show_history {
+            self.show_history = false;
+            cx.notify();
+            return;
+        }
         if let Some(id) = self.active_table_tab {
             self.close_table_tab(id, w, cx);
             return;

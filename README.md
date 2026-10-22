@@ -17,7 +17,8 @@ DataGrip의 주요 작업 흐름을 Rust 데스크톱 앱으로 독립 재구현
 데이터베이스 트리의 지연 조회·캐시 연동과 도구 패널 한·영 전환을 반영했다.
 테이블 문서 탭, 서버 필터·정렬, 공간 크기 조절, 자동완성 키보드 조작과 메타데이터 갱신을 추가했다.
 메타데이터는 private JSON 파일로 나눠 저장하며, 펼친 객체만 부분적으로 읽는다. CLI `catalog list/show`도 제공한다.
-[UX 조사](docs/UX-RESEARCH.md)와 [제품 backlog](docs/PRODUCT-BACKLOG.md)에
+저장 메타데이터 객체 찾기, 실행 기록 검색·필터, 선택 SQL 실행, 값·레코드 보기와 결과 범위 복사를 추가했다.
+[DataGrip 기능 비교와 남은 항목](docs/DATAGRIP-GAPS-2026-10-22.md), [UX 조사](docs/UX-RESEARCH.md)와 [제품 backlog](docs/PRODUCT-BACKLOG.md)에
 구현 상태와 검증 조건을 분리해 기록한다.
 
 ## 읽는 순서
