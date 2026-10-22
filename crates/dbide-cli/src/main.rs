@@ -75,7 +75,7 @@ enum Command {
     },
     /// Execute SQL once through the shared native bridge. No retry after dispatch.
     Query(Query),
-    /// Stream one explicit read-only SQLite statement to a fresh CSV file.
+    /// Stream one explicit supported read-only query to a fresh CSV file.
     Export(export::Export),
     /// Read server catalogs as JSON using a temporary connection.
     Schema(Schema),

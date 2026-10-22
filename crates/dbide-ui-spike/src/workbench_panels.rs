@@ -277,12 +277,13 @@ impl Workbench {
     fn sql_command_menu(&self, cx: &mut Context<Self>) -> AnyElement {
         let ko = self.locale == Locale::Ko;
         let has_export = self.stream_export.is_some();
+        let has_pages = self.paged_query.is_some();
         let weak = cx.weak_entity();
         let metadata_locked = self.console().busy() || self.console().target().is_none();
         let stream_available = self.stream_export.is_some()
             || self.console().target().is_some_and(|profile| {
-                profile.engine == DatabaseEngine::Sqlite
-                    && profile
+                profile.engine != DatabaseEngine::Sqlite
+                    || profile
                         .sqlite_path
                         .as_deref()
                         .is_some_and(|path| path != ":memory:")
@@ -298,6 +299,7 @@ impl Workbench {
             .dropdown_menu(move |menu, _, _| {
                 let inspect = weak.clone();
                 let stream = weak.clone();
+                let pages = weak.clone();
                 menu.item(
                     PopupMenuItem::new(if ko {
                         "선택 영역 실행"
@@ -307,6 +309,23 @@ impl Workbench {
                     .action(Box::new(RunSelection)),
                 )
                 .separator()
+                .item(
+                    PopupMenuItem::new(if has_pages {
+                        if ko {
+                            "페이지 조회 보기…"
+                        } else {
+                            "Show paged query…"
+                        }
+                    } else if ko {
+                        "읽기 전용 페이지 조회…"
+                    } else {
+                        "Read-only paged query…"
+                    })
+                    .disabled(!stream_available && !has_pages)
+                    .on_click(move |_, window, cx| {
+                        let _ = pages.update(cx, |s, cx| s.open_paged_query(window, cx));
+                    }),
+                )
                 .item(
                     PopupMenuItem::new(if has_export {
                         if ko {
@@ -490,6 +509,7 @@ impl Workbench {
     pub(super) fn sidebar_tools_menu(&self, cx: &mut Context<Self>) -> AnyElement {
         let ko = self.locale == Locale::Ko;
         let has_export = self.stream_export.is_some();
+        let has_pages = self.paged_query.is_some();
         let cache_bytes = self.navigator.stats().accounted_bytes;
         let weak = cx.weak_entity();
         let locked = self.configuration_operation.is_some() || self.pending_table_open.is_some();
@@ -502,6 +522,7 @@ impl Workbench {
                 let diagnostics = weak.clone();
                 let cache = weak.clone();
                 let stream = weak.clone();
+                let pages = weak.clone();
                 menu.item(
                     PopupMenuItem::new(if ko {
                         "객체 찾기…"
@@ -522,6 +543,18 @@ impl Workbench {
                         let _ = tools.update(cx, |s, cx| s.open_tools(w, cx));
                     }),
                 )
+                .when(has_pages, |menu| {
+                    menu.item(
+                        PopupMenuItem::new(if ko {
+                            "페이지 조회 보기…"
+                        } else {
+                            "Show paged query…"
+                        })
+                        .on_click(move |_, w, cx| {
+                            let _ = pages.update(cx, |s, cx| s.open_paged_query(w, cx));
+                        }),
+                    )
+                })
                 .when(has_export, |menu| {
                     menu.item(
                         PopupMenuItem::new(if ko {

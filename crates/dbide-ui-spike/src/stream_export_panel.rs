@@ -1,5 +1,7 @@
 use super::*;
-use dbide_export::{ExportOptions, ExportProgress, ExportRequest, ExportSummary, export_csv};
+use dbide_export::{
+    ExportOptions, ExportProgress, ExportRequest, ExportSummary, export_csv_with_password,
+};
 use gpui_component::{
     input::{Textarea, TextareaState},
     tooltip::Tooltip,
@@ -36,6 +38,7 @@ struct ExportJob {
 /// The target and SQL belong to this panel, independent of the active editor/session.
 pub(super) struct StreamExportPanel {
     profile: ConnectionProfile,
+    password: String,
     sql: String,
     document_title: String,
     preview: Entity<TextareaState>,
@@ -51,7 +54,7 @@ impl EventEmitter<StreamExportEvent> for StreamExportPanel {}
 
 impl StreamExportPanel {
     pub(super) fn new(
-        profile: ConnectionProfile,
+        connection: ConnectionRequest,
         sql: String,
         document_title: String,
         locale: Locale,
@@ -66,7 +69,8 @@ impl StreamExportPanel {
             input
         });
         Self {
-            profile,
+            profile: connection.profile,
+            password: connection.password,
             sql,
             document_title,
             preview,
@@ -150,12 +154,18 @@ impl StreamExportPanel {
         let progress = Arc::new(ExportProgress::default());
         let worker_cancel = cancel.clone();
         let worker_progress = progress.clone();
+        let password = self.password.clone();
         // Only a terminal result crosses the channel; progress remains constant-size atomics.
         let (sender, terminal) = sync_channel(1);
         match std::thread::Builder::new()
             .name("csv-stream-export".into())
             .spawn(move || {
-                let _ = sender.send(export_csv(request, worker_cancel, worker_progress));
+                let _ = sender.send(export_csv_with_password(
+                    request,
+                    password,
+                    worker_cancel,
+                    worker_progress,
+                ));
             }) {
             Ok(_) => {
                 self.job = Some(ExportJob {

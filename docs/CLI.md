@@ -1,6 +1,6 @@
 # Native CLI
 
-SQLite 파일의 독립 읽기 전용 CSV 스트리밍: `dbide export --profile ID --file QUERY.sql --output NEW.csv`.
+SQLite·PostgreSQL·MySQL의 독립 CSV 스트리밍: `dbide export --profile ID --file QUERY.sql --output NEW.csv`.
 보관 상한보다 큰 결과도 행 단위로 기록하며 성공한 파일만 공개한다. [별도 연결·유한 예산·취소 계약](STREAMING-EXPORT.md)을 참고한다.
 
 Folder workspaces: `dbide workspace init/show/files/read/write/mkdir/bind/context/plan --root PATH`.

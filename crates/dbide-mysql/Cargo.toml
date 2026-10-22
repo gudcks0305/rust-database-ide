@@ -10,3 +10,4 @@ dbide-profiles = { path = "../dbide-profiles" }
 mysql_async = { version = "=0.37.1", default-features = false, features = ["minimal-rust", "native-tls-tls"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
+sqlparser = { version = "=0.63.0", features = ["visitor"] }

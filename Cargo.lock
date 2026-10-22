@@ -1372,6 +1372,9 @@ name = "dbide-export"
 version = "0.1.0"
 dependencies = [
  "dbide-data",
+ "dbide-driver-api",
+ "dbide-mysql",
+ "dbide-pg-spike",
  "dbide-profiles",
  "dbide-project",
  "dbide-sqlite",
@@ -1379,6 +1382,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1426,6 +1430,7 @@ dependencies = [
  "dbide-profiles",
  "mysql_async",
  "serde",
+ "sqlparser",
  "tokio",
 ]
 
@@ -1481,6 +1486,19 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "tempfile",
+]
+
+[[package]]
+name = "dbide-result-store"
+version = "0.1.0"
+dependencies = [
+ "dbide-driver-api",
+ "dbide-export",
+ "dbide-profiles",
+ "rusqlite",
+ "serde",
+ "serde_json",
  "tempfile",
 ]
 
@@ -1579,6 +1597,7 @@ dependencies = [
  "dbide-preferences-ui",
  "dbide-profiles",
  "dbide-project",
+ "dbide-result-store",
  "dbide-schema",
  "dbide-settings",
  "dbide-sql",

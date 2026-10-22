@@ -1,10 +1,13 @@
-//! Shared GUI/CLI success-only CSV file export. Captures one explicit profile
-//! and SQL document, executes once on an independent native read-only SQLite
-//! connection, and publishes a fresh destination only after encoding and sync.
-//! It never resumes a displayed result or shares another console's session.
+//! Shared GUI/CLI one-shot read-only streaming on independent native connections.
+//! CSV publishes a fresh file only after native completion, cleanup, encoding and
+//! sync succeed. No result-set retention, retries, console session reuse or secrets
+//! in persisted requests. Values are textual representations, not typed interchange.
 
 use dbide_data::{Cell, Column, CsvOptions, CsvScalarMode, CsvStreamWriter, FormulaMode, Limits};
-use dbide_profiles::{ConnectionProfile, DatabaseEngine, StoredExecutionTarget};
+use dbide_driver_api::stream::{
+    StreamError, StreamErrorKind, StreamEvent, StreamLimits, StreamSummary,
+};
+use dbide_profiles::{ConnectionProfile, ConnectionRequest, DatabaseEngine, StoredExecutionTarget};
 use dbide_sqlite::{ExportEvent, ExportLimits, ExportValue};
 use serde::Serialize;
 use std::{
@@ -29,6 +32,24 @@ pub struct ExportRequest {
     pub sql: String,
     pub output: PathBuf,
     pub options: ExportOptions,
+}
+
+/// Ephemeral worker input. Password belongs only to this explicit connection;
+/// this request is neither serialized nor included in diagnostics.
+#[derive(Clone)]
+pub struct QueryRequest {
+    pub connection: ConnectionRequest,
+    pub sql: String,
+    pub options: ExportOptions,
+}
+
+#[derive(Clone, Debug)]
+pub struct QuerySummary {
+    pub rows: u64,
+    pub payload_bytes: u64,
+    pub execution_target: StoredExecutionTarget,
+    pub sql_sha256: String,
+    pub execution_id: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -59,9 +80,9 @@ impl Default for ExportOptions {
     }
 }
 
-/// Single-export progress, overwritten in place without queues or row retention.
-/// These counters describe encoded provisional data, not a published output.
-/// Use one instance per running export. Successful completion equals its summary.
+/// One execution's counters, overwritten in place without queues or row retention.
+/// Active counters approximate source bytes; successful terminal counters exactly
+/// match the native summary (SQLite numeric payload differs from textual length).
 #[derive(Debug, Default)]
 pub struct ExportProgress {
     rows: AtomicU64,
@@ -75,9 +96,7 @@ pub struct ProgressSnapshot {
 }
 
 impl ExportProgress {
-    /// Approximate counters during execution, using two nonblocking atomic loads.
-    /// The pair may span adjacent rows while the writer runs. After completion,
-    /// use the terminal summary for exact published totals.
+    /// Two atomic loads can span adjacent rows; terminal summary is authoritative.
     pub fn snapshot(&self) -> ProgressSnapshot {
         ProgressSnapshot {
             rows: self.rows.load(Ordering::Acquire),
@@ -128,40 +147,293 @@ impl ExportError {
         }
     }
 }
-
 impl fmt::Display for ExportError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(&self.message)
     }
 }
-
 impl std::error::Error for ExportError {}
-
 fn config(message: impl ToString) -> ExportError {
     ExportError::new(ExportErrorKind::Configuration, message)
 }
-
 fn execution(message: impl ToString) -> ExportError {
     ExportError::new(ExportErrorKind::Execution, message)
 }
 
-/// Error paths drop the private provisional file and never publish an output.
-/// Cancellation and deadlines are checked during native stepping and before
-/// publication; they do not bound a blocked OS file operation or SQLite's own
-/// working set. No automatic retries, connection discovery, or SQL replay.
+/// Synchronous worker entry. Network engines get a private current-thread Tokio
+/// runtime; call outside an existing Tokio runtime. SQLite executes directly.
+/// One deadline covers preflight and execution. Native connection retirement can
+/// use an additional finite cleanup allowance of at most three seconds; it cannot
+/// turn cancellation, timeout or partial completion into success. Synchronous
+/// sinks and blocked operating-system operations cannot be preempted.
+pub fn stream_query<F>(
+    request: QueryRequest,
+    cancelled: Arc<AtomicBool>,
+    progress: Arc<ExportProgress>,
+    sink: F,
+) -> Result<QuerySummary, ExportError>
+where
+    F: for<'a> FnMut(StreamEvent<'a>) -> Result<(), String> + Send,
+{
+    let started = Instant::now();
+    progress.update(0, 0);
+    validate_options(&request.options)?;
+    check_control(&cancelled, started, request.options.timeout)?;
+    let prepared = prepare(request)?;
+    run_prepared(prepared, started, cancelled, progress, sink)
+}
+
+struct PreparedQuery {
+    request: QueryRequest,
+    source: Option<PathBuf>,
+    target: StoredExecutionTarget,
+    sql_sha256: String,
+}
+
+fn prepare(request: QueryRequest) -> Result<PreparedQuery, ExportError> {
+    validate_options(&request.options)?;
+    if request.sql.len() > dbide_project::MAX_SQL_BYTES || request.sql.trim().is_empty() {
+        return Err(config(
+            "SQL must be nonempty and at most 65536 UTF-8 bytes; nothing submitted",
+        ));
+    }
+    let sql_sha256 = dbide_project::digest_sql(&request.sql);
+    if request
+        .options
+        .expect_sql_sha256
+        .as_deref()
+        .is_some_and(|expected| expected != sql_sha256)
+    {
+        return Err(config("SQL SHA-256 changed; nothing submitted"));
+    }
+    let profile = &request.connection.profile;
+    dbide_project::validate_target_profile(profile).map_err(|_| {
+        config("Invalid connection profile; guarded SQLite targets require an absolute SQLite path; nothing submitted")
+    })?;
+    let database = if profile.engine == DatabaseEngine::Sqlite {
+        "main"
+    } else {
+        &profile.database
+    };
+    let target = StoredExecutionTarget::capture(profile, database).map_err(config)?;
+    if request
+        .options
+        .expect_target_fingerprint
+        .as_deref()
+        .is_some_and(|expected| expected != target.endpoint_fingerprint)
+    {
+        return Err(config("target fingerprint changed; nothing submitted"));
+    }
+    let source = if profile.engine == DatabaseEngine::Sqlite {
+        if profile.sqlite_path.as_deref() == Some(":memory:") {
+            return Err(config(
+                "streaming requires a SQLite file; :memory: is a different database on a separate connection",
+            ));
+        }
+        // Capture target identity from configuration, then resolve a symlink only
+        // once for both source execution and output sidecar guards.
+        let source = fs::canonicalize(
+            profile
+                .sqlite_path
+                .as_deref()
+                .expect("validated SQLite path"),
+        )
+        .map_err(|error| ExportError::new(ExportErrorKind::Connection, error))?;
+        if !source.is_file() || source.to_str().is_none() {
+            return Err(config(
+                "SQLite stream source must be an existing UTF-8 file",
+            ));
+        }
+        Some(source)
+    } else {
+        None
+    };
+    Ok(PreparedQuery {
+        request,
+        source,
+        target,
+        sql_sha256,
+    })
+}
+
+fn run_prepared<F>(
+    prepared: PreparedQuery,
+    started: Instant,
+    cancelled: Arc<AtomicBool>,
+    progress: Arc<ExportProgress>,
+    mut sink: F,
+) -> Result<QuerySummary, ExportError>
+where
+    F: for<'a> FnMut(StreamEvent<'a>) -> Result<(), String> + Send,
+{
+    let PreparedQuery {
+        request,
+        source,
+        target,
+        sql_sha256,
+    } = prepared;
+    let QueryRequest {
+        connection,
+        sql,
+        options,
+    } = request;
+    check_control(&cancelled, started, options.timeout)?;
+    let execution_id = dbide_driver_api::next_session_id();
+    let mut rows = 0u64;
+    let mut bytes = 0u64;
+    let mut observe = |event: StreamEvent<'_>| {
+        check_control(&cancelled, started, options.timeout).map_err(|error| error.to_string())?;
+        match &event {
+            StreamEvent::Columns(names) => {
+                bytes = names.iter().map(|name| name.len().max(1) as u64).sum();
+            }
+            StreamEvent::Row(values) => {
+                rows += 1;
+                bytes = bytes.saturating_add(
+                    values
+                        .iter()
+                        .map(|value| value.as_ref().map_or(1, |value| value.len().max(1) as u64))
+                        .sum(),
+                );
+            }
+        }
+        sink(event)?;
+        progress.update(rows, bytes);
+        check_control(&cancelled, started, options.timeout).map_err(|error| error.to_string())
+    };
+    let limits = StreamLimits {
+        max_rows: options.max_rows,
+        max_row_bytes: options.max_row_bytes,
+        max_payload_bytes: options.max_bytes,
+        timeout: options.timeout.saturating_sub(started.elapsed()),
+    };
+    let result = match connection.profile.engine {
+        DatabaseEngine::Sqlite => dbide_sqlite::export_read_only(
+            source.as_deref().expect("prepared SQLite source"),
+            &sql,
+            ExportLimits {
+                max_rows: limits.max_rows,
+                max_row_bytes: limits.max_row_bytes,
+                max_payload_bytes: limits.max_payload_bytes,
+                timeout: limits.timeout,
+            },
+            cancelled.clone(),
+            |event| match event {
+                ExportEvent::Columns(names) => observe(StreamEvent::Columns(names)),
+                ExportEvent::Row(values) => {
+                    let values = values
+                        .iter()
+                        .map(|value| match value {
+                            ExportValue::Null => None,
+                            ExportValue::Integer(value) => Some(value.to_string()),
+                            ExportValue::Real(value) => Some(value.to_string()),
+                            ExportValue::Text(value) => Some((*value).to_owned()),
+                        })
+                        .collect::<Vec<_>>();
+                    observe(StreamEvent::Row(&values))
+                }
+            },
+        )
+        .map(|summary| StreamSummary {
+            rows: summary.rows,
+            payload_bytes: summary.payload_bytes,
+        })
+        .map_err(|error| {
+            ExportError::new(
+                match error.kind {
+                    dbide_sqlite::ExportErrorKind::Configuration => ExportErrorKind::Configuration,
+                    dbide_sqlite::ExportErrorKind::Connection => ExportErrorKind::Connection,
+                    dbide_sqlite::ExportErrorKind::Cancelled => ExportErrorKind::Cancelled,
+                    _ => ExportErrorKind::Execution,
+                },
+                error,
+            )
+        }),
+        engine => {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(execution)?;
+            // Runtime construction is preflight too; pass only remaining budget.
+            let limits = StreamLimits {
+                timeout: options.timeout.saturating_sub(started.elapsed()),
+                ..limits
+            };
+            check_control(&cancelled, started, options.timeout)?;
+            match engine {
+                DatabaseEngine::PostgreSql => {
+                    runtime.block_on(dbide_pg_spike::export::stream_read_only(
+                        connection,
+                        &sql,
+                        limits,
+                        cancelled.clone(),
+                        &mut observe,
+                    ))
+                }
+                DatabaseEngine::MySql => runtime.block_on(dbide_mysql::export::stream_read_only(
+                    connection,
+                    &sql,
+                    limits,
+                    cancelled.clone(),
+                    &mut observe,
+                )),
+                DatabaseEngine::Sqlite => unreachable!(),
+            }
+            .map_err(map_stream_error)
+        }
+    };
+    check_control(&cancelled, started, options.timeout)?;
+    let summary = result?;
+    progress.update(summary.rows, summary.payload_bytes);
+    Ok(QuerySummary {
+        rows: summary.rows,
+        payload_bytes: summary.payload_bytes,
+        execution_target: target,
+        sql_sha256,
+        execution_id,
+    })
+}
+
+fn map_stream_error(error: StreamError) -> ExportError {
+    ExportError::new(
+        match error.kind {
+            StreamErrorKind::Configuration => ExportErrorKind::Configuration,
+            StreamErrorKind::Connection => ExportErrorKind::Connection,
+            StreamErrorKind::Cancelled => ExportErrorKind::Cancelled,
+            _ => ExportErrorKind::Execution,
+        },
+        error,
+    )
+}
+
+/// Empty-password compatibility entry; use `export_csv_with_password` for an
+/// explicitly supplied network credential. Error paths discard provisional files.
 pub fn export_csv(
     request: ExportRequest,
     cancelled: Arc<AtomicBool>,
     progress: Arc<ExportProgress>,
 ) -> Result<ExportSummary, ExportError> {
-    stream(request, cancelled, progress).map_err(|mut error| {
+    export_csv_with_password(request, String::new(), cancelled, progress)
+}
+
+pub fn export_csv_with_password(
+    request: ExportRequest,
+    password: String,
+    cancelled: Arc<AtomicBool>,
+    progress: Arc<ExportProgress>,
+) -> Result<ExportSummary, ExportError> {
+    let started = Instant::now();
+    progress.update(0, 0);
+    export_file(request, password, started, cancelled, progress).map_err(|mut error| {
         error.message.push_str("; export output was not published");
         error
     })
 }
 
-fn stream(
+fn export_file(
     request: ExportRequest,
+    password: String,
+    started: Instant,
     cancelled: Arc<AtomicBool>,
     progress: Arc<ExportProgress>,
 ) -> Result<ExportSummary, ExportError> {
@@ -171,7 +443,8 @@ fn stream(
         output,
         options,
     } = request;
-    progress.update(0, 0);
+    // Cancellation wins over invalid/missing sources, while invalid limits are
+    // still configuration errors rather than an already-expired zero deadline.
     if cancelled.load(Ordering::Acquire) {
         return Err(ExportError::new(
             ExportErrorKind::Cancelled,
@@ -179,52 +452,18 @@ fn stream(
         ));
     }
     validate_options(&options)?;
-    if sql.len() > dbide_project::MAX_SQL_BYTES || sql.trim().is_empty() {
-        return Err(config(
-            "SQL must be nonempty and at most 65536 UTF-8 bytes; nothing submitted",
-        ));
-    }
-    let sql_sha256 = dbide_project::digest_sql(&sql);
-    if options
-        .expect_sql_sha256
-        .as_deref()
-        .is_some_and(|expected| expected != sql_sha256)
-    {
-        return Err(config("SQL SHA-256 changed; nothing submitted"));
-    }
-    if profile.engine != DatabaseEngine::Sqlite {
-        return Err(config(
-            "streaming export currently supports SQLite files only",
-        ));
-    }
-    dbide_project::validate_target_profile(&profile).map_err(|_| {
-        config("Guarded SQLite targets require an absolute SQLite path or :memory:; update the profile explicitly")
+    check_control(&cancelled, started, options.timeout)?;
+    let timeout = options.timeout;
+    let csv_options = csv_options(&options);
+    let limits = Limits {
+        max_rows: usize::try_from(options.max_rows).map_err(config)?,
+        max_bytes: usize::try_from(options.max_bytes).map_err(config)?,
+    };
+    let prepared = prepare(QueryRequest {
+        connection: ConnectionRequest { profile, password },
+        sql,
+        options,
     })?;
-    if profile.sqlite_path.as_deref() == Some(":memory:") {
-        return Err(config(
-            "streaming export requires a SQLite file; :memory: is a different database on a separate connection",
-        ));
-    }
-    let target = StoredExecutionTarget::capture(&profile, "main").map_err(config)?;
-    if options
-        .expect_target_fingerprint
-        .as_deref()
-        .is_some_and(|expected| expected != target.endpoint_fingerprint)
-    {
-        return Err(config("target fingerprint changed; nothing submitted"));
-    }
-    // Resolve a configured symlink once. Target identity remains the original
-    // endpoint configuration, not a content digest or a connection snapshot.
-    let source = fs::canonicalize(
-        profile
-            .sqlite_path
-            .as_deref()
-            .expect("validated SQLite path"),
-    )
-    .map_err(|error| ExportError::new(ExportErrorKind::Connection, error))?;
-    if !source.is_file() {
-        return Err(config("SQLite export source must be an existing file"));
-    }
     let parent = output
         .parent()
         .filter(|path| !path.as_os_str().is_empty())
@@ -234,140 +473,74 @@ fn stream(
         .file_name()
         .ok_or_else(|| config("output must name a new file"))?;
     let output_path = parent.join(file_name);
-    // Refuse an unrepresentable summary path before temp creation or SQL.
     let output_name = output_path
         .to_str()
         .ok_or_else(|| config("export output path must be UTF-8"))?
         .to_owned();
     check_fresh(&output_path)?;
-    for suffix in ["", "-wal", "-shm", "-journal"] {
-        let mut reserved = source.as_os_str().to_os_string();
-        reserved.push(suffix);
-        if output_path
-            .as_os_str()
-            .as_encoded_bytes()
-            .eq_ignore_ascii_case(reserved.as_os_str().as_encoded_bytes())
-        {
-            return Err(config(
-                "export output must not be the source database or its WAL/shared-memory/rollback-journal sidecar",
-            ));
+    if let Some(source) = &prepared.source {
+        for suffix in ["", "-wal", "-shm", "-journal"] {
+            let mut reserved = source.as_os_str().to_os_string();
+            reserved.push(suffix);
+            if output_path
+                .as_os_str()
+                .as_encoded_bytes()
+                .eq_ignore_ascii_case(reserved.as_os_str().as_encoded_bytes())
+            {
+                return Err(config(
+                    "export output must not be the source database or its WAL/shared-memory/rollback-journal sidecar",
+                ));
+            }
         }
     }
-    let csv_options = CsvOptions {
-        null_marker: Some(options.null_marker),
-        scalar_mode: CsvScalarMode::TextualValues,
-        formula_mode: if options.escape_formulas {
-            FormulaMode::Escape
-        } else {
-            FormulaMode::Preserve
-        },
-        ..CsvOptions::default()
-    };
-    let limits = Limits {
-        max_rows: usize::try_from(options.max_rows).map_err(config)?,
-        max_bytes: usize::try_from(options.max_bytes).map_err(config)?,
-    };
-    csv_options.validate().map_err(config)?;
+    check_control(&cancelled, started, timeout)?;
     let mut temporary = NamedTempFile::new_in(&parent).map_err(config)?;
     let mut file = Some(temporary.reopen().map_err(config)?);
     let mut encoder: Option<CsvStreamWriter<fs::File>> = None;
-    let mut rows = 0;
-    let mut payload_bytes = 0;
-    let started = Instant::now();
-    let timeout = options.timeout;
-    let summary = dbide_sqlite::export_read_only(
-        &source,
-        &sql,
-        ExportLimits {
-            max_rows: options.max_rows,
-            max_row_bytes: options.max_row_bytes,
-            max_payload_bytes: options.max_bytes,
-            timeout,
-        },
-        cancelled.clone(),
-        |event| {
-            match event {
-                ExportEvent::Columns(names) => {
-                    let columns: Vec<Column> = names
-                        .iter()
-                        .map(|name| Column { name: name.clone() })
-                        .collect();
-                    encoder = Some(
-                        CsvStreamWriter::new(
-                            file.take().ok_or("duplicate export header")?,
-                            &columns,
-                            &csv_options,
-                            limits,
-                        )
-                        .map_err(|error| error.to_string())?,
-                    );
-                    payload_bytes = names.iter().map(|name| name.len().max(1) as u64).sum();
-                    progress.update(rows, payload_bytes);
-                }
-                ExportEvent::Row(values) => {
-                    let row: Vec<Cell> = values
-                        .iter()
-                        .map(|value| match value {
-                            ExportValue::Null => Cell::Null,
-                            ExportValue::Integer(value) => Cell::Integer(*value),
-                            ExportValue::Real(value) => Cell::Decimal(value.to_string()),
-                            ExportValue::Text(value) => Cell::Text((*value).into()),
-                        })
-                        .collect();
-                    encoder
-                        .as_mut()
-                        .ok_or("missing export header")?
-                        .write_row(&row)
-                        .map_err(|error| error.to_string())?;
-                    // Match native source accounting, not textual CSV lengths.
-                    // Native bounds already checked each row and cumulative sum.
-                    payload_bytes += values
-                        .iter()
-                        .map(|value| match value {
-                            ExportValue::Null => 1,
-                            ExportValue::Integer(_) | ExportValue::Real(_) => 8,
-                            ExportValue::Text(value) => value.len().max(1) as u64,
-                        })
-                        .sum::<u64>();
-                    rows += 1;
-                    progress.update(rows, payload_bytes);
-                }
+    let summary = run_prepared(prepared, started, cancelled.clone(), progress, |event| {
+        match event {
+            StreamEvent::Columns(names) => {
+                let columns = names
+                    .iter()
+                    .map(|name| Column { name: name.clone() })
+                    .collect::<Vec<_>>();
+                encoder = Some(
+                    CsvStreamWriter::new(
+                        file.take().ok_or("duplicate export header")?,
+                        &columns,
+                        &csv_options,
+                        limits,
+                    )
+                    .map_err(|error| error.to_string())?,
+                );
             }
-            Ok(())
-        },
-    )
-    .map_err(|error| {
-        ExportError::new(
-            match error.kind {
-                dbide_sqlite::ExportErrorKind::Configuration => ExportErrorKind::Configuration,
-                dbide_sqlite::ExportErrorKind::Connection => ExportErrorKind::Connection,
-                dbide_sqlite::ExportErrorKind::Cancelled => ExportErrorKind::Cancelled,
-                _ => ExportErrorKind::Execution,
-            },
-            error,
-        )
-    })?;
-    let check = || {
-        if cancelled.load(Ordering::Acquire) {
-            Err(ExportError::new(
-                ExportErrorKind::Cancelled,
-                "export cancelled",
-            ))
-        } else if started.elapsed() >= timeout {
-            Err(execution("export deadline exceeded"))
-        } else {
-            Ok(())
+            StreamEvent::Row(values) => {
+                let row = values
+                    .iter()
+                    .map(|value| {
+                        value
+                            .as_ref()
+                            .map_or(Cell::Null, |value| Cell::Text(value.clone()))
+                    })
+                    .collect::<Vec<_>>();
+                encoder
+                    .as_mut()
+                    .ok_or("missing export header")?
+                    .write_row(&row)
+                    .map_err(|error| error.to_string())?;
+            }
         }
-    };
-    check()?;
+        Ok(())
+    })?;
+    check_control(&cancelled, started, timeout)?;
     encoder
         .take()
         .ok_or_else(|| execution("missing export header"))?
         .finish()
         .map_err(execution)?;
-    check()?;
+    check_control(&cancelled, started, timeout)?;
     temporary.as_file_mut().sync_all().map_err(execution)?;
-    check()?;
+    check_control(&cancelled, started, timeout)?;
     let bytes = temporary.as_file().metadata().map_err(config)?.len();
     let statistics = ExportSummary {
         schema_version: 1,
@@ -377,15 +550,46 @@ fn stream(
         encoded_bytes: bytes,
         payload_bytes: summary.payload_bytes,
         output: output_name,
-        execution_target: target,
-        sql_sha256,
+        execution_target: summary.execution_target,
+        sql_sha256: summary.sql_sha256,
         read_only: true,
         independent_connection: true,
     };
-    // Atomic no-clobber still arbitrates destination races after preflight.
-    check()?;
+    // Atomic no-clobber arbitrates destination races after preflight. The check
+    // covers all preceding work; OS publication itself cannot be preempted.
+    check_control(&cancelled, started, timeout)?;
     temporary.persist_noclobber(&output_path).map_err(config)?;
     Ok(statistics)
+}
+
+fn check_control(
+    cancelled: &AtomicBool,
+    started: Instant,
+    timeout: Duration,
+) -> Result<(), ExportError> {
+    if cancelled.load(Ordering::Acquire) {
+        Err(ExportError::new(
+            ExportErrorKind::Cancelled,
+            "export cancelled",
+        ))
+    } else if started.elapsed() >= timeout {
+        Err(execution("export deadline exceeded"))
+    } else {
+        Ok(())
+    }
+}
+
+fn csv_options(options: &ExportOptions) -> CsvOptions {
+    CsvOptions {
+        null_marker: Some(options.null_marker.clone()),
+        scalar_mode: CsvScalarMode::TextualValues,
+        formula_mode: if options.escape_formulas {
+            FormulaMode::Escape
+        } else {
+            FormulaMode::Preserve
+        },
+        ..CsvOptions::default()
+    }
 }
 
 fn validate_options(options: &ExportOptions) -> Result<(), ExportError> {
@@ -402,6 +606,7 @@ fn validate_options(options: &ExportOptions) -> Result<(), ExportError> {
     if options.null_marker.is_empty() {
         return Err(config("CSV NULL marker must not be empty"));
     }
+    csv_options(options).validate().map_err(config)?;
     Ok(())
 }
 
@@ -420,7 +625,6 @@ fn check_fresh(path: &Path) -> Result<(), ExportError> {
             "output parent directory must already exist; nothing submitted",
         ));
     }
-    // Validate permissions without publishing anything or submitting SQL.
     drop(NamedTempFile::new_in(parent).map_err(config)?);
     Ok(())
 }

@@ -14,6 +14,9 @@ pub(super) struct RangeCopyDraft {
 }
 impl Workbench {
     pub(super) fn active_loaded_result(&self, cx: &App) -> Option<LoadedResult> {
+        if self.paged_query_visible {
+            return None;
+        }
         let (grid, source) = if let Some(editor) = self.active_table_entity() {
             let editor = editor.read(cx);
             (

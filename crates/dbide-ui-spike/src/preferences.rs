@@ -332,6 +332,9 @@ impl Workbench {
         if let Some(panel) = &self.stream_export {
             panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }
+        if let Some(panel) = &self.paged_query {
+            panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+        }
         if let Some(panel) = &self.object_finder {
             panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }

@@ -40,6 +40,7 @@ impl Workbench {
     }
 
     pub(super) fn show_table_tab(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
+        self.paged_query_visible = false;
         let Some(tab) = self.table_tabs.iter().find(|tab| tab.id == id) else {
             return;
         };

@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-22",
+  "base_commit": "6edf3d2862bc485fbe3965fc9ac9566fa98ea4d4",
+  "workspace_tests": {
+    "passed": 492,
+    "failed": 0,
+    "ignored": 70
+  },
+  "explicit_live_tests": {
+    "postgres_source": 1,
+    "mysql_source": 5,
+    "network_page_store": 2,
+    "all_passed": true,
+    "commands": [
+      "cargo test -p dbide-pg-spike --test stream_export_contract -- --include-ignored",
+      "cargo test -p dbide-mysql --test stream_export_contract -- --ignored",
+      "DBIDE_STREAM_OWNED_LIVE=1 cargo test -p dbide-result-store --test network_pages -- --ignored"
+    ]
+  },
+  "fixture_ownership": {
+    "postgres": "dbide-m0-pg owner=rust-database-ide-m0, 127.0.0.1:55439, PostgreSQL 18.6",
+    "mysql": "dbide-mysql owner=rust-database-ide-mysql, 127.0.0.1:55441, MySQL 8.4.11"
+  },
+  "release_cli_exports": [
+    {
+      "profile": "pg-stream",
+      "rows": 5000,
+      "bytes": 668904,
+      "all_rows_verified": true,
+      "sql_sha256": "8541665b81d59733f1778599e3bf0b3055509cf01bfb5a7082e3239e0506be25"
+    },
+    {
+      "profile": "mysql-stream",
+      "rows": 5000,
+      "bytes": 668901,
+      "all_rows_verified": true,
+      "sql_sha256": "afda7c47dc214a1ebc3b7403934b99c4ee66b7905e43f945c719b9d138d0d223"
+    },
+    {
+      "profile": "pg-stream",
+      "refused_exit": 2,
+      "no_published_file": true
+    },
+    {
+      "profile": "mysql-stream",
+      "refused_exit": 2,
+      "no_published_file": true
+    }
+  ],
+  "network_page_store": {
+    "postgres": {
+      "rows": 5001,
+      "pages": 26,
+      "encoded_bytes": 774108
+    },
+    "mysql": {
+      "rows": 5000,
+      "pages": 25,
+      "encoded_bytes": 768950
+    },
+    "checks": [
+      "all IDs and payloads",
+      "same captured backend connection ID",
+      "NULL and empty text",
+      "first page identical after full walk"
+    ]
+  },
+  "native_ui": {
+    "bundle": "com.local.rust-database-ide.stream-qa",
+    "isolated_generated_profiles_only": true,
+    "sqlite_rows": 6000,
+    "sqlite_pages": 30,
+    "page_starts": [
+      1,
+      201,
+      401,
+      601,
+      801,
+      1001,
+      1201,
+      1401,
+      1601,
+      1801,
+      2001,
+      2201,
+      2401,
+      2601,
+      2801,
+      3001,
+      3201,
+      3401,
+      3601,
+      3801,
+      4001,
+      4201,
+      4401,
+      4601,
+      4801,
+      5001,
+      5201,
+      5401,
+      5601,
+      5801
+    ],
+    "last_row_6000_visible": true,
+    "random_value_preserved_first_page_roundtrip": true,
+    "last_page_value_preserved_after_tab_switch": true,
+    "cmd_c_raw_value_pasted_into_other_sql_editor": true,
+    "cmd_period_cancelled_paged_query": true,
+    "postgres_rows": 401,
+    "postgres_pages": 3,
+    "postgres_last_id": 401,
+    "mysql_rows": 401,
+    "mysql_pages": 3,
+    "mysql_last_id": 400,
+    "mysql_csv_gui_rows": 401,
+    "mysql_csv_gui_bytes": 17946,
+    "mysql_csv_all_rows_verified": true,
+    "capture_tool_note": "Older app window returned SCStreamError -3811; separate signed QA bundle allowed normal CUA native validation."
+  },
+  "binary_sha256": {
+    "ui": "1a76907b5805e47c9eb8cb29f1acae9bbcf0fd0c87d549e5a728d3d96f9520ba",
+    "qa_ui": "2e306e3cf08fc6c029639f9cb385eb8f5e8ed20664f14850243fd773587e195b",
+    "cli": "bc09bcd86183a76df532a49e9417d0d35636e84bbf22f60cf479251145c65ea8"
+  },
+  "review_fixes": [
+    "PG NULL/empty source-byte accounting aligned",
+    "single execution deadline includes validation and spool sync",
+    "bounded extra 3-second network retirement",
+    "paged cancel/focus/copy scoped to visible panel",
+    "one-page byte/row and full encoded-spool limits",
+    "page read errors preserve displayed page"
+  ],
+  "checks": [
+    "cargo test --workspace",
+    "cargo clippy --workspace --all-targets -- -D warnings",
+    "cargo fmt --all -- --check",
+    "bash scripts/package-ui.sh",
+    "cargo build --release -p dbide-cli",
+    "uv run --python >=3.14 scripts/verify_project.py",
+    "git diff --check"
+  ],
+  "limitations": [
+    "Completed-query disk-backed pages; no suspended server cursor or first-page-before-query-completion.",
+    "Normal Run retention/transaction behavior unchanged; no continuation of its already-truncated result.",
+    "Network SQL and type subset limits documented; PostgreSQL READ ONLY not a function-effect sandbox.",
+    "Native driver/server working memory and blocked OS calls are not hard bounded by payload limits.",
+    "Raw async MySQL source must be polled to completion after flag cancellation; force abort/kill cleanup not guaranteed.",
+    "Remote CI remains inactive; blocked PG namespace/portal/Apply work untouched."
+  ]
+}

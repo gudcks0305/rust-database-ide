@@ -18,6 +18,7 @@ pub use table_metadata::{
     MAX_TABLE_METADATA_BYTES, table_metadata_fingerprint, table_metadata_query,
 };
 pub mod connection;
+pub mod export;
 pub use batch::{ParameterizedStatement, TableIdentityGuard};
 pub use connection::{ConnectionDiagnostic, ConnectionErrorKind, ConnectionTarget};
 

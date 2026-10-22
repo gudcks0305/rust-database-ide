@@ -349,6 +349,12 @@ impl Workbench {
         w: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.paged_query_visible {
+            if let Some(panel) = &self.paged_query {
+                panel.update(cx, |panel, cx| panel.focus_grid(w, cx));
+            }
+            return;
+        }
         if let Some(editor) = self.active_table_entity() {
             editor.update(cx, |e, cx| e.focus_results(w, cx));
         } else {

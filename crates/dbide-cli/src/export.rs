@@ -8,12 +8,17 @@ enum ExportFormat {
 
 #[derive(Args)]
 #[command(
-    after_help = "Runs the supplied SQL once on an independent read-only SQLite file connection. Does not continue or replay a displayed result, share temporary tables, or see another session's uncommitted changes. Only CSV is supported. Requires a fresh --output path; no --force or stdout data stream. Publishes only after complete execution, encoding and sync. Statistics are JSON on stdout. SQL <=64 KiB; all limits are finite. No PostgreSQL/MySQL streaming support."
+    after_help = "Runs a supported query once on an independent read-only SQLite, PostgreSQL or MySQL connection. Does not continue or replay a displayed result, share temporary tables, or see another session's uncommitted changes. Only CSV is supported. Requires a fresh --output path; no --force or stdout data stream. Publishes only after complete execution, encoding and sync. Statistics are JSON on stdout. SQL <=64 KiB; all limits are finite. Network engines accept a bounded SELECT/CTE subset; native transaction restrictions and engine-specific type limits apply."
 )]
 pub(super) struct Export {
     /// Exact profile ID; omitted uses the explicitly selected profile.
     #[arg(long)]
     profile: Option<String>,
+    /// Explicit database override (SQLite accepts only main).
+    #[arg(long)]
+    database: Option<String>,
+    #[command(flatten)]
+    auth: Auth,
     #[command(flatten)]
     input: SqlInput,
     /// Fresh file path; its parent must already exist. Existing files are never replaced.
@@ -74,6 +79,11 @@ pub(super) fn run(store: &ProfileStore, args: Export, cancelled: Arc<AtomicBool>
 
 fn stream(store: &ProfileStore, args: Export, cancelled: Arc<AtomicBool>) -> Result<ExportSummary> {
     let ExportFormat::Csv = args.format;
+    if args.input.stdin && args.auth.password_stdin {
+        return Err(config(
+            "SQL stdin and password stdin are mutually exclusive",
+        ));
+    }
     let sql = sql(args.input)?;
     // Retain CLI preflight order: changed SQL and invalid marker refuse before
     // loading profiles. The shared service repeats validation for every caller.
@@ -89,7 +99,33 @@ fn stream(store: &ProfileStore, args: Export, cancelled: Arc<AtomicBool>) -> Res
         return Err(config("CSV NULL marker must not be empty"));
     }
     let state = store.load().map_err(config)?;
-    let profile = profile(&state, args.profile.as_deref())?;
+    let mut profile = profile(&state, args.profile.as_deref())?;
+    workspace::validate_target_profile(&profile)?;
+    if let Some(database) = args.database {
+        if profile.engine == DatabaseEngine::Sqlite && database != "main" {
+            return Err(config("SQLite database must be main; nothing submitted"));
+        }
+        if profile.engine != DatabaseEngine::Sqlite {
+            profile.database = database;
+        }
+    }
+    let database = if profile.engine == DatabaseEngine::Sqlite {
+        "main"
+    } else {
+        &profile.database
+    };
+    let target = StoredExecutionTarget::capture(&profile, database).map_err(config)?;
+    if args
+        .expect_target_fingerprint
+        .as_deref()
+        .is_some_and(|expected| expected != target.endpoint_fingerprint)
+    {
+        return Err(config("target fingerprint changed; nothing submitted"));
+    }
+    if fs::symlink_metadata(&args.output).is_ok() {
+        return Err(config("output exists; export requires a fresh path"));
+    }
+    let connection = request(profile.clone(), args.auth)?;
     let request = ExportRequest {
         profile,
         sql,
@@ -105,17 +141,21 @@ fn stream(store: &ProfileStore, args: Export, cancelled: Arc<AtomicBool>) -> Res
             expect_target_fingerprint: args.expect_target_fingerprint,
         },
     };
-    dbide_export::export_csv(request, cancelled, Arc::new(ExportProgress::default())).map_err(
-        |error| {
-            Failure::new(
-                match &error.kind {
-                    ExportErrorKind::Configuration => 2,
-                    ExportErrorKind::Connection => 3,
-                    ExportErrorKind::Execution => 4,
-                    ExportErrorKind::Cancelled => 130,
-                },
-                error,
-            )
-        },
+    dbide_export::export_csv_with_password(
+        request,
+        connection.password,
+        cancelled,
+        Arc::new(ExportProgress::default()),
     )
+    .map_err(|error| {
+        Failure::new(
+            match &error.kind {
+                ExportErrorKind::Configuration => 2,
+                ExportErrorKind::Connection => 3,
+                ExportErrorKind::Execution => 4,
+                ExportErrorKind::Cancelled => 130,
+            },
+            error,
+        )
+    })
 }

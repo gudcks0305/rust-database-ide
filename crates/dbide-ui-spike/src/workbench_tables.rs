@@ -89,6 +89,7 @@ impl Workbench {
         });
         self.table_editor = Some(editor);
         self.active_table_tab = Some(id);
+        self.paged_query_visible = false;
         self.tools = None;
         cx.notify();
     }

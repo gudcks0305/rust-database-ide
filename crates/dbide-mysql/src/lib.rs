@@ -1,4 +1,5 @@
 //! Dedicated MySQL text-protocol sessions. No pooling, reconnect, or SQL replay.
+pub mod export;
 pub use dbide_driver_api::{
     CommitPolicy, DatabaseEngine, Event, ExecutionKey, ExecutionReport, Limits, Outcome,
     ServerError, ServerTransactionState,

@@ -4,6 +4,8 @@ mod documents;
 mod history_panel;
 mod native_menus;
 mod object_finder;
+mod paged_query;
+mod paged_query_panel;
 mod preferences;
 mod project_host;
 mod project_panel;
@@ -531,6 +533,9 @@ struct Workbench {
     value_inspector: Option<Entity<value_inspector::ValueInspector>>,
     stream_export: Option<Entity<stream_export_panel::StreamExportPanel>>,
     stream_export_visible: bool,
+    paged_query: Option<Entity<paged_query_panel::PagedQueryPanel>>,
+    paged_query_visible: bool,
+    paged_query_subscription: Option<Subscription>,
     stream_export_subscription: Option<Subscription>,
     range_copy: Option<result_tools::RangeCopyDraft>,
     object_finder: Option<Entity<object_finder::ObjectFinder>>,
@@ -787,6 +792,9 @@ impl Workbench {
             value_inspector: None,
             stream_export: None,
             stream_export_visible: false,
+            paged_query: None,
+            paged_query_visible: false,
+            paged_query_subscription: None,
             stream_export_subscription: None,
             range_copy: None,
             object_finder: None,
@@ -922,6 +930,12 @@ impl Workbench {
         cx.notify();
     }
     fn cancel_query_action(&mut self, _: &CancelQuery, _: &mut Window, cx: &mut Context<Self>) {
+        if self.paged_query_visible {
+            if let Some(panel) = &self.paged_query {
+                panel.update(cx, |panel, cx| panel.request_cancel(cx));
+            }
+            return;
+        }
         if self.active_table_tab.is_none() && !self.fixture_smoke {
             let route = self.console().route();
             if let Some(target) = self.console().cancel_target() {
@@ -1808,11 +1822,15 @@ impl Render for Workbench {
         }
 
         self.refresh_core_placeholders(window, cx);
-        let normal = self.active_table_tab.is_none() && self.tools.is_none();
+        let normal = self.sql_view_active();
         let menu_state = (
             normal,
             normal && self.can_run(cx),
-            if self.active_table_tab.is_some() {
+            if self.paged_query_visible {
+                self.paged_query
+                    .as_ref()
+                    .is_some_and(|panel| panel.read(cx).busy())
+            } else if self.active_table_tab.is_some() {
                 self.active_operation.is_some()
             } else {
                 self.console().active_operation.is_some()
@@ -2303,7 +2321,18 @@ impl Render for Workbench {
                     ),
             );
         }
-        if let Some(editor) = self.active_table_entity() {
+        if let Some(panel) = self
+            .paged_query
+            .as_ref()
+            .filter(|_| self.paged_query_visible)
+        {
+            content = div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(panel.clone());
+        } else if let Some(editor) = self.active_table_entity() {
             content = div()
                 .flex_1()
                 .min_h_0()
@@ -2538,6 +2567,7 @@ fn main() {
             KeyBinding::new("space", InspectValue, Some("FixtureGrid")),
             KeyBinding::new("space", InspectValue, Some("ResultGrid")),
             KeyBinding::new("cmd-c", CopyCell, Some("ResultGrid")),
+            KeyBinding::new("cmd-c", CopyCell, Some("PagedResultGrid")),
             KeyBinding::new("ctrl-tab", NextWorkspaceTab, None),
             KeyBinding::new("ctrl-shift-tab", PreviousWorkspaceTab, None),
             KeyBinding::new("cmd-shift-l", FocusCatalog, None),
@@ -2607,7 +2637,8 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                                         let _ = weak.update(cx, |s, cx| {
                                             if !$normal_only
                                                 || (s.active_table_tab.is_none()
-                                                    && s.tools.is_none())
+                                                    && s.tools.is_none()
+                                                    && !s.paged_query_visible)
                                             {
                                                 s.$handler(&action, w, cx);
                                             }

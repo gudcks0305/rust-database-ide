@@ -7,10 +7,10 @@ The [42 feature groups](FEATURE-MATRIX.md) remain the full backlog.
 session correctness gaps are being addressed before wider integration. PostgreSQL row Apply remains disabled because namespace
 rebinding acceptance has not passed; model/batch tests do not override that blocker.
 
-## SQLite streaming CSV and bounded grid previews
+## Native streaming, stored result pages and bounded previews
 
 GUI **SQL tools → Run editor SQL to CSV…** and CLI `dbide export` now share
-`dbide-export`. The GUI captures the full editor SQL and SQLite file profile when
+`dbide-export`. The GUI captures the full editor SQL and SQLite/PG/MySQL profile when
 opened, shows them for review, then starts only after explicit destination selection
 and Run. It executes independently in native read-only mode and publishes a new CSV
 only after success. Dedicated worker, approximate progress, cancellation and terminal
@@ -18,14 +18,29 @@ outcome remain independent of active tabs. Graceful window close cancels and wai
 another inspector can hide/reopen the same job without discarding it. Korean/English
 switching is supported. See [the exact export contract](STREAMING-EXPORT.md).
 
-Native acceptance: the normal grid retained1,323 of6,000 rows; CSV contained all6,000,
+Earlier SQLite native acceptance: the normal grid retained1,323 of6,000 rows; CSV contained all6,000,
 with every row checked. Editing SQL after capture did not change the exported query.
 File selection alone did not execute. Switching tabs during export kept the captured
 source; window-close cancellation left no final or provisional CSV. Shared-service
 fixtures cover limits, preflight, readonly, late errors, cancellation and zero rows.
 [Validation](../evidence/gui-streaming-export-validation.json):471 passed /62 ignored;
-ignored live tests were not run. Same-execution progressive fetch and PG/MySQL
-streaming remain pending.
+ignored live tests were not run in that earlier batch.
+
+The next implementation extends the shared service to PostgreSQL and MySQL,
+using native READ ONLY transactions and engine-specific single-query restrictions.
+Release CLI exports of5,000 rows per engine were verified row by row. The new
+[stored result page view](RESULT-PAGES.md) runs once, then reads bounded pages
+from a private temporary file after completion. PG5,001/26 pages and MySQL5,000/25
+pages passed live whole-store walks/roundtrips. Native GUI validation walked
+SQLite6,000/30 pages, preserved random values on return and after changing tabs,
+verified raw Cmd+C and paged Cmd+. cancellation, and reached the final row of
+401-row PG/MySQL captures. GUI MySQL CSV401 rows was also verified.
+
+[Current validation](../evidence/streams-pages-validation.json):492 default tests
+passed /70 ignored; eight new live DB tests were explicitly run and passed
+separately. CI is still inactive. A separate QA bundle resolved a capture-tool
+error on the older window. Suspended server cursors, first-page display before
+query completion, and continuing an already-truncated normal Run remain pending.
 
 Grid display and AX values use bounded256-byte escaped previews; raw copy/export
 retain original data. Optional GPUI profiler measurements and their limits are in

@@ -39,3 +39,4 @@ dbide-catalog-store = { path = "../dbide-catalog-store" }
 
 dbide-project = { path = "../dbide-project" }
 dbide-export = { path = "../dbide-export" }
+dbide-result-store = { path = "../dbide-result-store" }

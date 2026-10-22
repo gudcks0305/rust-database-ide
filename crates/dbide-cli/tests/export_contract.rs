@@ -21,6 +21,26 @@ fn command(dir: &Path, args: &[&str]) -> Command {
 fn run(dir: &Path, args: &[&str]) -> Output {
     command(dir, args).output().unwrap()
 }
+
+#[test]
+fn export_refuses_shared_sql_and_password_stdin_before_reading() {
+    let directory = TempDir::new().unwrap();
+    let result = command(
+        directory.path(),
+        &[
+            "export",
+            "--stdin",
+            "--password-stdin",
+            "--output",
+            "unused.csv",
+        ],
+    )
+    .stdin(Stdio::null())
+    .output()
+    .unwrap();
+    assert_eq!(result.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&result.stderr).contains("mutually exclusive"));
+}
 fn success(output: Output) -> String {
     assert!(
         output.status.success(),
@@ -321,12 +341,16 @@ fn relative_memory_and_non_sqlite_profiles_are_explicitly_unsupported() {
             "network",
             "--sql",
             "SELECT 1",
+            "--expect-sql-sha256",
+            "changed",
+            "--password-env",
+            "DBIDE_MISSING_STREAM_TEST_SECRET",
             "--output",
             dir.path().join("network.csv").to_str().unwrap(),
         ],
     );
     assert_eq!(output.status.code(), Some(2));
-    assert!(String::from_utf8_lossy(&output.stderr).contains("SQLite files only"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("SQL SHA-256 changed"));
     assert!(!dir.path().join("network.csv").exists());
 }
 

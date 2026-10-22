@@ -1,4 +1,5 @@
 //! Shared execution contract across native database adapters.
+pub mod stream;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 

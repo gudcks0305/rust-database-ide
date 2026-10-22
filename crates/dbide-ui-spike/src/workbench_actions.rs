@@ -3,7 +3,11 @@ use dbide_credentials::CredentialStore;
 
 impl Workbench {
     pub(super) fn sql_view_active(&self) -> bool {
-        completion_model::sql_view_active(self.active_table_tab.is_some(), self.tools.is_some())
+        !self.paged_query_visible
+            && completion_model::sql_view_active(
+                self.active_table_tab.is_some(),
+                self.tools.is_some(),
+            )
     }
     pub(super) fn current_owner(&self) -> Option<ResultOwner> {
         let profile = if self.fixture_smoke {
@@ -33,6 +37,7 @@ impl Workbench {
         }
     }
     pub(super) fn switch_document(&mut self, id: u64, cx: &mut Context<Self>) {
+        self.paged_query_visible = false;
         self.active_table_tab = None;
         self.tools = None;
         if self.active_document == id {
@@ -1149,7 +1154,9 @@ impl Workbench {
         }
     }
     pub(super) fn finish_window_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.defer_close_for_stream_export(cx) {
+        let wait_csv = self.defer_close_for_stream_export(cx);
+        let wait_pages = self.defer_close_for_paged_query(cx);
+        if wait_csv || wait_pages {
             return;
         }
         self.abort_table_open("Window closed before table reading.".into(), true, cx);
@@ -1164,7 +1171,9 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        if self.defer_close_for_stream_export(cx) {
+        let wait_csv = self.defer_close_for_stream_export(cx);
+        let wait_pages = self.defer_close_for_paged_query(cx);
+        if wait_csv || wait_pages {
             return false;
         }
         if self.profile_write_busy
@@ -1297,6 +1306,7 @@ impl Workbench {
             return;
         }
         self.dismiss_completion(cx);
+        self.paged_query_visible = false;
         let request = self.console().request();
         self.tools_label = request
             .as_ref()
@@ -1419,6 +1429,16 @@ impl Workbench {
         }
         if self.show_history {
             self.show_history = false;
+            cx.notify();
+            return;
+        }
+        if self.paged_query_visible {
+            if self.defer_close_for_paged_query(cx) {
+                return;
+            }
+            self.paged_query = None;
+            self.paged_query_subscription = None;
+            self.paged_query_visible = false;
             cx.notify();
             return;
         }

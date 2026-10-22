@@ -1,0 +1,16 @@
+[package]
+name = "dbide-result-store"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+dbide-driver-api = { path = "../dbide-driver-api" }
+dbide-export = { path = "../dbide-export" }
+serde = "1"
+serde_json = "1"
+tempfile = "3"
+
+[dev-dependencies]
+dbide-profiles = { path = "../dbide-profiles" }
+rusqlite = { version = "=0.40.2", features = ["bundled", "hooks"] }

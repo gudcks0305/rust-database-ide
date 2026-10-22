@@ -38,18 +38,12 @@ impl Workbench {
         if !self.sql_view_active() {
             return;
         }
-        let Some(profile) = self
-            .console()
-            .target()
-            .filter(|profile| {
-                profile.engine == DatabaseEngine::Sqlite
-                    && profile
-                        .sqlite_path
-                        .as_deref()
-                        .is_some_and(|path| path != ":memory:")
-            })
-            .cloned()
-        else {
+        if let Err(error) = self.prepare_console_password(cx) {
+            self.status = error;
+            cx.notify();
+            return;
+        }
+        let Some(connection) = self.console().request() else {
             return;
         };
         let sql = self.editor.read(cx).value().to_string();
@@ -62,7 +56,7 @@ impl Workbench {
         self.dismiss_completion(cx);
         let panel = cx.new(|cx| {
             stream_export_panel::StreamExportPanel::new(
-                profile,
+                connection,
                 sql,
                 title,
                 self.locale,

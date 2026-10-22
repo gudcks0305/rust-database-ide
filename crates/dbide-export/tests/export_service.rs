@@ -366,6 +366,9 @@ fn changed_sql_target_and_invalid_sources_fail_before_execution() {
     assert!(!Path::new(missing.sqlite_path.as_deref().unwrap()).exists());
     let mut postgres = profile;
     postgres.engine = DatabaseEngine::PostgreSql;
+    // Invalid explicit network input must fail locally. Never probe a user's
+    // default localhost database as part of generated SQLite fixture tests.
+    postgres.port = 0;
     assert_eq!(
         export(request(
             &postgres,
