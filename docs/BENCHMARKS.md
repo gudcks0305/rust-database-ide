@@ -1,5 +1,7 @@
 # 성능과 정확성 검증
 
+최신 측정: [2026-10-22 현재 빌드 기준선과 다음 작업](PERFORMANCE-2026-10-22.md). 시작 callback·유휴 CPU/RSS·3엔진 CLI 조회·검색/파일 API·논리 그리드를 구분한다.
+
 **아래 수치는 제안 목표이며 달성 결과/예측 개선율이 아니다.** 초기 smoke/parser/DB 계약 관찰은
 [M0-RESULTS.md](M0-RESULTS.md)와 `evidence/*spike.json`, `evidence/ui-smoke.json`에 별도 기록.
 동등 기능의 DataGrip 대조 benchmark는 아직 완료하지 않았다.

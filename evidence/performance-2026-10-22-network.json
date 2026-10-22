@@ -1,0 +1,929 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-22T07:29:13.867842+00:00",
+  "commit": "4839ee83114947c0fcdbe076b0bb69fed990787c",
+  "cli_binary_sha256": "7a2a831edcc42c5775fee4987b3a389e020c2b256eef673728f074c27d839a7d",
+  "mode": "release CLI, fresh process and connection per request",
+  "warmups": 3,
+  "samples_per_case": 30,
+  "cases": {
+    "postgres_1_rows": {
+      "server_version": "PostgreSQL 18.6 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+      "columns": 4,
+      "samples": [
+        {
+          "wall_ms": 20.608624909073114,
+          "reported_query_ms": 1.937,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.153167191892862,
+          "reported_query_ms": 1.683,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.279583055526018,
+          "reported_query_ms": 2.029,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.53175028413534,
+          "reported_query_ms": 2.287,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 19.953875336796045,
+          "reported_query_ms": 2.362,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.49612484127283,
+          "reported_query_ms": 1.98,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.716750036925077,
+          "reported_query_ms": 2.175,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.34633417800069,
+          "reported_query_ms": 2.063,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 22.399749606847763,
+          "reported_query_ms": 2.278,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.548291970044374,
+          "reported_query_ms": 1.85,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.345374941825867,
+          "reported_query_ms": 2.552,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.402499940246344,
+          "reported_query_ms": 1.824,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 19.94845876470208,
+          "reported_query_ms": 1.924,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.692291669547558,
+          "reported_query_ms": 1.982,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 18.03741604089737,
+          "reported_query_ms": 1.755,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.818165943026543,
+          "reported_query_ms": 2.157,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.37254112958908,
+          "reported_query_ms": 2.385,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 22.463291883468628,
+          "reported_query_ms": 4.605,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.466291319578886,
+          "reported_query_ms": 1.939,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.248458694666624,
+          "reported_query_ms": 2.025,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.473916988819838,
+          "reported_query_ms": 1.827,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.758416011929512,
+          "reported_query_ms": 2.055,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 21.71266684308648,
+          "reported_query_ms": 1.956,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 18.791125155985355,
+          "reported_query_ms": 1.859,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.519832588732243,
+          "reported_query_ms": 2.234,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 18.0200831964612,
+          "reported_query_ms": 1.792,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 18.60387483611703,
+          "reported_query_ms": 1.952,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 17.690875101834536,
+          "reported_query_ms": 1.912,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 18.164957873523235,
+          "reported_query_ms": 1.929,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 18.219499848783016,
+          "reported_query_ms": 2.07,
+          "rows": 1,
+          "retained_bytes": 368,
+          "json_stdout_bytes": 689
+        }
+      ],
+      "wall_ms": {
+        "median": 18.411687342450023,
+        "p95_nearest_rank": 22.399749606847763,
+        "min": 17.248458694666624,
+        "max": 22.463291883468628
+      },
+      "reported_query_ms": {
+        "median": 1.9809999999999999,
+        "p95_nearest_rank": 2.552,
+        "min": 1.683,
+        "max": 4.605
+      }
+    },
+    "postgres_1000_rows": {
+      "server_version": "PostgreSQL 18.6 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+      "columns": 4,
+      "samples": [
+        {
+          "wall_ms": 21.014875266700983,
+          "reported_query_ms": 3.466,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 20.3722077421844,
+          "reported_query_ms": 2.446,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 18.292417284101248,
+          "reported_query_ms": 2.728,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 20.646125078201294,
+          "reported_query_ms": 2.65,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 17.6490000449121,
+          "reported_query_ms": 2.333,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 18.06412497535348,
+          "reported_query_ms": 2.471,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 19.009666983038187,
+          "reported_query_ms": 2.234,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 19.067542161792517,
+          "reported_query_ms": 2.408,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 21.410500165075064,
+          "reported_query_ms": 2.494,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 21.03520929813385,
+          "reported_query_ms": 2.734,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 19.04750009998679,
+          "reported_query_ms": 2.366,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 21.66225016117096,
+          "reported_query_ms": 2.77,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 21.69866720214486,
+          "reported_query_ms": 2.645,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 21.747624967247248,
+          "reported_query_ms": 2.817,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 22.384250070899725,
+          "reported_query_ms": 3.05,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 22.720207925885916,
+          "reported_query_ms": 2.754,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 25.32445779070258,
+          "reported_query_ms": 4.064,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 25.468125008046627,
+          "reported_query_ms": 2.754,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 22.714166902005672,
+          "reported_query_ms": 3.722,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 23.90645770356059,
+          "reported_query_ms": 3.027,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 25.59041604399681,
+          "reported_query_ms": 2.868,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 21.19704196229577,
+          "reported_query_ms": 3.131,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 25.780540890991688,
+          "reported_query_ms": 4.779,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 21.647541783750057,
+          "reported_query_ms": 2.327,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 19.922208040952682,
+          "reported_query_ms": 1.601,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 19.545792136341333,
+          "reported_query_ms": 1.719,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 18.342708237469196,
+          "reported_query_ms": 1.539,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 18.00295803695917,
+          "reported_query_ms": 1.713,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 18.33479106426239,
+          "reported_query_ms": 2.375,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        },
+        {
+          "wall_ms": 18.28783331438899,
+          "reported_query_ms": 2.257,
+          "rows": 1000,
+          "retained_bytes": 165257,
+          "json_stdout_bytes": 142891
+        }
+      ],
+      "wall_ms": {
+        "median": 21.025042282417417,
+        "p95_nearest_rank": 25.59041604399681,
+        "min": 17.6490000449121,
+        "max": 25.780540890991688
+      },
+      "reported_query_ms": {
+        "median": 2.6475,
+        "p95_nearest_rank": 4.064,
+        "min": 1.539,
+        "max": 4.779
+      }
+    },
+    "mysql_1_rows": {
+      "server_version": "8.4.11",
+      "columns": 4,
+      "samples": [
+        {
+          "wall_ms": 18.45875009894371,
+          "reported_query_ms": 0.77,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 18.539249897003174,
+          "reported_query_ms": 1.36,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 19.144666846841574,
+          "reported_query_ms": 0.495,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 18.29633302986622,
+          "reported_query_ms": 0.836,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 18.44095904380083,
+          "reported_query_ms": 0.818,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 18.374917097389698,
+          "reported_query_ms": 1.116,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 22.214916069060564,
+          "reported_query_ms": 0.738,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 18.313582986593246,
+          "reported_query_ms": 0.895,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 22.874541115015745,
+          "reported_query_ms": 0.815,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 20.119084045290947,
+          "reported_query_ms": 1.16,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 22.314332891255617,
+          "reported_query_ms": 0.631,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 19.62250005453825,
+          "reported_query_ms": 1.05,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 23.467499762773514,
+          "reported_query_ms": 0.712,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 20.848083775490522,
+          "reported_query_ms": 0.921,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 19.400333054363728,
+          "reported_query_ms": 0.872,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 19.633166026324034,
+          "reported_query_ms": 1.195,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.346167031675577,
+          "reported_query_ms": 1.09,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 22.88733283057809,
+          "reported_query_ms": 0.512,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 24.83983337879181,
+          "reported_query_ms": 5.472,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 18.89808289706707,
+          "reported_query_ms": 0.812,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 21.768250036984682,
+          "reported_query_ms": 1.84,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 20.010667387396097,
+          "reported_query_ms": 0.774,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 20.048624835908413,
+          "reported_query_ms": 1.076,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 689
+        },
+        {
+          "wall_ms": 19.04425024986267,
+          "reported_query_ms": 0.911,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 20.89137490838766,
+          "reported_query_ms": 0.754,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 18.169624730944633,
+          "reported_query_ms": 0.731,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 15.429042279720306,
+          "reported_query_ms": 0.712,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 18.0734577588737,
+          "reported_query_ms": 0.68,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 20.595583133399487,
+          "reported_query_ms": 0.485,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        },
+        {
+          "wall_ms": 18.042834009975195,
+          "reported_query_ms": 0.757,
+          "rows": 1,
+          "retained_bytes": 152,
+          "json_stdout_bytes": 688
+        }
+      ],
+      "wall_ms": {
+        "median": 19.627833040431142,
+        "p95_nearest_rank": 23.467499762773514,
+        "min": 15.429042279720306,
+        "max": 24.83983337879181
+      },
+      "reported_query_ms": {
+        "median": 0.8165,
+        "p95_nearest_rank": 1.84,
+        "min": 0.485,
+        "max": 5.472
+      }
+    },
+    "mysql_1000_rows": {
+      "server_version": "8.4.11",
+      "columns": 4,
+      "samples": [
+        {
+          "wall_ms": 21.75720827654004,
+          "reported_query_ms": 3.175,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 24.980208836495876,
+          "reported_query_ms": 1.231,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 24.07858334481716,
+          "reported_query_ms": 1.656,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 20.462749991565943,
+          "reported_query_ms": 2.151,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 21.331333089619875,
+          "reported_query_ms": 1.502,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 19.91333393380046,
+          "reported_query_ms": 1.957,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 23.003583773970604,
+          "reported_query_ms": 1.413,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 22.38429244607687,
+          "reported_query_ms": 1.72,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 19.005041103810072,
+          "reported_query_ms": 1.527,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 19.66700004413724,
+          "reported_query_ms": 1.38,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 20.75366722419858,
+          "reported_query_ms": 1.465,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 19.45287501439452,
+          "reported_query_ms": 2.026,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 18.451625015586615,
+          "reported_query_ms": 1.578,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 18.838834017515182,
+          "reported_query_ms": 2.146,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 18.77554226666689,
+          "reported_query_ms": 1.474,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 18.133082892745733,
+          "reported_query_ms": 1.433,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 20.707249641418457,
+          "reported_query_ms": 2.246,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 18.872790969908237,
+          "reported_query_ms": 1.621,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 18.477083183825016,
+          "reported_query_ms": 1.491,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 19.490791019052267,
+          "reported_query_ms": 1.138,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 18.467749934643507,
+          "reported_query_ms": 1.528,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 19.049707800149918,
+          "reported_query_ms": 1.163,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 19.444207660853863,
+          "reported_query_ms": 1.662,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 18.94679106771946,
+          "reported_query_ms": 1.871,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 21.04858262464404,
+          "reported_query_ms": 1.614,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 20.160125102847815,
+          "reported_query_ms": 1.993,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 23.025709204375744,
+          "reported_query_ms": 1.667,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 20.630749873816967,
+          "reported_query_ms": 1.365,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 20.491916686296463,
+          "reported_query_ms": 1.895,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        },
+        {
+          "wall_ms": 20.68629115819931,
+          "reported_query_ms": 1.857,
+          "rows": 1000,
+          "retained_bytes": 77271,
+          "json_stdout_bytes": 142890
+        }
+      ],
+      "wall_ms": {
+        "median": 20.036729518324137,
+        "p95_nearest_rank": 24.07858334481716,
+        "min": 18.133082892745733,
+        "max": 24.980208836495876
+      },
+      "reported_query_ms": {
+        "median": 1.6175000000000002,
+        "p95_nearest_rank": 2.246,
+        "min": 1.138,
+        "max": 3.175
+      }
+    }
+  },
+  "limits": [
+    "Generated SELECT data only on owner-label/loopback-port verified containers.",
+    "Wall includes process/config/auth/connect/query/serialization/stdout; adapter query elapsed is not server-only time.",
+    "Warm DB/OS caches; no DataGrip comparison or remote-network extrapolation."
+  ],
+  "completed_at": "2026-10-22T07:29:17.115429+00:00"
+}

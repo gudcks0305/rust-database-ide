@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "measured_product_commit": "4839ee83114947c0fcdbe076b0bb69fed990787c",
+  "ui_binary_sha256": "f7717579079c1f3edd39b8851b1930861c96d52dac1e23b9ede3011454f49724",
+  "cli_binary_sha256": "7a2a831edcc42c5775fee4987b3a389e020c2b256eef673728f074c27d839a7d",
+  "workflow_binary_sha256": "54e734d005e48c02b046fd6c5a63dacb64746aee96d02f4afc472a81ce9095f7",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo_lock_sha256": "b4e4fc4031e207afda9998f575768eea8fd486977b71efc3b35cd3b32b0f36a5",
+  "notes": [
+    "Product source and packaged UI were not changed for these measurements.",
+    "Network rerun used frozen CLI copy and final hash assertion.",
+    "Example fixture canonicalizes the macOS temporary path before opening the catalog store.",
+    "Independent read-only audit verified arithmetic, scopes and unsupported-claim boundaries.",
+    "Python reproduction sources were formatted and linted after collection; no product source or benchmark behavior changed.",
+    "The example debug-build rejection was changed from constant assert to error return for clippy; release timed operations are unchanged."
+  ],
+  "reproduction_sources_sha256": {
+    "scripts/measure-current-performance.py": "8e483539c6eabdb25547c6f8aea9bb33a1315e6b6d3c97630c05dcca060ee77d",
+    "scripts/measure-owned-query-performance.py": "5cde3faa4582421a54eb78cc74d03eea5897b4dfaacdd245dad23a31625c160e",
+    "crates/dbide-ui-spike/examples/measure_workflows.rs": "31a5031a0f1b3a8dc0a97638e271c29b5a79e0c9738441f83a19eb0331ba77be"
+  },
+  "checks": {
+    "rust_example_clippy": "passed",
+    "python_ruff_format_and_lint": "passed",
+    "python_compile": "passed",
+    "raw_json_parse": "passed",
+    "project_verifier": "passed"
+  },
+  "ui_window_configuration": {
+    "client_width_logical_px": 1440,
+    "client_height_logical_px": 940,
+    "minimum_width_logical_px": 1360,
+    "minimum_height_logical_px": 800,
+    "source": "main.rs open_workbench"
+  },
+  "logical_grid_screenshot": {
+    "path": "outputs/performance-2026-10-22/logical-grid.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "sha256": "e59e8ac97c7ee73a63d25192a210688ea192e81c976e6a0ce0809510bcf33777"
+  }
+}
