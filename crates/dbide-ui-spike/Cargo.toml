@@ -38,3 +38,4 @@ dbide-catalog-cache = { path = "../dbide-catalog-cache" }
 dbide-catalog-store = { path = "../dbide-catalog-store" }
 
 dbide-project = { path = "../dbide-project" }
+dbide-export = { path = "../dbide-export" }

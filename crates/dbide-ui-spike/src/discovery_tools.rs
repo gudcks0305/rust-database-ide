@@ -90,6 +90,7 @@ impl Workbench {
             }
         }));
         self.object_finder = Some(panel);
+        self.stream_export_visible = false;
         self.preferences = None;
         self.value_inspector = None;
         self.range_copy = None;
@@ -245,6 +246,7 @@ impl Workbench {
         }));
         self.history_panel = Some(panel);
         self.show_history = true;
+        self.stream_export_visible = false;
         self.preferences = None;
         self.form = None;
         self.structure = None;

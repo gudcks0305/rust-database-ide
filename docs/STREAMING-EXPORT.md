@@ -6,6 +6,45 @@ connection; it does not continue a displayed result or automatically replay a
 query. PostgreSQL/MySQL streaming export and generic-query progressive fetching
 are not implemented by this command.
 
+## GUI
+
+For a file-backed SQLite console, choose **SQL tools → Run editor SQL to CSV…**
+(한국어: **SQL 도구 → 편집기 SQL을 CSV로 실행…**). The panel captures the full
+editor SQL, profile and document title when opened. It does not use a selection
+or the SQL that produced an older displayed result. Review the captured SQL and
+database path, choose a fresh output file, then press **Run export**. Choosing a
+file alone does not execute SQL or create the CSV.
+
+The GUI uses the same `dbide-export` service and default limits as the CLI. SQL
+and target remain fixed if the editor, selected console or saved profile changes.
+It runs once on a dedicated worker thread with constant-size approximate progress
+counters. The progress payload is source bytes, not final CSV bytes, and provisional
+rows do not imply a published file. The terminal result is authoritative, including
+when a cancellation request arrives after publication has already succeeded.
+
+Only one export panel/job exists per window. Switching or closing SQL tabs does not
+retarget or abandon this independent job. Opening another inspector hides the panel
+while preserving its job; **Tools → Show CSV export…** brings it back even from a
+table tab. Close the idle panel before capturing a different SQL document. Preferences
+language changes update the panel. SQL, paths and original database errors remain
+untranslated.
+
+**Cancel** requests cancellation and waits for the worker's actual outcome. Panel
+close and destination changes are disabled while working. A graceful window/app
+close requests cancellation and keeps the window open until completion is observed;
+close again afterwards. This also protects against a close racing local recovery.
+A crash or force kill cannot provide this graceful-cleanup guarantee. There is no
+automatic retry. A lost worker result is shown as unknown, with instructions to
+check the destination before explicitly selecting another output.
+
+The current GUI defaults are fixed: 1,000,000 rows, 64 MiB, 1 MiB source row and
+30 seconds. Use CLI options for other finite limits. The existing **Result actions →
+Export CSV/JSON** still exports the retained snapshot only. This new command is a
+fresh independent execution and cannot see console temporary tables or uncommitted
+changes. It is not same-execution progressive fetching.
+
+## CLI
+
 ```sh
 dbide --config ./profiles.json export --profile local \
   --file ./queries/export.sql --format csv --output ./exports/result.csv

@@ -931,6 +931,7 @@ impl Workbench {
             &self.catalog(),
         );
         self.show_sql_tools = true;
+        self.stream_export_visible = false;
         self.transfer_preview = None;
         self.status = format!(
             "{} SQL diagnostics · {} catalog tables",
@@ -970,6 +971,7 @@ impl Workbench {
             }
         }
         self.show_sql_tools = true;
+        self.stream_export_visible = false;
         cx.notify();
     }
     pub(super) fn apply_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -1132,7 +1134,7 @@ impl Workbench {
                 let limits=dbide_data::Limits{max_rows:1000,max_bytes:4*1024*1024};
                 if path.extension().is_some_and(|e|e.eq_ignore_ascii_case("json")){dbide_data::read_json(file,limits).map(|data|dbide_data::DataPreview{data,truncated:false})}else{dbide_data::read_csv(file,&dbide_data::CsvOptions::default(),None,limits,dbide_data::ReadMode::Preview)}
             }).await;
-            let _=view.update_in(cx,|s,_,cx|{match result{Ok(preview)=>{s.transfer_preview=Some(preview);s.show_sql_tools=false;s.show_history=false;s.status="Import preview only · no SQL submitted or database writes performed".into();},Err(e)=>s.diagnostic=Some(Diagnostic::new(("Import preview failed".into(),e.to_string(),"CSV uses a header and explicit \\N NULL marker. JSON must use the typed dbide-data format. Preview limit: 1,000 rows / 4 MiB.".into())))}cx.notify();});
+            let _=view.update_in(cx,|s,_,cx|{match result{Ok(preview)=>{s.stream_export_visible=false;s.transfer_preview=Some(preview);s.show_sql_tools=false;s.show_history=false;s.status="Import preview only · no SQL submitted or database writes performed".into();},Err(e)=>s.diagnostic=Some(Diagnostic::new(("Import preview failed".into(),e.to_string(),"CSV uses a header and explicit \\N NULL marker. JSON must use the typed dbide-data format. Preview limit: 1,000 rows / 4 MiB.".into())))}cx.notify();});
         }).detach();
     }
 }
@@ -1147,6 +1149,9 @@ impl Workbench {
         }
     }
     pub(super) fn finish_window_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.defer_close_for_stream_export(cx) {
+            return;
+        }
         self.abort_table_open("Window closed before table reading.".into(), true, cx);
         if self.quit_after_close {
             cx.quit();
@@ -1159,6 +1164,9 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
+        if self.defer_close_for_stream_export(cx) {
+            return false;
+        }
         if self.profile_write_busy
             || !self.profile_writes.is_empty()
             || self.recovery.loading

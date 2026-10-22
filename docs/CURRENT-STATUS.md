@@ -7,6 +7,31 @@ The [42 feature groups](FEATURE-MATRIX.md) remain the full backlog.
 session correctness gaps are being addressed before wider integration. PostgreSQL row Apply remains disabled because namespace
 rebinding acceptance has not passed; model/batch tests do not override that blocker.
 
+## SQLite streaming CSV and bounded grid previews
+
+GUI **SQL tools → Run editor SQL to CSV…** and CLI `dbide export` now share
+`dbide-export`. The GUI captures the full editor SQL and SQLite file profile when
+opened, shows them for review, then starts only after explicit destination selection
+and Run. It executes independently in native read-only mode and publishes a new CSV
+only after success. Dedicated worker, approximate progress, cancellation and terminal
+outcome remain independent of active tabs. Graceful window close cancels and waits;
+another inspector can hide/reopen the same job without discarding it. Korean/English
+switching is supported. See [the exact export contract](STREAMING-EXPORT.md).
+
+Native acceptance: the normal grid retained1,323 of6,000 rows; CSV contained all6,000,
+with every row checked. Editing SQL after capture did not change the exported query.
+File selection alone did not execute. Switching tabs during export kept the captured
+source; window-close cancellation left no final or provisional CSV. Shared-service
+fixtures cover limits, preflight, readonly, late errors, cancellation and zero rows.
+[Validation](../evidence/gui-streaming-export-validation.json):471 passed /62 ignored;
+ignored live tests were not run. Same-execution progressive fetch and PG/MySQL
+streaming remain pending.
+
+Grid display and AX values use bounded256-byte escaped previews; raw copy/export
+retain original data. Optional GPUI profiler measurements and their limits are in
+[the frame report](UI-FRAME-PERFORMANCE-2026-10-22.md). These results do not establish
+a general performance gain or DataGrip superiority.
+
 ## Folder workspaces and agent contracts
 
 Versioned `.dbide/project.json` plus ordinary SQL files now support explicit folder workspaces. The Files sidebar browses one directory at a time, creates SQL files/folders, preserves existing tabs on workspace switch, defaults Save As to the project directory, and persists recent/current roots privately. New file tabs resolve the project's exact default target or remain unbound; opening never connects or executes. GUI and CLI project saves share a nonblocking writer lock and content-hash comparison. Save As remains create-only inside any known project, including an inactive source project. Recovery schema3 preserves document project ownership and migrates schemas1/2 without reading source paths.

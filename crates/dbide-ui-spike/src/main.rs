@@ -10,6 +10,8 @@ mod project_panel;
 mod result_find;
 mod result_search;
 mod result_tools;
+mod stream_export;
+mod stream_export_panel;
 mod table_tabs;
 mod ui_profiler;
 mod value_inspector;
@@ -527,6 +529,9 @@ struct Workbench {
     result_find: Option<Entity<result_find::ResultFind>>,
     result_find_subscription: Option<Subscription>,
     value_inspector: Option<Entity<value_inspector::ValueInspector>>,
+    stream_export: Option<Entity<stream_export_panel::StreamExportPanel>>,
+    stream_export_visible: bool,
+    stream_export_subscription: Option<Subscription>,
     range_copy: Option<result_tools::RangeCopyDraft>,
     object_finder: Option<Entity<object_finder::ObjectFinder>>,
     pending_object_reveal: Option<(
@@ -780,6 +785,9 @@ impl Workbench {
             result_find: None,
             result_find_subscription: None,
             value_inspector: None,
+            stream_export: None,
+            stream_export_visible: false,
+            stream_export_subscription: None,
             range_copy: None,
             object_finder: None,
             pending_object_reveal: None,
@@ -1633,6 +1641,7 @@ impl Workbench {
         false
     }
     fn edit_profile(&mut self, new: bool, window: &mut Window, cx: &mut Context<Self>) {
+        self.stream_export_visible = false;
         if self.busy() || self.profile_write_busy {
             return;
         }
@@ -1761,6 +1770,7 @@ impl Render for Workbench {
             self.preferences.is_some(),
             if self.object_finder.is_some()
                 || self.value_inspector.is_some()
+                || (self.stream_export.is_some() && self.stream_export_visible)
                 || self.range_copy.is_some()
             {
                 3
@@ -2323,7 +2333,13 @@ impl Render for Workbench {
                 el.child(sidebar).child(self.split_handle(true, cx))
             })
             .child(content);
-        if let Some(preferences) = &self.preferences {
+        if let Some(panel) = self
+            .stream_export
+            .as_ref()
+            .filter(|_| self.stream_export_visible)
+        {
+            body = body.child(self.inspector_frame(panel.clone().into_any_element(), window, cx));
+        } else if let Some(preferences) = &self.preferences {
             body = body.child(self.preferences_panel(preferences, cx));
         } else if self.form.is_some() {
             body = body.child(self.connection_form_panel(cx));

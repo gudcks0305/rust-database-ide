@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "base_commit": "f035564cfe0ff5978b919f4a473a47dd4ff0e565",
+  "workspace_tests": {
+    "passed": 471,
+    "failed": 0,
+    "ignored": 62
+  },
+  "shared_export_service_tests": 10,
+  "checks": [
+    "cargo fmt --all",
+    "cargo test --workspace",
+    "cargo clippy --workspace --all-targets -- -D warnings",
+    "bash scripts/package-ui.sh",
+    "uv run --python >=3.14 scripts/verify_project.py",
+    "git diff --check"
+  ],
+  "native_checks": {
+    "isolated_owned_sqlite_only": true,
+    "gui_retained_rows": 1323,
+    "retained_truncated": true,
+    "streamed_rows": 6000,
+    "encoded_bytes": 634904,
+    "all_csv_rows_verified": true,
+    "editor_changed_after_capture_original_query_exported": true,
+    "file_picker_did_not_execute_or_create_output": true,
+    "new_console_while_export_active_kept_captured_target": true,
+    "window_close_cancelled_export_and_kept_window_open": true,
+    "cancelled_output_and_temporary_files_absent": true,
+    "preferences_export_visibility_roundtrip": true,
+    "ko_en_locale_propagation": true,
+    "final_package_connect_query_and_panel_open": true
+  },
+  "release_binary_sha256": "207520480371aecc56283d263e57b7d1c4e8c23aee1d2e177211d180594e5bea",
+  "native_validation_note": "Native complete/cancel/locale/visibility scenarios exercised before final status-path deduplication and oversized SQL UI disable; final package built and static/unit checks include those small changes.",
+  "independent_review": "Core/CLI contracts and GUI lifecycle reviewed; inspector visibility P2 corrected and re-reviewed. Nonblocking progress uses two approximate atomic loads, terminal summary authoritative.",
+  "limitations": [
+    "PG/MySQL streaming and same-execution GUI progressive fetching remain unimplemented.",
+    "Ignored live tests not run; no PG portal/Apply work.",
+    "CI remains inactive because workflow permission is unavailable.",
+    "Crash/force-kill cleanup and physical IME/VoiceOver not verified."
+  ]
+}

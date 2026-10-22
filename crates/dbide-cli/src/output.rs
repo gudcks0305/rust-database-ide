@@ -9,15 +9,6 @@ pub(super) fn check(destination: &Destination) -> Result<()> {
         "output exists; choose a fresh path or use --force",
     )
 }
-pub(super) fn check_fresh(path: &Path) -> Result<()> {
-    check_destination(
-        &Destination {
-            output: Some(path.into()),
-            force: false,
-        },
-        "output exists; export requires a fresh path",
-    )
-}
 fn check_destination(destination: &Destination, conflict: &str) -> Result<()> {
     if let Some(path) = &destination.output {
         let exists = match fs::symlink_metadata(path) {

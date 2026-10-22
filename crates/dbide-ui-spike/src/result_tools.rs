@@ -79,6 +79,7 @@ impl Workbench {
                 self.form = None;
                 self.cancel_object_reveal();
                 self.value_inspector = Some(panel);
+                self.stream_export_visible = false;
                 self.range_copy = None;
                 self.structure = None;
                 self.object_finder = None;
@@ -168,6 +169,7 @@ impl Workbench {
         self.preferences = None;
         self.form = None;
         self.cancel_object_reveal();
+        self.stream_export_visible = false;
         self.range_copy = Some(RangeCopyDraft {
             page,
             source,

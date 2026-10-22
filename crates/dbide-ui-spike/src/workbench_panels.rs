@@ -276,8 +276,17 @@ impl Workbench {
     }
     fn sql_command_menu(&self, cx: &mut Context<Self>) -> AnyElement {
         let ko = self.locale == Locale::Ko;
+        let has_export = self.stream_export.is_some();
         let weak = cx.weak_entity();
         let metadata_locked = self.console().busy() || self.console().target().is_none();
+        let stream_available = self.stream_export.is_some()
+            || self.console().target().is_some_and(|profile| {
+                profile.engine == DatabaseEngine::Sqlite
+                    && profile
+                        .sqlite_path
+                        .as_deref()
+                        .is_some_and(|path| path != ":memory:")
+            });
         Button::new("sql-command-menu")
             .small()
             .ghost()
@@ -288,6 +297,7 @@ impl Workbench {
             })
             .dropdown_menu(move |menu, _, _| {
                 let inspect = weak.clone();
+                let stream = weak.clone();
                 menu.item(
                     PopupMenuItem::new(if ko {
                         "선택 영역 실행"
@@ -295,6 +305,24 @@ impl Workbench {
                         "Run selection"
                     })
                     .action(Box::new(RunSelection)),
+                )
+                .separator()
+                .item(
+                    PopupMenuItem::new(if has_export {
+                        if ko {
+                            "CSV 작업 보기…"
+                        } else {
+                            "Show CSV export…"
+                        }
+                    } else if ko {
+                        "편집기 SQL을 CSV로 실행…"
+                    } else {
+                        "Run editor SQL to CSV…"
+                    })
+                    .disabled(!stream_available)
+                    .on_click(move |_, window, cx| {
+                        let _ = stream.update(cx, |s, cx| s.open_stream_export(window, cx));
+                    }),
                 )
                 .separator()
                 .item(
@@ -461,6 +489,7 @@ impl Workbench {
     }
     pub(super) fn sidebar_tools_menu(&self, cx: &mut Context<Self>) -> AnyElement {
         let ko = self.locale == Locale::Ko;
+        let has_export = self.stream_export.is_some();
         let cache_bytes = self.navigator.stats().accounted_bytes;
         let weak = cx.weak_entity();
         let locked = self.configuration_operation.is_some() || self.pending_table_open.is_some();
@@ -472,6 +501,7 @@ impl Workbench {
                 let tools = weak.clone();
                 let diagnostics = weak.clone();
                 let cache = weak.clone();
+                let stream = weak.clone();
                 menu.item(
                     PopupMenuItem::new(if ko {
                         "객체 찾기…"
@@ -492,6 +522,18 @@ impl Workbench {
                         let _ = tools.update(cx, |s, cx| s.open_tools(w, cx));
                     }),
                 )
+                .when(has_export, |menu| {
+                    menu.item(
+                        PopupMenuItem::new(if ko {
+                            "CSV 작업 보기…"
+                        } else {
+                            "Show CSV export…"
+                        })
+                        .on_click(move |_, w, cx| {
+                            let _ = stream.update(cx, |s, cx| s.open_stream_export(w, cx));
+                        }),
+                    )
+                })
                 .separator()
                 .label(format!(
                     "{} · {:.1} MiB",

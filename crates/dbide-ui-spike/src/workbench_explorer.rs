@@ -764,6 +764,7 @@ impl Workbench {
                 s.sync_navigator_inspector(cx);
             }));
         self.structure = Some(panel);
+        self.stream_export_visible = false;
         self.sync_navigator_inspector(cx);
         self.form = None;
         cx.notify();

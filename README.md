@@ -109,6 +109,7 @@ cargo run -p dbide-cli --bin dbide -- --help
 
 프로필·설정·쿼리·schema·파일 export 명령은 [CLI 가이드](docs/CLI.md)에 정리했다.
 SQLite 대량 CSV는 [독립 읽기 전용 스트리밍 export](docs/STREAMING-EXPORT.md)를 사용한다.
+GUI에서도 **SQL 도구 → 편집기 SQL을 CSV로 실행…**으로 같은 기능을 사용한다. 캡처한 SQL·대상을 검토한 뒤 새 파일에 별도 실행하며 진행 상태·취소를 제공한다.
 GUI와 같은 설정을 쓰며 비밀번호는 명시한 환경변수/stdin/Keychain으로만 제공한다.
 
 ## 라이선스와 외부 코드

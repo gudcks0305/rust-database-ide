@@ -1329,11 +1329,11 @@ dependencies = [
  "dbide-credentials",
  "dbide-data",
  "dbide-driver-api",
+ "dbide-export",
  "dbide-profiles",
  "dbide-project",
  "dbide-settings",
  "dbide-sql",
- "dbide-sqlite",
  "libc",
  "serde_json",
  "tempfile",
@@ -1365,6 +1365,20 @@ name = "dbide-driver-api"
 version = "0.1.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "dbide-export"
+version = "0.1.0"
+dependencies = [
+ "dbide-data",
+ "dbide-profiles",
+ "dbide-project",
+ "dbide-sqlite",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -1559,6 +1573,7 @@ dependencies = [
  "dbide-catalog-store",
  "dbide-credentials",
  "dbide-data",
+ "dbide-export",
  "dbide-i18n",
  "dbide-pg-spike",
  "dbide-preferences-ui",

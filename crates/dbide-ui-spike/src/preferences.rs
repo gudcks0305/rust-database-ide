@@ -329,6 +329,9 @@ impl Workbench {
         if let Some(panel) = &self.value_inspector {
             panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }
+        if let Some(panel) = &self.stream_export {
+            panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+        }
         if let Some(panel) = &self.object_finder {
             panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }
@@ -384,6 +387,7 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.stream_export_visible = false;
         let panel =
             cx.new(|cx| dbide_preferences_ui::PreferencesPanel::new(self.locale, window, cx));
         self._subscriptions
