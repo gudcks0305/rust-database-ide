@@ -3,7 +3,7 @@ use dbide_i18n::Locale;
 use dbide_project::{DirectoryListing, EntryKind, Manifest, Project, ProjectError, SqlFile};
 use gpui::{prelude::*, *};
 use gpui_component::{
-    Disableable, Sizable,
+    Disableable, Icon, IconName, Sizable,
     button::{Button, ButtonVariants},
     input::{Input, InputEvent, InputState},
     menu::{DropdownMenu, PopupMenuItem},
@@ -311,13 +311,32 @@ impl Render for ProjectPanel {
                         Button::new(("project-entry", index))
                             .small()
                             .ghost()
-                            .justify_start()
                             .w_full()
-                            .label(format!(
-                                "{} {}",
-                                if directory { "▸" } else { "SQL" },
-                                entry.name
-                            ))
+                            .child(
+                                div()
+                                    .w_full()
+                                    .min_w_0()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        Icon::new(if directory {
+                                            IconName::Folder
+                                        } else {
+                                            IconName::FileText
+                                        })
+                                        .small()
+                                        .flex_shrink_0(),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .min_w_0()
+                                            .overflow_hidden()
+                                            .text_ellipsis()
+                                            .child(entry.name.clone()),
+                                    ),
+                            )
                             .accessibility_label(format!(
                                 "{} {}",
                                 text(
