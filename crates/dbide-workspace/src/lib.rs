@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 pub const MAX_DOCUMENTS: usize = 32;
 pub const MAX_SQL_BYTES: usize = 64 * 1024;
 pub const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
@@ -15,6 +15,9 @@ pub const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct DocumentSnapshot {
+    /// Explicitly opened project root; metadata only, never read while recovering.
+    #[serde(default)]
+    pub project_root: Option<PathBuf>,
     pub id: u64,
     pub title: String,
     pub sql: String,
@@ -48,6 +51,26 @@ impl DocumentSnapshot {
             }
         }
 
+        if let Some(root) = &self.project_root {
+            let path = self
+                .path
+                .as_ref()
+                .ok_or(WorkspaceError::Invalid("project document requires a path"))?;
+            if !root.is_absolute()
+                || !path.starts_with(root)
+                || root
+                    .to_str()
+                    .is_none_or(|v| v.len() > 4096 || v.chars().any(char::is_control))
+                || root
+                    .components()
+                    .chain(path.components())
+                    .any(|c| matches!(c, std::path::Component::ParentDir))
+            {
+                return Err(WorkspaceError::Invalid(
+                    "project root must be absolute and contain the document path",
+                ));
+            }
+        }
         if self.id == 0 {
             return Err(WorkspaceError::Invalid("document ID must be nonzero"));
         }
@@ -90,6 +113,7 @@ impl DocumentSnapshot {
 impl fmt::Debug for DocumentSnapshot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DocumentSnapshot")
+            .field("project_root", &self.project_root)
             .field("id", &self.id)
             .field("title", &self.title)
             .field("sql", &"[REDACTED]")
@@ -234,7 +258,7 @@ impl WorkspaceStore {
         }
         let mut snapshot: WorkspaceSnapshot =
             serde_json::from_slice(&bytes).map_err(|_| WorkspaceError::Malformed)?;
-        if snapshot.schema_version == 1 {
+        if matches!(snapshot.schema_version, 1 | 2) {
             snapshot.schema_version = SCHEMA_VERSION;
         }
         snapshot.validate()?;
@@ -321,6 +345,7 @@ mod tests {
     use super::*;
     fn document(id: u64) -> DocumentSnapshot {
         DocumentSnapshot {
+            project_root: None,
             id,
             title: format!("Query {id}"),
             sql: "SELECT '한글 😊'; -- edited".into(),
@@ -436,6 +461,7 @@ mod tests {
         let bytes = fs::read(&path).unwrap();
         let documents = (1..=32)
             .map(|id| DocumentSnapshot {
+                project_root: None,
                 sql: "x".repeat(MAX_SQL_BYTES),
                 saved_sql: "y".repeat(MAX_SQL_BYTES),
                 ..document(id)

@@ -28,6 +28,24 @@ pub(super) fn menus(locale: Locale, normal: bool, can_run: bool, cancellable: bo
             )
             .disabled(!normal),
             MenuItem::action(tr(locale, Message::Close), CloseSqlTab),
+            MenuItem::separator(),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "새 워크스페이스…"
+                } else {
+                    "New workspace…"
+                },
+                NewProject,
+            ),
+            MenuItem::action(
+                if locale == Locale::Ko {
+                    "워크스페이스 열기…"
+                } else {
+                    "Open workspace…"
+                },
+                OpenProject,
+            ),
+            MenuItem::separator(),
         ]),
         Menu::new(tr(locale, Message::MenuQuery)).items([
             MenuItem::action(tr(locale, Message::Run), RunQuery).disabled(!can_run),

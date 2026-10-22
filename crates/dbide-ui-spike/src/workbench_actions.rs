@@ -184,6 +184,7 @@ impl Workbench {
             input
         });
         self.documents.push(SqlDocument {
+            project_root: None,
             password_draft,
             database_draft,
             session,
@@ -357,11 +358,13 @@ impl Workbench {
         let Some(doc) = self.documents.iter().find(|d| d.model.id == id) else {
             return;
         };
+        let workspace_directory = self.project_default_save_directory(cx);
         let receiver = cx.prompt_for_new_path(
             doc.model
                 .path
                 .as_deref()
                 .and_then(std::path::Path::parent)
+                .or(workspace_directory.as_deref())
                 .unwrap_or_else(|| std::path::Path::new(".")),
             Some(&doc.model.title),
         );
@@ -382,19 +385,42 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.saving_documents.contains(&id) {
+            return;
+        }
         let Some(doc) = self.documents.iter().find(|d| d.model.id == id) else {
             return;
         };
         let sql = doc.editor.read(cx).value().to_string();
         let written = sql.clone();
+        let previous = doc.model.path.clone();
+        let baseline = doc.model.saved_source.clone();
+        let mut roots = self.recent_projects();
+        roots.extend(self.documents.iter().filter_map(|d| d.project_root.clone()));
+        roots.extend(self.project.root.as_ref().map(|p| p.root().to_path_buf()));
+        self.saving_documents.insert(id);
         cx.spawn_in(window,async move|view,cx|{
-            let name=path.file_name().unwrap_or_default().to_string_lossy().to_string();
-            let result=cx.background_executor().spawn(async move{dbide_ui_spike::write_atomic(&path,|out|std::io::Write::write_all(out,sql.as_bytes())).map(|_|std::fs::canonicalize(&path).unwrap_or(path))}).await;
-            let _=view.update_in(cx,|s,w,cx|{match result {
-                Ok(path)=>if let Some(doc)=s.documents.iter_mut().find(|d|d.model.id==id){doc.model.saved(written,name.clone());doc.model.path=Some(path);let clean=!doc.model.dirty(&doc.editor.read(cx).value());if s.active_document==id{s.file_name=name;}
-                    if close_after&&clean{s.remove_document(id,w,cx);}s.status=if clean{"SQL file saved"}else{"Saved snapshot; newer edits remain unsaved"}.into();},
-                Err(e)=>s.diagnostic=Some(Diagnostic::new(("Could not save SQL file".into(),e.to_string(),"A failed write preserves the existing destination. Unsaved tab text remains available.".into())))
-            }cx.notify();});
+            let result=cx.background_executor().spawn(async move{
+                dbide_ui_spike::project_files::save_file(&path,&sql,previous.as_deref(),&baseline,&roots)
+            }).await;
+            let _=view.update_in(cx,|s,w,cx|{
+                s.saving_documents.remove(&id);
+                match result {
+                    Ok(saved)=>{
+                        let path=saved.path;let root=saved.project_root;
+                        if let Some(doc)=s.documents.iter_mut().find(|d|d.model.id==id) {
+                            let name=path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                            doc.model.saved(written,name.clone());doc.model.path=Some(path);doc.project_root=root;
+                            let clean=!doc.model.dirty(&doc.editor.read(cx).value());if s.active_document==id{s.file_name=name;}
+                            if close_after&&clean{s.remove_document(id,w,cx);}
+                            s.status=if clean{"SQL file saved"}else{"Saved snapshot; newer edits remain unsaved"}.into();
+                            if let Some(panel)=&s.project.panel{panel.update(cx,|p,cx|p.refresh(cx));}
+                        }
+                    },
+                    Err(error)=>s.diagnostic=Some(Diagnostic::new((if s.locale==Locale::Ko {"SQL 파일을 저장하지 못했습니다"}else{"Could not save SQL file"}.into(),error,if s.locale==Locale::Ko {"외부 변경이나 충돌이 있으면 원본과 편집 내용을 보존합니다. 다른 이름으로 저장하거나 파일을 다시 여세요."}else{"External changes/conflicts preserve the original and your edits. Save As or reopen the file."}.into())))
+                }
+                cx.notify();
+            });
         }).detach();
     }
     pub(super) fn accept_report(

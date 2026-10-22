@@ -43,6 +43,7 @@ struct DocumentStamp {
     saved_length: usize,
     title: String,
     path: Option<PathBuf>,
+    project_root: Option<PathBuf>,
 }
 #[derive(Clone, PartialEq, Eq)]
 struct Stamp {
@@ -98,6 +99,7 @@ impl Workbench {
                     saved_length: d.model.saved_source.len(),
                     title: d.model.title.clone(),
                     path: d.model.path.clone(),
+                    project_root: d.project_root.clone(),
                 })
                 .collect(),
         }
@@ -118,6 +120,7 @@ impl Workbench {
                     path: d.model.path.clone(),
                     profile_id: d.required_profile_id.clone(),
                     execution_target: d.session.stored_target(),
+                    project_root: d.project_root.clone(),
                 })
                 .collect(),
         }
@@ -174,6 +177,7 @@ impl Workbench {
         self.documents.clear();
         for doc in snapshot.documents {
             let required_profile_id = doc.profile_id.clone();
+            let project_root = doc.project_root.clone();
             let mut session = ConsoleSession::new(doc.id);
             if let Some(target) = &doc.execution_target
                 && let Some(profile) = self
@@ -232,6 +236,7 @@ impl Workbench {
                 input
             });
             self.documents.push(SqlDocument {
+                project_root,
                 password_draft,
                 database_draft,
                 required_profile_id,

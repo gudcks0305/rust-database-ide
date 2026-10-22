@@ -33,3 +33,5 @@ dbide-preferences-ui = { path = "../dbide-preferences-ui" }
 dbide-catalog-cache = { path = "../dbide-catalog-cache" }
 
 dbide-catalog-store = { path = "../dbide-catalog-store" }
+
+dbide-project = { path = "../dbide-project" }

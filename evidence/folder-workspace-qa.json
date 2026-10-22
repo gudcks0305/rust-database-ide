@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-22",
+  "base_commit": "52c9d7d43365177e389bb555d389b0c20a45cec8",
+  "scope": "Explicit folder workspaces, shared SQL file management, JSON agent context and guarded query plans. No MCP write expansion or PG row Apply changes.",
+  "implementation": {
+    "manifest": ".dbide/project.json schema1; exact password-free default target; revision guard",
+    "files": "Ordinary UTF-8 SQL,64KiB; create-only or SHA-256 CAS under shared writer lock; one-directory bounded listing",
+    "gui": "Files sidebar, create/open folders and SQL, current target binding, recent roots, project-aware Save As, preserved existing tabs",
+    "recovery": "schema3 preserves project_root and saved baseline; schemas1/2 migrate without reading source files",
+    "agent": "capabilities, context without SQL/history/rows, explicit read/write, plan returning argv only; query checks SQL hash and target fingerprint before auth/dispatch",
+    "bounded_io": "relative SQLite guarded targets and nonregular SQL file input rejected"
+  },
+  "checks": {
+    "workspace_tests": {
+      "passed": 439,
+      "failed": 0,
+      "ignored": 62
+    },
+    "final_targeted_tests_before_fifo_case": {
+      "passed": 164,
+      "failed": 0,
+      "ignored": 5
+    },
+    "workspace_clippy": "passed",
+    "final_ui_clippy": "passed after cosmetic file-list and tab-path changes",
+    "fmt": "passed",
+    "release_package": "passed",
+    "project_verifier": "passed"
+  },
+  "independent_review": {
+    "model": "gpt-6-astra",
+    "mode": "read-only",
+    "corrected": [
+      "Save As to inactive source project must retain create-only/CAS scope.",
+      "Relative SQLite path could change database with process cwd; shared validation now rejects guarded relative file targets.",
+      "Stable parent symlink replacement must not erase source ownership during canonicalization; lexical-owner check and core parent checks preserve originals."
+    ],
+    "additional_verification": [
+      "Tests preserve both outside sentinel and original SQL after parent-link replacement.",
+      "GUI saves are serialized per document.",
+      "CLI planned file replaced by FIFO refuses within bounded test deadline before auth/output/database creation."
+    ]
+  },
+  "native_runs": [
+    {
+      "binary_sha256": "d7c13f8eec1f5eeda40f2243b57a4169c1581402b9f6498fa20144c708f80bcf",
+      "passed": [
+        "Loaded CLI-created workspace and SQL; exact SQLite/main target configured but disconnected until explicit Run.",
+        "Created folder and emptySQL via nativeGUI; saved SQL read back through CLI.",
+        "CLI CAS edit followed by GUI save produced conflict and retained external file plus dirty editor text.",
+        "Switched workspaceA→B while preservingA tabs; Save As createdA/queries/gui-copy.sql, notB; recovery recorded owningA root.",
+        "UnboundB file opened unbound rather than inheriting previousA connection."
+      ]
+    },
+    {
+      "binary_sha256": "b8640a3ec1bdcfd8da2e0a13e42ab30211a2415f3d50a8a88b0227c7aee825a5",
+      "passed": [
+        "Restart without DBIDE_WORKSPACE restoredcurrentB and fourSQLtabs with noautomaticconnection/query.",
+        "GUI savedcurrentconsole target toB; CLIshow reportedrevision1 andexactSQLite/main reference.",
+        "Recent menu reopenedA; explicit Run returnedownedSQLite rows."
+      ]
+    },
+    {
+      "binary_sha256": "ffa00da7648d79bc5c643b39d206af302de1c4544ab3b3078066eb8241fea195",
+      "passed": [
+        "Final restart restoredA/currentSQL disconnected; nativeRun returnedworkspace andagent-ready rows.",
+        "File list rendered compact entries and clippedrootpath withtooltip.",
+        "Open-tab menu showedworkspace-a/queries andworkspace-b/queries identities."
+      ]
+    }
+  ],
+  "cli_manual": {
+    "binary_sha256": "0443422003e72c3d2bbd39d9c9f24f646c22452147febaaff8ec30dadcaff4b9",
+    "passed": [
+      "init/mkdir/write/bind/context/plan usedexplicitownedtemp roots/config.",
+      "Executed returnedguardedargv fromdifferentcwd andreturnedexpectedownedSQLite data.",
+      "Context excludedSQLbody/history, planreportedexecutedfalse.",
+      "GUI-created SQL read and externallyupdatedviaCAS."
+    ]
+  },
+  "screenshot": {
+    "local_path": "outputs/folder-workspace-2026-10-22/workspace.png",
+    "sha256": "a81972aceda9250f629ddb1c4569ddcf74a8cf9f116852d8c5e32019b48e1130"
+  },
+  "limits": [
+    "62 ignored integration tests are not live passes; native acceptance usedownedSQLite only.",
+    "Single-root browser, noisolatedtabsetsperproject/multi-root/Git/filewatcher.",
+    "Cooperative writer lock is not a sandbox against malicious concurrent parent renames or noncooperating writers.",
+    "64KiB SQL; directory512returned/4096scanned; context128rootentries with explicitpartialstatus.",
+    "Read-only query plan usesadapter setting, not MCP SELECT policy or proof of no external effects.",
+    "Feature comparison usesofficialdocumentation, not runtime performance benchmarks.",
+    "Existing PG row Apply remainsdisabled; CI workflow remainsinactive."
+  ]
+}

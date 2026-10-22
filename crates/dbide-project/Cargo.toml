@@ -1,0 +1,15 @@
+[package]
+name = "dbide-project"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+dbide-profiles = { path = "../dbide-profiles" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

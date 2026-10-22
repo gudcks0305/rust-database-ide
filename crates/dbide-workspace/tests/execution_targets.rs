@@ -6,6 +6,7 @@ fn snapshot() -> WorkspaceSnapshot {
     WorkspaceSnapshot {
         schema_version: SCHEMA_VERSION,
         documents: vec![DocumentSnapshot {
+            project_root: None,
             id: 1,
             title: "Console".into(),
             sql: "SELECT 2".into(),

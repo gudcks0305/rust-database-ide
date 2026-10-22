@@ -1330,8 +1330,10 @@ dependencies = [
  "dbide-data",
  "dbide-driver-api",
  "dbide-profiles",
+ "dbide-project",
  "dbide-settings",
  "dbide-sql",
+ "libc",
  "serde_json",
  "tempfile",
 ]
@@ -1456,6 +1458,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dbide-project"
+version = "0.1.0"
+dependencies = [
+ "dbide-profiles",
+ "libc",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+]
+
+[[package]]
 name = "dbide-schema"
 version = "0.1.0"
 dependencies = [
@@ -1548,6 +1562,7 @@ dependencies = [
  "dbide-pg-spike",
  "dbide-preferences-ui",
  "dbide-profiles",
+ "dbide-project",
  "dbide-schema",
  "dbide-settings",
  "dbide-sql",

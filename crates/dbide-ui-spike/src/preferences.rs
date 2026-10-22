@@ -320,6 +320,9 @@ impl Workbench {
         if let Some(inspector) = &self.structure {
             inspector.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }
+        if let Some(panel) = &self.project.panel {
+            panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+        }
         if let Some(panel) = &self.result_find {
             panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }

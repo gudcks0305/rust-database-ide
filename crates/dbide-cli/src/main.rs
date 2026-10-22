@@ -1,5 +1,6 @@
 //! Native CLI: shared profiles and bridge, explicit credentials, no SQL replay.
 mod output;
+mod workspace;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use dbide_bridge::{BridgeEvent, DatabaseBridge, OperationId, Outcome};
 use dbide_credentials::{CredentialStore, MacKeychainStore, Secret};
@@ -23,12 +24,14 @@ type Result<T> = std::result::Result<T, Failure>;
 struct Failure {
     code: u8,
     message: String,
+    machine_code: &'static str,
 }
 impl Failure {
     fn new(code: u8, message: impl ToString) -> Self {
         Self {
             code,
             message: message.to_string(),
+            machine_code: "configuration_error",
         }
     }
 }
@@ -52,6 +55,13 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// Explicit folder workspace operations. JSON output; never connects to a database.
+    Workspace(workspace::Workspace),
+    /// Offline machine-readable CLI discovery.
+    Agent {
+        #[command(subcommand)]
+        command: workspace::AgentCommand,
+    },
     /// Manage password-free connection profiles. Add/edit never connect.
     Profiles {
         #[command(subcommand)]
@@ -230,6 +240,15 @@ struct Query {
     /// Exact profile ID; omitted uses the explicitly selected profile.
     #[arg(long)]
     profile: Option<String>,
+    /// Explicit database override (SQLite accepts only main).
+    #[arg(long)]
+    database: Option<String>,
+    /// Refuse changed SQL before authentication or connection.
+    #[arg(long)]
+    expect_sql_sha256: Option<String>,
+    /// Refuse changed profile endpoint before authentication or connection.
+    #[arg(long)]
+    expect_target_fingerprint: Option<String>,
     #[command(flatten)]
     input: SqlInput,
     #[command(flatten)]
@@ -278,6 +297,7 @@ enum SqlCommand {
 
 fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
+    let json_errors = matches!(cli.command, Command::Workspace(_) | Command::Agent { .. });
     let cancelled = Arc::new(AtomicBool::new(false));
     let signal = cancelled.clone();
     if let Err(e) = ctrlc::set_handler(move || {
@@ -289,7 +309,14 @@ fn main() -> std::process::ExitCode {
     match run(cli, &cancelled) {
         Ok(()) => 0.into(),
         Err(e) => {
-            eprintln!("dbide: {}", e.message);
+            if json_errors {
+                println!(
+                    "{}",
+                    serde_json::json!({"schema_version":1,"ok":false,"error":{"code":e.machine_code,"message":e.message}})
+                );
+            } else {
+                eprintln!("dbide: {}", e.message);
+            }
             e.code.into()
         }
     }
@@ -318,10 +345,21 @@ fn sql(input: SqlInput) -> Result<String> {
     let value = if let Some(value) = input.sql {
         value
     } else if let Some(path) = input.file {
-        read_bounded(
-            fs::File::open(path).map_err(config)?,
-            dbide_profiles::MAX_SQL_BYTES,
-        )?
+        let mut options = fs::OpenOptions::new();
+        options.read(true);
+        // Opening a replaced FIFO must not block before the descriptor's type check.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.custom_flags(libc::O_NONBLOCK);
+        }
+        let file = options.open(path).map_err(config)?;
+        if !file.metadata().map_err(config)?.is_file() {
+            return Err(config(
+                "SQL --file input must be a regular file; nothing submitted",
+            ));
+        }
+        read_bounded(file, dbide_profiles::MAX_SQL_BYTES)?
     } else {
         read_bounded(io::stdin().lock(), dbide_profiles::MAX_SQL_BYTES)?
     };
@@ -465,6 +503,12 @@ fn apply(fields: ProfileFields, p: &mut ConnectionProfile, editing: bool) -> Res
     p.validate().map_err(config)
 }
 fn run(cli: Cli, cancelled: &AtomicBool) -> Result<()> {
+    if let Command::Workspace(command) = cli.command {
+        return workspace::run(command, cli.config);
+    }
+    if let Command::Agent { command } = cli.command {
+        return workspace::agent(command);
+    }
     if let Command::Sql {
         command:
             SqlCommand::Format {
@@ -590,6 +634,7 @@ fn run(cli: Cli, cancelled: &AtomicBool) -> Result<()> {
         Command::Schema(s) => schema(&store, s, cancelled),
         Command::Catalog { .. } => unreachable!(),
         Command::Sql { .. } => unreachable!(),
+        Command::Workspace(_) | Command::Agent { .. } => unreachable!(),
     }
 }
 fn catalog(profile_path: PathBuf, command: CatalogCommand) -> Result<()> {
@@ -732,10 +777,39 @@ fn query(store: &ProfileStore, q: Query, cancelled: &AtomicBool) -> Result<()> {
     if matches!(q.format, Format::Csv) && q.null_marker.is_empty() {
         return Err(config("CSV NULL marker must not be empty"));
     }
-    output::check(&q.destination)?;
     let sql = sql(q.input)?;
+    if q.expect_sql_sha256
+        .as_deref()
+        .is_some_and(|expected| expected != dbide_project::digest_sql(&sql))
+    {
+        return Err(config("SQL SHA-256 changed; nothing submitted"));
+    }
     let state = store.load().map_err(config)?;
     let mut p = profile(&state, q.profile.as_deref())?;
+    if q.expect_target_fingerprint.is_some() {
+        workspace::validate_target_profile(&p)?;
+    }
+    if let Some(database) = q.database {
+        if p.engine == DatabaseEngine::Sqlite && database != "main" {
+            return Err(config("SQLite database must be main; nothing submitted"));
+        }
+        if p.engine != DatabaseEngine::Sqlite {
+            p.database = database;
+        }
+    }
+    let database = if p.engine == DatabaseEngine::Sqlite {
+        "main"
+    } else {
+        &p.database
+    };
+    let original_target = StoredExecutionTarget::capture(&p, database).map_err(config)?;
+    if q.expect_target_fingerprint
+        .as_deref()
+        .is_some_and(|expected| expected != original_target.endpoint_fingerprint)
+    {
+        return Err(config("target fingerprint changed; nothing submitted"));
+    }
+    output::check(&q.destination)?;
     p.read_only |= q.read_only;
     let id = p.id.clone();
     // Capture the exact submitted request before ownership passes to the worker;

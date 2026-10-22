@@ -26,6 +26,7 @@ impl Default for ResultSnapshot {
     }
 }
 pub struct SqlDocument {
+    pub project_root: Option<std::path::PathBuf>,
     pub model: DocumentModel,
     pub required_profile_id: Option<String>,
     pub session: dbide_ui_spike::console_session::ConsoleSession,

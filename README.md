@@ -22,6 +22,10 @@ DataGrip의 주요 작업 흐름을 Rust 데스크톱 앱으로 독립 재구현
 [DataGrip 기능 비교와 남은 항목](docs/DATAGRIP-GAPS-2026-10-22.md), [UX 조사](docs/UX-RESEARCH.md)와 [제품 backlog](docs/PRODUCT-BACKLOG.md)에
 구현 상태와 검증 조건을 분리해 기록한다.
 
+폴더 워크스페이스에서 실제 SQL 파일·폴더를 관리하고, 기본 연결·최근 폴더·저장 충돌 보호를 제공한다.
+AI 에이전트는 `dbide agent capabilities`와 `workspace context/plan`으로 명령·작업 대상·실행 전 해시를 확인할 수 있다.
+[워크스페이스·에이전트 사용법](docs/WORKSPACES.md)과 [DB 도구 비교](docs/DB-TOOL-BENCHMARK-2026-10-22.md).
+
 ## 읽는 순서
 
 1. [구현 계획](docs/PLAN.md) — 결정, 단계, 첫 작업, 완료 조건

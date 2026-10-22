@@ -4,6 +4,7 @@ pub mod explorer_model;
 pub mod history_model;
 pub mod navigator;
 pub mod object_finder_model;
+pub mod project_files;
 pub mod recovery_model;
 pub mod result_find_model;
 pub mod selection_execution;

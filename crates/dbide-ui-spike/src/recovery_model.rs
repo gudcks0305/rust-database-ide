@@ -19,6 +19,7 @@ mod tests {
     #[test]
     fn recovery_preserves_unsaved_multiline_and_maximum_id_without_reading_file() {
         let snapshot = DocumentSnapshot {
+            project_root: None,
             id: u64::MAX,
             title: "draft.sql".into(),
             sql: "SELECT 'new\\nvalue';\r\n".into(),
@@ -39,6 +40,7 @@ mod tests {
     fn clean_file_baseline_stays_clean_without_reopening_original() {
         let sql = "-- 한글\r\nSELECT 1;";
         let (model, restored) = restore_document(DocumentSnapshot {
+            project_root: None,
             id: 1,
             title: "query.sql".into(),
             sql: sql.into(),

@@ -13,7 +13,7 @@
 | F05 | Auto/Manual transaction·isolation·savepoint·read-only | M1–M2 | submit/commit/rollback 구별, 실패한 transaction 복구 | D04 | partial — 실제 state/Auto/Manual/rollback; isolation UI 남음 |
 | F06 | schema/catalog introspection·범위·증분 refresh | M1–M2 | 전체/선택/변경분 조회와 취소, cache generation 검증 | D05 | partial — PG/MySQL/SQLite lazy scoped metadata, private cache; 사용자 선택 schema scope와 변경분 introspection 남음 |
 | F07 | Explorer·객체 검색·필터·DDL/source | M1–M2 | lazy tree, stale/미조회 상태, object identity 보존 | D05 | partial — lazy tree·loaded-object search·저장 메타데이터 finder와 일부 DDL; schema/object scope filter와 전체 DDL/source workflow 남음 |
-| F08 | SQL 탭·console·scratch·datasource/schema context | M1 | 저장/재시작 복구, 잘못된 DB 실행 방지하는 명확한 context | D06 | partial — SQL 파일 탭·dirty 보호; restart 복원 통합 중 |
+| F08 | SQL 탭·console·scratch·datasource/schema context | M1 | 저장/재시작 복구, 잘못된 DB 실행 방지하는 명확한 context | D06 | partial — SQL 파일 탭·dirty 보호·대상 복구·폴더 workspace; 프로젝트별 독립 탭 세트 남음 |
 | F09 | dialect syntax·highlight·statement boundary | M1–M3 | quotes/comments/procedure/dollar quote/미완성 구문 corpus | D06,D09 | experimental |
 | F10 | semantic completion·alias/CTE/scope·type resolution | M3 | catalog/context별 정답 fixture, stale 결과 폐기 | D09,D10 | partial — catalog/alias/CTE 명시 completion; type resolution 제한 |
 | F11 | inspections·diagnostics·quick fixes | M3 | syntax/semantic/server 오류 분리, fix preview | D09 | partial — syntax/catalog diagnostics; quick fixes 제한 |
@@ -39,7 +39,7 @@
 | F31 | EXPLAIN/ANALYZE·tree/graph | M2 basic / M4 | plan-only와 실제 실행 구분, 엔진별 의미 보존 | D14 | partial — PG plan-only; ANALYZE/기타 엔진 남음 |
 | F32 | charts·aggregate view | M4 | 타입/표본 범위 명시, 큰 결과 UI 중단 없음 | D07 | planned |
 | F33 | DDL files/offline datasource | M4 | 오프라인 catalog 생성, 실제 DB와 구분 | D15 | partial — constrained DDL offline parser; dialect 확대 남음 |
-| F34 | Git/local history·프로젝트·검색/replace | M2 basics / M4 | 파일 변경/복구, credential과 버전관리 분리 | D09 | planned |
+| F34 | Git/local history·프로젝트·검색/replace | M2 basics / M4 | 파일 변경/복구, credential과 버전관리 분리 | D09 | partial — 폴더 workspace·SQL 파일 관리·GUI/CLI CAS 저장; Git/local history와 SQL 검색/replace 남음 |
 | F35 | MongoDB document/collection query | M5 | BSON/JSON 타입과 namespace, 문서 기반 capability | D16 | planned |
 | F36 | Redis key browser/command/cluster | M5 | key type/TTL/cluster 차이, table 가정 없음 | D16 | planned |
 | F37 | warehouse/cloud·enterprise engine 확장 | M5 | engine/version/auth/type/metadata별 검증 | D01 | planned |

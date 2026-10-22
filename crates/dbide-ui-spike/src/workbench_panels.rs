@@ -55,6 +55,13 @@ impl Workbench {
                             .child(
                                 Button::new(("document", id as usize))
                                     .label(title)
+                                    .tooltip(
+                                        doc.model
+                                            .path
+                                            .as_ref()
+                                            .map(|p| p.display().to_string())
+                                            .unwrap_or_else(|| doc.model.title.clone()),
+                                    )
                                     .small()
                                     .ghost()
                                     .on_click(
@@ -98,7 +105,7 @@ impl Workbench {
                             })),
                     )
                     .child(self.open_tabs_menu(cx))
-                    .child(self.file_command_menu()),
+                    .child(self.file_command_menu(cx)),
             )
     }
     fn open_tabs_menu(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -121,11 +128,24 @@ impl Workbench {
                     .target()
                     .map(|p| format!("{} / {}", p.name, p.database))
                     .unwrap_or_else(|| if ko { "연결 없음" } else { "Unbound" }.into());
-                (
-                    false,
-                    d.model.id,
-                    format!("{}{} · {}", d.model.title, dirty, target),
-                )
+                let location = d
+                    .project_root
+                    .as_ref()
+                    .and_then(|root| {
+                        d.model
+                            .path
+                            .as_ref()
+                            .and_then(|p| p.strip_prefix(root).ok())
+                            .map(|relative| {
+                                format!(
+                                    "{} / {}",
+                                    root.file_name().unwrap_or_default().to_string_lossy(),
+                                    relative.display()
+                                )
+                            })
+                    })
+                    .unwrap_or_else(|| d.model.title.clone());
+                (false, d.model.id, format!("{location}{dirty} · {target}"))
             })
             .collect();
         entries.extend(self.table_tabs.iter().map(|t| {
@@ -368,7 +388,9 @@ impl Workbench {
             })
             .into_any_element()
     }
-    fn file_command_menu(&self) -> AnyElement {
+    fn file_command_menu(&self, cx: &mut Context<Self>) -> AnyElement {
+        let recent = self.recent_projects();
+        let view = cx.weak_entity();
         let locale = self.locale;
         let active = self.sql_view_active();
         Button::new("file-command-menu")
@@ -380,19 +402,60 @@ impl Workbench {
                 "File ▾"
             })
             .dropdown_menu(move |menu, _, _| {
-                menu.item(
-                    PopupMenuItem::new(tr(locale, Message::Open)).action(Box::new(OpenSqlFile)),
-                )
-                .item(
-                    PopupMenuItem::new(tr(locale, Message::Save))
-                        .disabled(!active)
-                        .action(Box::new(SaveSqlFile)),
-                )
-                .item(
-                    PopupMenuItem::new(tr(locale, Message::SaveAs))
-                        .disabled(!active)
-                        .action(Box::new(SaveSqlAs)),
-                )
+                let mut menu = menu
+                    .item(
+                        PopupMenuItem::new(if locale == Locale::Ko {
+                            "새 워크스페이스…"
+                        } else {
+                            "New workspace…"
+                        })
+                        .action(Box::new(NewProject)),
+                    )
+                    .item(
+                        PopupMenuItem::new(if locale == Locale::Ko {
+                            "워크스페이스 열기…"
+                        } else {
+                            "Open workspace…"
+                        })
+                        .action(Box::new(OpenProject)),
+                    )
+                    .separator()
+                    .item(
+                        PopupMenuItem::new(tr(locale, Message::Open)).action(Box::new(OpenSqlFile)),
+                    )
+                    .item(
+                        PopupMenuItem::new(tr(locale, Message::Save))
+                            .disabled(!active)
+                            .action(Box::new(SaveSqlFile)),
+                    )
+                    .item(
+                        PopupMenuItem::new(tr(locale, Message::SaveAs))
+                            .disabled(!active)
+                            .action(Box::new(SaveSqlAs)),
+                    );
+                if !recent.is_empty() {
+                    menu = menu.separator();
+                }
+                for root in &recent {
+                    let root = root.clone();
+                    let view = view.clone();
+                    menu = menu.item(
+                        PopupMenuItem::new(format!(
+                            "{} · {}",
+                            if locale == Locale::Ko {
+                                "최근"
+                            } else {
+                                "Recent"
+                            },
+                            root.display()
+                        ))
+                        .on_click(move |_, w, cx| {
+                            let _ = view
+                                .update(cx, |s, cx| s.activate_project(root.clone(), false, w, cx));
+                        }),
+                    );
+                }
+                menu
             })
             .into_any_element()
     }

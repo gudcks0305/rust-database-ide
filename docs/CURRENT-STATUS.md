@@ -7,6 +7,14 @@ The [42 feature groups](FEATURE-MATRIX.md) remain the full backlog.
 session correctness gaps are being addressed before wider integration. PostgreSQL row Apply remains disabled because namespace
 rebinding acceptance has not passed; model/batch tests do not override that blocker.
 
+## Folder workspaces and agent contracts
+
+Versioned `.dbide/project.json` plus ordinary SQL files now support explicit folder workspaces. The Files sidebar browses one directory at a time, creates SQL files/folders, preserves existing tabs on workspace switch, defaults Save As to the project directory, and persists recent/current roots privately. New file tabs resolve the project's exact default target or remain unbound; opening never connects or executes. GUI and CLI project saves share a nonblocking writer lock and content-hash comparison. Save As remains create-only inside any known project, including an inactive source project. Recovery schema3 preserves document project ownership and migrates schemas1/2 without reading source paths.
+
+`dbide workspace init/show/files/read/write/mkdir/bind/context/plan` and `agent capabilities` provide versioned JSON. Context omits SQL/history/rows; explicit read returns SQL. Plan only produces argv with absolute file/config paths, explicit database and expected SQL/endpoint hashes. Guarded execution validates them before authentication/dispatch; relative SQLite file targets are refused. Existing read-only MCP scope is unchanged. See [workspace contracts](WORKSPACES.md), [official-tool comparison](DB-TOOL-BENCHMARK-2026-10-22.md), and `evidence/folder-workspace-qa.json` for dated verification.
+
+Limits: single-root browser,512 returned entries/4096 scanned per directory,64KiB SQL, no filesystem watcher/Git integration/isolated tab sets per project/multiple attached roots. Non-cooperating file writers and malicious concurrent directory swaps are outside the cooperative lock guarantee.
+
 ## UI refinement and retained-result search
 
 The result toolbar now opens a local text finder (`Cmd+Option+F`, or `Cmd+F` with the query grid focused). Enter searches the retained page off the UI thread; subsequent Enter/Shift+Enter and arrows move between matching cells. Searches never fetch from the database. Limits:100,000 cells,8MiB original text,64KiB per cell and1,000 matches; clipped scans are explicitly partial. SQL NULL is excluded from text search, while literal `NULL` is searchable. Case-insensitive matching uses Unicode lowercase, not normalization/full case folding. Changing the result page invalidates the search, and callbacks check exact page identity before selecting.

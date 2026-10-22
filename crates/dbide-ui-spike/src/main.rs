@@ -5,6 +5,8 @@ mod history_panel;
 mod native_menus;
 mod object_finder;
 mod preferences;
+mod project_host;
+mod project_panel;
 mod result_find;
 mod result_search;
 mod result_tools;
@@ -90,6 +92,8 @@ actions!(
         ToggleCatalog,
         NewSqlFile,
         OpenSqlFile,
+        OpenProject,
+        NewProject,
         SaveSqlFile,
         SaveSqlAs,
         CloseSqlTab
@@ -393,6 +397,8 @@ impl Diagnostic {
     }
 }
 struct Workbench {
+    project: project_host::ProjectHost,
+    saving_documents: HashSet<u64>,
     editor: Entity<EditorState>,
     documents: Vec<SqlDocument>,
     active_document: u64,
@@ -624,7 +630,10 @@ impl Workbench {
             cx.new(|cx| InputState::new(window, cx).placeholder("New alias or CTE name"));
         let mut this = Self {
             editor: editor.clone(),
+            project: project_host::ProjectHost::default(),
+            saving_documents: HashSet::new(),
             documents: vec![SqlDocument {
+                project_root: None,
                 model: DocumentModel::new(1, "console.sql".into(), initial_source),
                 required_profile_id: None,
                 session: ConsoleSession::new(1),
@@ -779,7 +788,7 @@ impl Workbench {
                 },
                 cx,
             );
-        } else {
+        } else if this.workspace.profiles.is_empty() {
             this.form = Some(ProfileForm::new(ConnectionProfile::new(), "", window, cx));
         }
         if let Some(form) = &this.form {
@@ -791,6 +800,7 @@ impl Workbench {
         this.navigator.sync_profiles(&this.workspace.profiles);
         this.init_settings(cx);
         this.init_recovery(window, cx);
+        this.init_projects(window, cx);
         this
     }
     fn install_source(&mut self, source: GridSource, cx: &mut Context<Self>) {
@@ -1826,7 +1836,7 @@ impl Render for Workbench {
         let busy = self.busy();
         let query_busy = self.console().busy();
         let query_configured = self.console().target().is_some();
-        let sidebar = div()
+        let mut sidebar = div()
             .w(px(self.app_settings.sidebar_width as f32))
             .flex_shrink_0()
             .bg(rgb(PANEL))
@@ -1834,6 +1844,7 @@ impl Render for Workbench {
             .border_color(rgb(BORDER))
             .flex()
             .flex_col()
+            .child(self.sidebar_mode_bar(cx))
             .child(
                 div()
                     .h(px(48.))
@@ -1879,6 +1890,10 @@ impl Render for Workbench {
                     ))
                     .child(self.sidebar_tools_menu(cx)),
             );
+
+        if self.project.show_files {
+            sidebar = self.project_sidebar(cx);
+        }
 
         let result_body = div()
             .id("result-grid")
@@ -2301,6 +2316,8 @@ impl Render for Workbench {
             .on_action(cx.listener(Self::open_preferences_action))
             .on_action(cx.listener(Self::new_sql_action))
             .on_action(cx.listener(Self::open_sql_action))
+            .on_action(cx.listener(Self::open_project_action))
+            .on_action(cx.listener(Self::new_project_action))
             .on_action(cx.listener(Self::save_sql_action))
             .on_action(cx.listener(Self::save_sql_as_action))
             .on_action(cx.listener(Self::close_sql_action))
@@ -2503,6 +2520,8 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                 fallback_action!(Quit, quit_action, false);
                 fallback_action!(OpenPreferences, open_preferences_action, false);
                 fallback_action!(OpenSqlFile, open_sql_action, true);
+                fallback_action!(OpenProject, open_project_action, false);
+                fallback_action!(NewProject, new_project_action, false);
                 fallback_action!(NewSqlFile, new_sql_action, true);
                 fallback_action!(SaveSqlFile, save_sql_action, true);
                 fallback_action!(SaveSqlAs, save_sql_as_action, true);
