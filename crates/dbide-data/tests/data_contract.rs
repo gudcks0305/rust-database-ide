@@ -57,6 +57,105 @@ fn csv_roundtrips_null_empty_quotes_newlines_and_unicode() {
 }
 
 #[test]
+fn incremental_csv_matches_existing_contract_and_poisoned_encoder_cannot_finish() {
+    let data = table_data(vec![
+        vec![text("1"), Cell::Null],
+        vec![text("2"), text("")],
+        vec![text("3"), text("한글,\"quoted\"\nline")],
+    ]);
+    let mut incremental = Vec::new();
+    let mut writer = CsvStreamWriter::new(
+        &mut incremental,
+        &data.columns,
+        &CsvOptions::default(),
+        limits(),
+    )
+    .unwrap();
+    for row in &data.rows {
+        writer.write_row(row).unwrap();
+    }
+    writer.finish().unwrap();
+    let mut existing = Vec::new();
+    write_csv(
+        &mut existing,
+        &data.columns,
+        &data.rows,
+        &CsvOptions::default(),
+        limits(),
+    )
+    .unwrap();
+    assert_eq!(incremental, existing);
+    let mut writer = CsvStreamWriter::new(
+        Vec::new(),
+        &columns(&["v"]),
+        &CsvOptions::default(),
+        limits(),
+    )
+    .unwrap();
+    assert!(writer.write_row(&[text("\\N")]).is_err());
+    assert!(writer.write_row(&[text("later")]).is_err());
+    assert!(writer.finish().is_err());
+}
+
+#[test]
+fn incremental_csv_surfaces_partial_writer_and_final_flush_failures() {
+    struct FailingWrite;
+    impl std::io::Write for FailingWrite {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other("owned writer failure"))
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut writer = CsvStreamWriter::new(
+        FailingWrite,
+        &columns(&["v"]),
+        &CsvOptions::default(),
+        limits(),
+    )
+    .unwrap();
+    assert!(writer.write_row(&[text(&"x".repeat(20_000))]).is_err());
+    assert!(writer.finish().is_err());
+    let mut writer = CsvStreamWriter::new(
+        FailingWrite,
+        &columns(&["v"]),
+        &CsvOptions::default(),
+        limits(),
+    )
+    .unwrap();
+    writer.write_row(&[text("buffered")]).unwrap();
+    assert!(writer.finish().is_err());
+}
+
+#[test]
+fn incremental_csv_null_marker_expansion_hits_output_cap_and_poisoned_finish() {
+    let columns = columns(&["v"; 64]);
+    let options = CsvOptions {
+        null_marker: Some("n".repeat(4096)),
+        ..CsvOptions::default()
+    };
+    let mut writer = CsvStreamWriter::new(
+        Vec::new(),
+        &columns,
+        &options,
+        Limits {
+            max_rows: 1,
+            max_bytes: 512,
+        },
+    )
+    .unwrap();
+    // Logical header/NULL payload fits; expanded markers exceed the encoded
+    // cap. Only the current field is expanded before that cap stops encoding.
+    let error = writer.write_row(&vec![Cell::Null; 64]).unwrap_err();
+    assert!(
+        error.to_string().contains("encoded output byte budget"),
+        "{error}"
+    );
+    assert!(writer.finish().is_err());
+}
+
+#[test]
 fn csv_null_marker_collision_is_rejected_and_configurable() {
     let data = table_data(vec![vec![text("1"), text("\\N")]]);
     assert!(

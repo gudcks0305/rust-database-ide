@@ -20,6 +20,7 @@ dbide-profiles = { path = "../dbide-profiles" }
 dbide-project = { path = "../dbide-project" }
 dbide-settings = { path = "../dbide-settings" }
 dbide-sql = { path = "../dbide-sql" }
+dbide-sqlite = { path = "../dbide-sqlite" }
 serde_json = "1"
 tempfile = "3"
 

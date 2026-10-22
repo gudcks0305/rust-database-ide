@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "workspace_tests": {
+    "passed": 461,
+    "failed": 0,
+    "ignored": 62
+  },
+  "checks": [
+    "cargo fmt --all -- --check",
+    "uv run --python >=3.14 scripts/verify_project.py",
+    "cargo test --workspace",
+    "cargo clippy --workspace --all-targets -- -D warnings",
+    "cargo clippy -p dbide-ui-spike --features ui-profiler --all-targets -- -D warnings",
+    "bash scripts/package-ui.sh",
+    "cargo build --release -p dbide-cli",
+    "git diff --check"
+  ],
+  "native_default_release": {
+    "owned_sqlite_connect_then_execute": true,
+    "retained_rows": 2,
+    "ui_profiler_enabled": false,
+    "binary_sha256": "3404b0d435a1a4ba71ca28707770dbe6320cb652322d298ad750a3caf79fc06e"
+  },
+  "independent_review": {
+    "ui": "no actionable findings",
+    "export": "rollback journal destination and nonUTF8 path findings fixed, NULL marker expansion memory improved; fixes re-reviewed"
+  },
+  "limitations": [
+    "Ignored live tests were not run.",
+    "Remote CI remains inactive because workflow permission is unavailable.",
+    "PG/MySQL streaming and GUI progressive fetch are not implemented.",
+    "Physical IME, VoiceOver and GPU completion not validated."
+  ]
+}

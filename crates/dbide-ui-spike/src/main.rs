@@ -11,6 +11,7 @@ mod result_find;
 mod result_search;
 mod result_tools;
 mod table_tabs;
+mod ui_profiler;
 mod value_inspector;
 mod workbench_shell;
 use dbide_i18n::{Locale, Message, tr};
@@ -67,6 +68,7 @@ actions!(
     [
         Quit,
         ReportMetrics,
+        ResetUiMetrics,
         CopyCell,
         RunQuery,
         RunCurrent,
@@ -114,6 +116,7 @@ enum GridSource {
     Postgres(Rc<ResultPage>),
 }
 struct ResultGrid {
+    raw_preview: bool,
     locale: Locale,
     source: GridSource,
     selected_cell: Option<(usize, usize)>,
@@ -126,9 +129,20 @@ impl ResultGrid {
     fn new(source: GridSource) -> Self {
         let names: Vec<String> = match &source {
             GridSource::Logical => (0..LOGICAL_COLUMNS).map(column_name).collect(),
-            GridSource::Postgres(page) => page.columns.clone(),
+            GridSource::Postgres(page) => page
+                .columns
+                .iter()
+                .map(|name| {
+                    if ui_profiler::raw_grid_enabled() {
+                        name.clone()
+                    } else {
+                        dbide_ui_spike::grid_presentation::bounded_label(name, 128)
+                    }
+                })
+                .collect(),
         };
         Self {
+            raw_preview: ui_profiler::raw_grid_enabled(),
             locale: Locale::default(),
             columns: dbide_ui_spike::result_grid_columns(names),
             source,
@@ -275,7 +289,40 @@ impl TableDelegate for ResultGrid {
         use gpui_component::menu::ContextMenuExt;
         let grid = cx.entity();
         self.cell_render_calls += 1;
-        let value = self.value(row, col);
+        let preview = if self.raw_preview {
+            None
+        } else {
+            Some(match &self.source {
+                GridSource::Postgres(page) => dbide_ui_spike::grid_presentation::present_cell(
+                    page.rows
+                        .get(row)
+                        .and_then(|r| r.get(col))
+                        .and_then(Option::as_deref),
+                ),
+                GridSource::Logical => {
+                    let value = self.value(row, col);
+                    dbide_ui_spike::grid_presentation::present_cell(if self.is_null(row, col) {
+                        None
+                    } else {
+                        Some(&value)
+                    })
+                }
+            })
+        };
+        let value = preview
+            .as_ref()
+            .map(|p| p.display.clone())
+            .unwrap_or_else(|| self.value(row, col));
+        let accessibility_value = preview
+            .as_ref()
+            .map(|p| p.accessibility_value.clone())
+            .unwrap_or_else(|| value.clone());
+        let clipped = preview.as_ref().is_some_and(|p| p.clipped);
+        let original_bytes = preview
+            .as_ref()
+            .and_then(|p| p.original_bytes)
+            .unwrap_or(value.len());
+        let locale = self.locale;
         let selected = self.selected_cell == Some((row, col));
         div()
             .id(("cell", row * self.columns.len().max(1) + col))
@@ -287,19 +334,30 @@ impl TableDelegate for ResultGrid {
                 "{}, row {}: {}",
                 self.columns[col].name,
                 row + 1,
-                if value.is_empty() {
-                    "empty text"
-                } else {
-                    &value
-                }
+                accessibility_value
             ))
-            .aria_value(value.clone())
+            .aria_value(accessibility_value)
             .size_full()
             .overflow_hidden()
             .text_ellipsis()
             .text_size(px(12.))
             .text_color(rgb(if self.is_null(row, col) { MUTED } else { TEXT }))
             .child(value)
+            .when(clipped, |el| {
+                use gpui_component::tooltip::Tooltip;
+                el.tooltip(move |w, cx| {
+                    Tooltip::new(if locale == Locale::Ko {
+                        format!(
+                            "미리보기 · 원문 {original_bytes} bytes · 더블클릭하여 값 검사기 열기"
+                        )
+                    } else {
+                        format!(
+                            "Preview · original {original_bytes} bytes · double-click to inspect"
+                        )
+                    })
+                    .build(w, cx)
+                })
+            })
             .context_menu(move |menu, window, cx| {
                 grid.update(cx, |state, cx| {
                     state.set_selected_cell(row, col, cx);
@@ -397,6 +455,7 @@ impl Diagnostic {
     }
 }
 struct Workbench {
+    ui_profiler: ui_profiler::UiProfiler,
     project: project_host::ProjectHost,
     saving_documents: HashSet<u64>,
     editor: Entity<EditorState>,
@@ -630,6 +689,7 @@ impl Workbench {
             cx.new(|cx| InputState::new(window, cx).placeholder("New alias or CTE name"));
         let mut this = Self {
             editor: editor.clone(),
+            ui_profiler: ui_profiler::UiProfiler::default(),
             project: project_host::ProjectHost::default(),
             saving_documents: HashSet::new(),
             documents: vec![SqlDocument {
@@ -804,6 +864,7 @@ impl Workbench {
         this
     }
     fn install_source(&mut self, source: GridSource, cx: &mut Context<Self>) {
+        self.ui_profiler.grid_installed();
         self.result_find = None;
         self.result_find_subscription = None;
         self.grid.update(cx, |grid, cx| {
@@ -1438,12 +1499,25 @@ impl Workbench {
             limitations: "Root render/forced-redraw intervals are not key-to-paint/GPU presentation. Ranges describe rendered cells including partial/overscan, columns normalized after pinned ID. Accessibility semantics exist but VoiceOver/IME require native validation. No performance parity claim.",
         }
     }
-    fn report_metrics(&mut self, _: &ReportMetrics, _: &mut Window, cx: &mut Context<Self>) {
+    fn report_metrics(&mut self, _: &ReportMetrics, window: &mut Window, cx: &mut Context<Self>) {
+        let mut metrics = serde_json::to_value(self.metrics(cx)).expect("serialize metrics");
+        metrics["ui_profiler"] = self.ui_profiler.report(window);
         println!(
             "{}",
-            serde_json::to_string(&self.metrics(cx)).expect("serialize metrics")
+            serde_json::to_string(&metrics).expect("serialize metrics")
         );
         self.status = "Metrics written to stdout".into();
+        cx.notify();
+    }
+    fn reset_ui_metrics(
+        &mut self,
+        _: &ResetUiMetrics,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.ui_profiler.reset(window);
+        self.frame_intervals.clear();
+        self.last_frame = None;
         cx.notify();
     }
     fn copy_cell(&mut self, _: &CopyCell, w: &mut Window, cx: &mut Context<Self>) {
@@ -2323,6 +2397,7 @@ impl Render for Workbench {
             .on_action(cx.listener(Self::close_sql_action))
             .on_action(cx.listener(Self::quit_action))
             .on_action(cx.listener(Self::report_metrics))
+            .on_action(cx.listener(Self::reset_ui_metrics))
             .on_action(cx.listener(Self::run_query))
             .on_action(cx.listener(Self::cancel_query_action))
             .on_action(cx.listener(Self::run_current_action))
@@ -2354,6 +2429,7 @@ impl Render for Workbench {
             .on_mouse_move(cx.listener(Self::resize_move))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::resize_end))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::resize_end))
+            .relative()
             .child(body)
             .child(
                 div()
@@ -2391,6 +2467,14 @@ impl Render for Workbench {
                         },
                     )),
             )
+            .when(cfg!(feature = "ui-profiler"), |root| {
+                let probe = self.ui_profiler.paint_probe();
+                root.child(
+                    canvas(|_, _, _| (), move |_, _, _, _| probe.painted())
+                        .absolute()
+                        .size_full(),
+                )
+            })
             .into_any_element()
     }
 }
@@ -2449,6 +2533,7 @@ fn main() {
             KeyBinding::new("cmd-,", OpenPreferences, None),
             KeyBinding::new("cmd-,", OpenPreferences, Some("Input")),
             KeyBinding::new("cmd-shift-m", ReportMetrics, None),
+            KeyBinding::new("cmd-alt-shift-m", ResetUiMetrics, None),
             KeyBinding::new("cmd-c", CopyCell, Some("FixtureGrid")),
             KeyBinding::new("cmd-enter", RunQuery, None),
             KeyBinding::new("cmd-enter", RunQuery, Some("Input")),
@@ -2518,6 +2603,7 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                     }};
                 }
                 fallback_action!(Quit, quit_action, false);
+                fallback_action!(ResetUiMetrics, reset_ui_metrics, false);
                 fallback_action!(OpenPreferences, open_preferences_action, false);
                 fallback_action!(OpenSqlFile, open_sql_action, true);
                 fallback_action!(OpenProject, open_project_action, false);

@@ -1,6 +1,8 @@
 //! Native SQLite adapter. One connection belongs to one background worker.
 //! Native Batch/cancel invariants extend the repository-owned M0 SQLite spike.
+mod export;
 use dbide_profiles::{ConnectionRequest, DatabaseEngine};
+pub use export::*;
 use rusqlite::{
     Batch, Connection, ErrorCode, OpenFlags,
     fallible_iterator::FallibleIterator,

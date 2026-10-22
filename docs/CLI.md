@@ -1,13 +1,16 @@
 # Native CLI
 
+SQLite 파일의 독립 읽기 전용 CSV 스트리밍: `dbide export --profile ID --file QUERY.sql --output NEW.csv`.
+보관 상한보다 큰 결과도 행 단위로 기록하며 성공한 파일만 공개한다. [별도 연결·유한 예산·취소 계약](STREAMING-EXPORT.md)을 참고한다.
+
 Folder workspaces: `dbide workspace init/show/files/read/write/mkdir/bind/context/plan --root PATH`.
 Agent discovery: `dbide agent capabilities`. These return versioned JSON and do not connect.
 See [WORKSPACES.md](WORKSPACES.md) for exact create-only/CAS write and planned-query contracts.
 `query` also accepts `--database`, `--expect-sql-sha256` and `--expect-target-fingerprint` to reject changed inputs before authentication/dispatch.
 
 `dbide-cli`는 GUI와 같은 `dbide-profiles` 저장소, `DatabaseBridge`, PostgreSQL /
-SQLite / MySQL native adapter를 사용한다. JVM·GUI 실행 없이 동작한다. 속도 우위는
-아직 측정하지 않았다. 현재는 bounded 결과를 반환하는 CLI이며 무제한 streaming dump는 아니다.
+SQLite / MySQL native adapter를 사용한다. JVM·GUI 실행 없이 동작한다. DataGrip과의
+속도 비교는 아직 하지 않았다. `query`는 bounded 결과를 반환하며, SQLite `export`도 유한 예산을 적용한다.
 
 ## 바로 실행
 

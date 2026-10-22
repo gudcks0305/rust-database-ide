@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "binary_sha256": "7efebcc6263059be25b6de6f8c307c48a6b3e03af26d7da6513f05f3c8954989",
+  "build": "release CLI, final reviewed implementation",
+  "metric_definition": "Fresh CLI process; /usr/bin/time -l maximum resident set size in bytes on macOS. Python perf_counter wall includes time wrapper, CLI setup, SQLite execution, CSV encoding/fsync/publication and stdout. One run per size; owned generated SQLite only. Row-by-row CSV verification and output digest calculation occur after timing and are excluded from the CLI RSS sample. First binary launch was the 6000-row case; OS cache/signature warmup was not controlled. Wall times are single observations, not throughput comparisons. No concurrent builds/benchmarks. Not a hard memory bound for arbitrary SQLite queries.",
+  "cases": [
+    {
+      "rows": 6000,
+      "sql": "WITH RECURSIVE n(v) AS (VALUES(1) UNION ALL SELECT v+1 FROM n WHERE v<6000) SELECT v AS id, printf('%0100d',v) AS payload FROM n",
+      "wall_seconds": 0.47411820897832513,
+      "maximum_resident_set_size_bytes": 9519104,
+      "encoded_bytes": 634904,
+      "sha256": "1b7302c601b861a37a3b5cd06376a963cc9f2101380e8d0a1dd8fdbd548d9a83",
+      "every_row_verified": true,
+      "final_row_id": 6000,
+      "source_unchanged": true,
+      "summary": {
+        "encoded_bytes": 634904,
+        "format": "csv",
+        "independent_connection": true,
+        "ok": true,
+        "payload_bytes": 648009,
+        "read_only": true,
+        "rows": 6000,
+        "schema_version": 1,
+        "sql_sha256": "d42f5106201627fa4279746d958c009889c548d25b6ac4024b327e11857bc1eb"
+      }
+    },
+    {
+      "rows": 500000,
+      "sql": "WITH RECURSIVE n(v) AS (VALUES(1) UNION ALL SELECT v+1 FROM n WHERE v<500000) SELECT v AS id, printf('%0100d',v) AS payload FROM n",
+      "wall_seconds": 0.21235229168087244,
+      "maximum_resident_set_size_bytes": 9535488,
+      "encoded_bytes": 53888906,
+      "sha256": "b39220020b5dd4f88d0ad93c5dca5d9b378098bfe51f5365faac87e522e27e15",
+      "every_row_verified": true,
+      "final_row_id": 500000,
+      "source_unchanged": true,
+      "summary": {
+        "encoded_bytes": 53888906,
+        "format": "csv",
+        "independent_connection": true,
+        "ok": true,
+        "payload_bytes": 54000009,
+        "read_only": true,
+        "rows": 500000,
+        "schema_version": 1,
+        "sql_sha256": "8502574649bdc71973e00159ab4e17b1fc8953240a45ea2dd2c1ec2b4a7ff58b"
+      }
+    }
+  ]
+}

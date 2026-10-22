@@ -41,7 +41,7 @@ impl Default for CsvOptions {
     }
 }
 impl CsvOptions {
-    fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<()> {
         if !self.delimiter.is_ascii() || matches!(self.delimiter, 0 | b'\r' | b'\n' | b'"') {
             return Err(Error::Invalid(
                 "delimiter must be ASCII, excluding NUL/CR/LF/quote".into(),
@@ -163,33 +163,88 @@ where
     I: IntoIterator,
     I::Item: AsRef<[Cell]>,
 {
-    options.validate()?;
-    let mut bytes = validate_columns(columns, limits)?;
-    let output = BoundedWriter {
-        inner: writer,
-        remaining: limits.max_bytes,
-    };
-    let mut csv = csv::WriterBuilder::new()
-        .delimiter(options.delimiter)
-        .from_writer(output);
-    if options.header {
-        csv.write_record(
-            columns
-                .iter()
-                .map(|c| spreadsheet_text(&c.name, options.formula_mode)),
-        )?;
+    let mut csv = CsvStreamWriter::new(writer, columns, options, limits)?;
+    for row in rows {
+        csv.write_row(row.as_ref())?;
     }
-    for (index, row) in rows.into_iter().enumerate() {
-        if index >= limits.max_rows {
+    csv.finish()
+}
+
+/// Incremental CSV encoder for fallible row sources. A failed encoder cannot be
+/// reused or finished successfully. Output is provisional until `finish` succeeds;
+/// file callers must publish their temporary file only after that success.
+pub struct CsvStreamWriter<W: Write> {
+    csv: csv::Writer<BoundedWriter<W>>,
+    options: CsvOptions,
+    limits: Limits,
+    width: usize,
+    rows: usize,
+    payload_bytes: usize,
+    failed: bool,
+}
+impl<W: Write> CsvStreamWriter<W> {
+    pub fn new(
+        writer: W,
+        columns: &[Column],
+        options: &CsvOptions,
+        limits: Limits,
+    ) -> Result<Self> {
+        options.validate()?;
+        let payload_bytes = validate_columns(columns, limits)?;
+        let output = BoundedWriter {
+            inner: writer,
+            remaining: limits.max_bytes,
+        };
+        let mut csv = csv::WriterBuilder::new()
+            .delimiter(options.delimiter)
+            .from_writer(output);
+        if options.header {
+            csv.write_record(
+                columns
+                    .iter()
+                    .map(|c| spreadsheet_text(&c.name, options.formula_mode)),
+            )?;
+        }
+        Ok(Self {
+            csv,
+            options: options.clone(),
+            limits,
+            width: columns.len(),
+            rows: 0,
+            payload_bytes,
+            failed: false,
+        })
+    }
+    pub fn write_row(&mut self, row: &[Cell]) -> Result<()> {
+        if self.failed {
+            return Err(Error::Invalid("CSV encoder already failed".into()));
+        }
+        // Poison before attempting a row: even a partially written record must
+        // never be followed by a successful finish/publication.
+        self.failed = true;
+        if self.rows >= self.limits.max_rows {
             return Err(Error::Limit("row count".into()));
         }
-        let row = row.as_ref();
-        validate_row(row, columns.len(), &mut bytes, limits)?;
-        let values: Result<Vec<String>> = row.iter().map(|cell| csv_value(cell, options)).collect();
-        csv.write_record(values?)?;
+        validate_row(row, self.width, &mut self.payload_bytes, self.limits)?;
+        // Encode one expanded field at a time. In particular, a large NULL
+        // marker must not be cloned for every cell before the output cap runs.
+        for cell in row {
+            self.csv.write_field(csv_value(cell, &self.options)?)?;
+        }
+        // csv explicitly supports terminating fields written individually with
+        // an empty record iterator; this also validates the record arity.
+        self.csv.write_record(std::iter::empty::<&str>())?;
+        self.rows += 1;
+        self.failed = false;
+        Ok(())
     }
-    csv.flush()?;
-    Ok(())
+    pub fn finish(mut self) -> Result<()> {
+        if self.failed {
+            return Err(Error::Invalid("CSV encoder already failed".into()));
+        }
+        self.csv.flush()?;
+        Ok(())
+    }
 }
 fn spreadsheet_text(value: &str, mode: FormulaMode) -> String {
     let candidate = value.trim_start_matches(' ');

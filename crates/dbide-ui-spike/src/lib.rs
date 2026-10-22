@@ -1,6 +1,7 @@
 //! Deterministic logical data source with no retained row collection.
 pub mod console_session;
 pub mod explorer_model;
+pub mod grid_presentation;
 pub mod history_model;
 pub mod navigator;
 pub mod object_finder_model;

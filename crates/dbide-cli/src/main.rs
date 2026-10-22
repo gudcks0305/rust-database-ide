@@ -1,4 +1,5 @@
 //! Native CLI: shared profiles and bridge, explicit credentials, no SQL replay.
+mod export;
 mod output;
 mod workspace;
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -74,6 +75,8 @@ enum Command {
     },
     /// Execute SQL once through the shared native bridge. No retry after dispatch.
     Query(Query),
+    /// Stream one explicit read-only SQLite statement to a fresh CSV file.
+    Export(export::Export),
     /// Read server catalogs as JSON using a temporary connection.
     Schema(Schema),
     /// Read saved catalog metadata from disk. No database connection or authentication.
@@ -502,7 +505,7 @@ fn apply(fields: ProfileFields, p: &mut ConnectionProfile, editing: bool) -> Res
     }
     p.validate().map_err(config)
 }
-fn run(cli: Cli, cancelled: &AtomicBool) -> Result<()> {
+fn run(cli: Cli, cancelled: &Arc<AtomicBool>) -> Result<()> {
     if let Command::Workspace(command) = cli.command {
         return workspace::run(command, cli.config);
     }
@@ -631,6 +634,7 @@ fn run(cli: Cli, cancelled: &AtomicBool) -> Result<()> {
             ConfigCommand::Language { .. } => unreachable!(),
         },
         Command::Query(q) => query(&store, q, cancelled),
+        Command::Export(e) => export::run(&store, e, cancelled.clone()),
         Command::Schema(s) => schema(&store, s, cancelled),
         Command::Catalog { .. } => unreachable!(),
         Command::Sql { .. } => unreachable!(),

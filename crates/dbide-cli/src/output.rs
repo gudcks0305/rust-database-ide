@@ -4,6 +4,21 @@ use dbide_driver_api::{Event, ExecutionReport};
 use tempfile::NamedTempFile;
 
 pub(super) fn check(destination: &Destination) -> Result<()> {
+    check_destination(
+        destination,
+        "output exists; choose a fresh path or use --force",
+    )
+}
+pub(super) fn check_fresh(path: &Path) -> Result<()> {
+    check_destination(
+        &Destination {
+            output: Some(path.into()),
+            force: false,
+        },
+        "output exists; export requires a fresh path",
+    )
+}
+fn check_destination(destination: &Destination, conflict: &str) -> Result<()> {
     if let Some(path) = &destination.output {
         let exists = match fs::symlink_metadata(path) {
             Ok(_) => true,
@@ -11,7 +26,7 @@ pub(super) fn check(destination: &Destination) -> Result<()> {
             Err(error) => return Err(config(error)),
         };
         if !destination.force && exists {
-            return Err(config("output exists; choose a fresh path or use --force"));
+            return Err(config(conflict));
         }
         if path.is_dir() {
             return Err(config("output must be a file"));

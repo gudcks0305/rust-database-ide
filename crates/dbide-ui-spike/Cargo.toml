@@ -5,6 +5,9 @@ edition.workspace = true
 publish.workspace = true
 license = "Apache-2.0"
 
+[features]
+ui-profiler = ["gpui/profiler"]
+
 [dependencies]
 gpui = { package = "gpui-pre", version = "=0.3.9", default-features = false }
 gpui-platform = { package = "gpui-pre-platform", version = "=0.3.9", default-features = false, features = ["font-kit", "runtime_shaders"] }
