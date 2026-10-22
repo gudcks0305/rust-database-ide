@@ -65,6 +65,8 @@ bash scripts/package-ui.sh
 open 'outputs/Rust Database IDE.app'
 ```
 
+패키징 시 [아이콘 원본](assets/app-icon.png)에서 macOS 아이콘 크기를 생성해 앱 번들에 포함한다.
+
 앱에서 `⌘,` → **환경설정 / Preferences** → **언어 / Language**로 한국어·영어를
 즉시 전환한다. 선택은 재시작 후에도 유지되며 SQL·DB 이름·조회 값은 번역하지 않는다.
 CLI에서도 같은 설정을 바꿀 수 있다:
