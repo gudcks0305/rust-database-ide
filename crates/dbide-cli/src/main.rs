@@ -1,6 +1,7 @@
 //! Native CLI: shared profiles and bridge, explicit credentials, no SQL replay.
 mod export;
 mod output;
+mod portable_config;
 mod workspace;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use dbide_bridge::{BridgeEvent, DatabaseBridge, OperationId, Outcome};
@@ -49,7 +50,7 @@ fn config(e: impl ToString) -> Failure {
 )]
 struct Cli {
     /// Shared GUI/CLI password-free profiles file. Default is the platform application settings path.
-    #[arg(long, global = true)]
+    #[arg(long, visible_alias = "profiles", global = true)]
     config: Option<PathBuf>,
     #[command(subcommand)]
     command: Command,
@@ -170,6 +171,12 @@ enum Tls {
 #[derive(Subcommand)]
 enum ConfigCommand {
     Show,
+    /// Export password-free portable settings to a fresh JSON file; never connects.
+    Export(portable_config::Export),
+    /// Validate a bounded portable JSON file without changing any settings.
+    Inspect(portable_config::Inspect),
+    /// Restore into a new directory; the active profiles source is unchanged.
+    Import(portable_config::Import),
     Set {
         #[arg(value_parser=["persist_history"])]
         key: String,
@@ -506,6 +513,24 @@ fn apply(fields: ProfileFields, p: &mut ConnectionProfile, editing: bool) -> Res
     p.validate().map_err(config)
 }
 fn run(cli: Cli, cancelled: &Arc<AtomicBool>) -> Result<()> {
+    if let Command::Config {
+        command: ConfigCommand::Export(args),
+    } = cli.command
+    {
+        return portable_config::export(cli.config, args);
+    }
+    if let Command::Config {
+        command: ConfigCommand::Inspect(args),
+    } = cli.command
+    {
+        return portable_config::inspect(args);
+    }
+    if let Command::Config {
+        command: ConfigCommand::Import(args),
+    } = cli.command
+    {
+        return portable_config::import(args);
+    }
     if let Command::Workspace(command) = cli.command {
         return workspace::run(command, cli.config);
     }
@@ -632,6 +657,9 @@ fn run(cli: Cli, cancelled: &Arc<AtomicBool>) -> Result<()> {
                 Ok(())
             }),
             ConfigCommand::Language { .. } => unreachable!(),
+            ConfigCommand::Export(_) | ConfigCommand::Inspect(_) | ConfigCommand::Import(_) => {
+                unreachable!()
+            }
         },
         Command::Query(q) => query(&store, q, cancelled),
         Command::Export(e) => export::run(&store, e, cancelled.clone()),

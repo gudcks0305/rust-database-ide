@@ -1,11 +1,40 @@
 # Current implementation and remaining acceptance
 
-Updated 2026-10-22. This supersedes historical M0 limitations only where explicitly
+Updated 2026-10-23. This supersedes historical M0 limitations only where explicitly
 listed below. It does not declare DataGrip parity or any entire M1–M6 phase complete.
 The [42 feature groups](FEATURE-MATRIX.md) remain the full backlog.
 **Priority reset:** [M0/M1 acceptance](M0-M1-ACCEPTANCE.md) comes first. M3–M6 remains authorized follow-on work; the core UX and
 session correctness gaps are being addressed before wider integration. PostgreSQL row Apply remains disabled because namespace
 rebinding acceptance has not passed; model/batch tests do not override that blocker.
+
+## Basic workflow fixes and portable configuration
+
+Settings and connections can be exported as one versioned JSON bundle from
+Preferences → Settings transfer or CLI `config export/inspect/import`. Import
+creates a new configuration directory, remaps relative file references under an
+explicit root, and opens a separate window. Credentials, SQL/history, project
+files and actual DB/CA files are excluded. Foreign absolute paths require CLI
+`--map`; GUI supports choosing the relative root. See [transfer instructions](CONFIGURATION-TRANSFER.md).
+
+Native validation exported four profiles and restored language, 16px editor font,
+250-row table page size and recovery preference. A relocated SQLite file returned
+the expected two rows in the restored window; the original SQL, result and live
+connection survived. Opening an alias of the same configuration reused its
+connected window. Korean/English native menus followed the active window, and
+one Cmd+Q saved both windows' separate recovery snapshots before exiting.
+
+Basic fixes verified by actual native interaction: clicked SQL tabs receive input,
+Save As rejects non-.sql names before writing, successive saves work and show
+feedback, a new file error takes priority over an existing connection error, and
+the native Cancel menu cancels an in-flight connection attempt. A fresh console
+selects the saved profile without connecting or submitting SQL automatically.
+The settings panel exposes summaries, paths and operation feedback to accessibility.
+
+[Validation](../evidence/portable-config-basic-validation.json): 533 default tests
+passed /73 ignored, workspace Clippy and native packaging passed. The ignored
+live DB suites were not rerun for these settings/UI changes. CI remains inactive.
+SQLite table/field/data browsing passed; SQLite/MySQL rich index/DDL inspector
+support remains incomplete, and broader feature parity is not claimed.
 
 ## Native streaming, stored result pages and bounded previews
 

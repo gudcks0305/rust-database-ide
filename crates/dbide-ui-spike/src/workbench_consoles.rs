@@ -1,6 +1,52 @@
 use super::*;
 use dbide_ui_spike::console_session::DiagnosticKind;
+
+fn startup_default_request(
+    recovery_loading: bool,
+    selected_profile_id: Option<&str>,
+    profiles: &[ConnectionProfile],
+    session: &ConsoleSession,
+    required_profile_id: Option<&str>,
+) -> Option<ConnectionRequest> {
+    if !recovery_loading || session.target().is_some() || required_profile_id.is_some() {
+        return None;
+    }
+    let selected = selected_profile_id?;
+    let profile = profiles
+        .iter()
+        .find(|profile| profile.id == selected)?
+        .clone();
+    Some(ConnectionRequest {
+        profile,
+        password: String::new(),
+    })
+}
+
 impl Workbench {
+    /// Bind only the initial draft, before recovery captures its initial stamp.
+    /// Recovery then replaces it with each document's exact target, including
+    /// an unbound target when its saved profile cannot be resolved.
+    pub(super) fn initialize_default_console_target(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.fixture_smoke || self.documents.len() != 1 {
+            return;
+        }
+        let doc = &self.documents[0];
+        let Some(request) = startup_default_request(
+            self.recovery.loading,
+            self.workspace.selected_profile_id.as_deref(),
+            &self.workspace.profiles,
+            &doc.session,
+            doc.required_profile_id.as_deref(),
+        ) else {
+            return;
+        };
+        self.bind_console(doc.session.route(), request, window, cx);
+    }
+
     pub(super) fn console(&self) -> &ConsoleSession {
         &self
             .documents
@@ -314,5 +360,69 @@ impl Workbench {
                             })),
                     ),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[::core::prelude::v1::test]
+    fn startup_selection_binds_exact_saved_profile_without_opening_a_worker() {
+        let first = ConnectionProfile::fixture();
+        let mut selected = first.clone();
+        selected.id = "selected-second".into();
+        selected.database = "selected_database".into();
+        let mut session = ConsoleSession::new(1);
+        let request = startup_default_request(
+            true,
+            Some(&selected.id),
+            &[first, selected.clone()],
+            &session,
+            None,
+        )
+        .unwrap();
+        assert!(request.password.is_empty());
+        session.bind(session.route(), request).unwrap();
+        assert_eq!(session.target(), Some(&selected));
+        assert_eq!(session.phase, SessionPhase::Disconnected);
+        assert!(!session.has_worker());
+        assert!(!session.busy());
+    }
+
+    #[::core::prelude::v1::test]
+    fn absent_selection_and_recovered_or_existing_targets_never_fall_back() {
+        let profile = ConnectionProfile::fixture();
+        let profiles = [profile.clone()];
+        let mut session = ConsoleSession::new(1);
+        assert!(startup_default_request(true, None, &profiles, &session, None).is_none());
+        assert!(
+            startup_default_request(true, Some("removed"), &profiles, &session, None).is_none()
+        );
+        assert!(
+            startup_default_request(false, Some(&profile.id), &profiles, &session, None).is_none()
+        );
+        assert!(
+            startup_default_request(
+                true,
+                Some(&profile.id),
+                &profiles,
+                &session,
+                Some("removed")
+            )
+            .is_none()
+        );
+        session
+            .bind(
+                session.route(),
+                ConnectionRequest {
+                    profile: profile.clone(),
+                    password: String::new(),
+                },
+            )
+            .unwrap();
+        assert!(
+            startup_default_request(true, Some(&profile.id), &profiles, &session, None).is_none()
+        );
     }
 }

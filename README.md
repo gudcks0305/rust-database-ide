@@ -3,7 +3,7 @@
 DataGrip의 주요 작업 흐름을 Rust 데스크톱 앱으로 독립 재구현하는 프로젝트.
 목표는 작은 SQL 실행기에 머무르지 않고 편집·탐색·의미 분석·마이그레이션·다중 DB까지 확장하는 것.
 
-## 현재 상태 — 2026-10-22
+## 현재 상태 — 2026-10-23
 
 - 공개 소스 저장소: [gudcks0305/rust-database-ide](https://github.com/gudcks0305/rust-database-ide). 서명된 제품 배포는 아직 없음.
 - 공식 DataGrip 2026.2.6 macOS ARM64 배포본 SHA-256 확인.
@@ -76,6 +76,9 @@ cargo run -p dbide-cli --bin dbide -- config language set en
 
 별도 프로필 파일을 쓰면 GUI와 CLI에 동일한 설정 위치를 지정해야 한다.
 CLI의 도움말과 원본 DB 오류, 일부 공용 UI 구성 요소는 아직 영어다.
+
+환경설정의 **설정 이동**에서 연결·환경설정을 단일 JSON으로 내보내고 새 설정 폴더에 복원한다.
+기존 창을 유지한 채 복원 설정을 새 창에서 연다. [설정 이동·경로 매핑·포함 범위](docs/CONFIGURATION-TRANSFER.md).
 
 자동완성은 `⌘J`(또는 OS가 가로채지 않는 경우 `Ctrl+Space`), 후보 이동은 ↑↓,
 확정은 Enter/Tab, 취소는 Esc. `Ctrl+Tab`/`Ctrl+Shift+Tab`은 SQL·테이블 탭을 이동한다.

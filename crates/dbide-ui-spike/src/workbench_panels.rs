@@ -64,9 +64,10 @@ impl Workbench {
                                     )
                                     .small()
                                     .ghost()
-                                    .on_click(
-                                        cx.listener(move |s, _, _, cx| s.switch_document(id, cx)),
-                                    ),
+                                    .on_click(cx.listener(move |s, _, window, cx| {
+                                        s.switch_document(id, cx);
+                                        s.editor.update(cx, |editor, cx| editor.focus(window, cx));
+                                    })),
                             )
                             .child(
                                 Button::new(("close-document", id as usize))

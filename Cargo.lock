@@ -1330,6 +1330,7 @@ dependencies = [
  "dbide-data",
  "dbide-driver-api",
  "dbide-export",
+ "dbide-portable",
  "dbide-profiles",
  "dbide-project",
  "dbide-settings",
@@ -1452,6 +1453,18 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-postgres",
+]
+
+[[package]]
+name = "dbide-portable"
+version = "0.1.0"
+dependencies = [
+ "dbide-profiles",
+ "dbide-settings",
+ "libc",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -1598,6 +1611,7 @@ dependencies = [
  "dbide-export",
  "dbide-i18n",
  "dbide-pg-spike",
+ "dbide-portable",
  "dbide-preferences-ui",
  "dbide-profiles",
  "dbide-project",

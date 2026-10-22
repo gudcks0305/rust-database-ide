@@ -1,4 +1,5 @@
 mod completion_model;
+mod configuration_windows;
 mod discovery_tools;
 mod documents;
 mod history_panel;
@@ -6,6 +7,7 @@ mod native_menus;
 mod object_finder;
 mod paged_query;
 mod paged_query_panel;
+mod portable_settings;
 mod preferences;
 mod project_host;
 mod project_panel;
@@ -500,6 +502,8 @@ struct Workbench {
     catalog_collapsed: bool,
     settings_error: Option<String>,
     preferences: Option<Entity<dbide_preferences_ui::PreferencesPanel>>,
+    settings_transfer: Option<Entity<portable_settings::SettingsTransferPanel>>,
+    settings_transfer_subscription: Option<Subscription>,
     transfer_preview: Option<dbide_data::DataPreview>,
     grid: Entity<TableState<ResultGrid>>,
     bridge: Option<DatabaseBridge>,
@@ -594,6 +598,7 @@ impl Workbench {
         cx: &mut Context<Self>,
         started: Instant,
         fixture_smoke: bool,
+        configuration: Option<configuration_windows::LoadedConfiguration>,
     ) -> Self {
         let editor = cx.new(|cx| {
             let mut state = EditorState::new(window, cx).language("sql");
@@ -674,16 +679,36 @@ impl Workbench {
             }
         })
         .detach();
-        let selected_store = match std::env::var_os("DBIDE_PROFILE_STORE") {
-            Some(path) => ProfileStore::open(std::path::PathBuf::from(path)),
-            None => ProfileStore::open_default(),
-        };
-        let (store, workspace, load_error) = match selected_store {
-            Ok(store) => match store.load() {
-                Ok(state) => (Some(store), state, None),
-                Err(e) => (Some(store), WorkspaceState::default(), Some(e.to_string())),
-            },
-            Err(e) => (None, WorkspaceState::default(), Some(e.to_string())),
+        let (store, workspace, load_error) = if let Some(configuration) = configuration {
+            (Some(configuration.store), configuration.workspace, None)
+        } else {
+            let selected_store = match std::env::var_os("DBIDE_PROFILE_STORE") {
+                Some(path) => ProfileStore::open(std::path::PathBuf::from(path)),
+                None => ProfileStore::open_default(),
+            };
+            match selected_store {
+                Ok(store) => {
+                    // Stable directory identity: profile files are atomically replaced.
+                    // The initial startup already loads this store; subsequent windows
+                    // receive a fully loaded configuration from the background worker.
+                    let canonical_store = store
+                        .path()
+                        .parent()
+                        .and_then(|p| std::fs::canonicalize(p).ok())
+                        .and_then(|parent| store.path().file_name().map(|name| parent.join(name)))
+                        .and_then(|path| ProfileStore::open(path).ok())
+                        .unwrap_or(store);
+                    match canonical_store.load() {
+                        Ok(state) => (Some(canonical_store), state, None),
+                        Err(e) => (
+                            Some(canonical_store),
+                            WorkspaceState::default(),
+                            Some(e.to_string()),
+                        ),
+                    }
+                }
+                Err(e) => (None, WorkspaceState::default(), Some(e.to_string())),
+            }
         };
         let navigator = store
             .as_ref()
@@ -754,6 +779,8 @@ impl Workbench {
             catalog_collapsed: false,
             settings_error: None,
             preferences: None,
+            settings_transfer: None,
+            settings_transfer_subscription: None,
             transfer_preview: None,
             grid,
             bridge,
@@ -876,6 +903,7 @@ impl Workbench {
                 .update(cx, |editor, cx| editor.focus(window, cx));
         }
         this.navigator.sync_profiles(&this.workspace.profiles);
+        this.initialize_default_console_target(window, cx);
         this.init_settings(cx);
         this.init_recovery(window, cx);
         this.init_projects(window, cx);
@@ -1835,10 +1863,11 @@ impl Render for Workbench {
             } else if self.active_table_tab.is_some() {
                 self.active_operation.is_some()
             } else {
-                self.console().active_operation.is_some()
+                self.console().cancel_target().is_some()
             },
         );
-        if self.menu_state != Some(menu_state) {
+        if cx.active_window() == Some(window.window_handle()) && self.menu_state != Some(menu_state)
+        {
             cx.set_menus(native_menus::menus(
                 self.locale,
                 menu_state.0,
@@ -2211,13 +2240,7 @@ impl Render for Workbench {
                 el.when_some(self.result_find.as_ref(), |el, find| el.child(find.clone()))
                     .child(result_body)
             });
-        if self.console().diagnostic.is_some()
-            && !self.fixture_smoke
-            && !self
-                .diagnostic
-                .as_ref()
-                .is_some_and(|d| d.context == DiagnosticContext::Capacity)
-        {
+        if self.console().diagnostic.is_some() && !self.fixture_smoke && self.diagnostic.is_none() {
             content = content.child(self.console_diagnostic(cx));
         } else if let Some(diagnostic) = &self.diagnostic {
             let (title, message, hint) = &diagnostic.body;
@@ -2365,6 +2388,8 @@ impl Render for Workbench {
             .filter(|_| self.stream_export_visible)
         {
             body = body.child(self.inspector_frame(panel.clone().into_any_element(), window, cx));
+        } else if let Some(panel) = &self.settings_transfer {
+            body = body.child(self.inspector_frame(panel.clone().into_any_element(), window, cx));
         } else if let Some(preferences) = &self.preferences {
             body = body.child(self.preferences_panel(preferences, cx));
         } else if self.form.is_some() {
@@ -2477,21 +2502,45 @@ impl Render for Workbench {
                 div()
                     .id("status")
                     .role(Role::Status)
-                    .aria_label(self.active_console_status_label())
+                    .aria_label(format!(
+                        "{} · {}",
+                        self.active_console_status_label(),
+                        self.operation_feedback_label()
+                    ))
                     .h(px(28.))
                     .flex_shrink_0()
                     .px_4()
                     .flex()
                     .items_center()
-                    .justify_between()
+                    .gap_3()
                     .border_t_1()
                     .border_color(rgb(BORDER))
                     .bg(rgb(PANEL))
                     .child(
                         div()
+                            .flex_shrink_0()
                             .text_size(px(10.))
                             .text_color(rgb(MUTED))
                             .child(self.active_console_status_label()),
+                    )
+                    .child(
+                        div()
+                            .id("operation-feedback")
+                            .flex_1()
+                            .min_w_0()
+                            .text_ellipsis()
+                            .text_size(px(10.))
+                            .text_color(rgb(TEXT))
+                            .child(self.operation_feedback_label())
+                            .tooltip({
+                                let feedback = self.operation_feedback_label();
+                                move |_, cx| {
+                                    cx.new(|_| {
+                                        gpui_component::tooltip::Tooltip::new(feedback.clone())
+                                    })
+                                    .into()
+                                }
+                            }),
                     )
                     .child(
                         div()
@@ -2500,14 +2549,7 @@ impl Render for Workbench {
                             .text_size(px(10.))
                             .text_color(rgb(MUTED))
                             .child(self.recovery_status_label()),
-                    )
-                    .child(div().text_size(px(10.)).text_color(rgb(MUTED)).child(
-                        if self.locale == Locale::Ko {
-                            "탐색기: 펼칠 때 조회 · 캐시 사용"
-                        } else {
-                            "Catalog: on-demand · cached"
-                        },
-                    )),
+                    ),
             )
             .when(cfg!(feature = "ui-profiler"), |root| {
                 let probe = self.ui_profiler.paint_probe();
@@ -2605,6 +2647,16 @@ fn main() {
 }
 
 fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_seconds: Option<u64>) {
+    open_workbench_with_configuration(cx, started, fixture_smoke, smoke_seconds, None);
+}
+
+fn open_workbench_with_configuration(
+    cx: &mut App,
+    started: Instant,
+    fixture_smoke: bool,
+    smoke_seconds: Option<u64>,
+    configuration: Option<configuration_windows::LoadedConfiguration>,
+) {
     let bounds = Bounds::centered(None, size(px(1440.), px(940.)), cx);
     let window = cx
         .open_window(
@@ -2612,13 +2664,29 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 window_min_size: Some(size(px(1360.), px(800.))),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("Rust Database IDE".into()),
+                    title: Some(
+                        configuration
+                            .as_ref()
+                            .and_then(|c| c.store.path().parent())
+                            .map(|p| format!("Rust Database IDE — {}", p.display()))
+                            .unwrap_or_else(|| "Rust Database IDE".into())
+                            .into(),
+                    ),
                     ..Default::default()
                 }),
                 ..Default::default()
             },
             move |window, cx| {
-                let view = cx.new(|cx| Workbench::new(window, cx, started, fixture_smoke));
+                let view =
+                    cx.new(|cx| Workbench::new(window, cx, started, fixture_smoke, configuration));
+                view.update(cx, |s, cx| {
+                    s._subscriptions
+                        .push(cx.observe_window_activation(window, |s, _, cx| {
+                            s.menu_state = None;
+                            cx.notify();
+                        }));
+                });
+                configuration_windows::register(window.window_handle(), view.downgrade(), cx);
                 // Fallback actions also work when titlebar/background focus leaves no
                 // focused editor in the dispatch tree. Defer until dispatch releases Window.
                 let global_window = window.window_handle();
@@ -2632,11 +2700,7 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                                 cx.defer(move |cx| {
                                     let _ = global_window.update(cx, |_, w, cx| {
                                         let _ = weak.update(cx, |s, cx| {
-                                            if !$normal_only
-                                                || (s.active_table_tab.is_none()
-                                                    && s.tools.is_none()
-                                                    && !s.paged_query_visible)
-                                            {
+                                            if !$normal_only || s.sql_view_active() {
                                                 s.$handler(&action, w, cx);
                                             }
                                         });

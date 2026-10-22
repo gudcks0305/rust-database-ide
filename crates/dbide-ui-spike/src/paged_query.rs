@@ -106,7 +106,10 @@ impl Workbench {
                         }
                         // A completed query must not lose the close intent merely
                         // because an unrelated local write is still settling.
-                        if s.profile_write_busy
+                        if s.settings_transfer_busy(cx)
+                            || s.settings_busy
+                            || !s.settings_pending.is_empty()
+                            || s.profile_write_busy
                             || !s.profile_writes.is_empty()
                             || s.recovery.loading
                             || s.recovery.preference_busy

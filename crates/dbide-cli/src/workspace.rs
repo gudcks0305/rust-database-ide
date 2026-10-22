@@ -150,7 +150,7 @@ pub(super) fn validate_target_profile(profile: &super::ConnectionProfile) -> Res
 fn limits() -> Value {
     json!({"sql_bytes":dbide_project::MAX_SQL_BYTES,"manifest_bytes":dbide_project::MAX_MANIFEST_BYTES,
         "directory_entries":dbide_project::MAX_LIST_ENTRIES,"directory_scan_entries":dbide_project::MAX_SCANNED_ENTRIES,
-        "context_entries":128,"query_retained_bytes":524288,"query_retained_events":4096})
+        "context_entries":128,"portable_bundle_bytes":dbide_portable::MAX_BUNDLE_BYTES,"query_retained_bytes":524288,"query_retained_events":4096})
 }
 
 pub(crate) fn agent(_: AgentCommand) -> Result<()> {
@@ -168,6 +168,9 @@ pub(crate) fn agent(_: AgentCommand) -> Result<()> {
         {"command":"profiles list/add/edit/remove/select","effect":"local_profiles_read_or_write","database_connection":false},
         {"command":"profiles test","effect":"explicit_connection_test","database_connection":true},
         {"command":"config","effect":"local_settings_read_or_write","database_connection":false},
+        {"command":"config export","effect":"password_free_portable_config_to_fresh_json","database_connection":false,"required":["--output","--base-dir"],"source":"--profiles (alias of --config)","excludes":["credentials","history","sql_buffers","database_data","unknown_settings"]},
+        {"command":"config inspect","effect":"bounded_portable_config_validation","database_connection":false,"required":["--file"],"changes_active_source":false},
+        {"command":"config import","effect":"portable_config_to_fresh_directory","database_connection":false,"required":["--file","--path-root","--destination"],"optional":["--map ORIGINAL=DESTINATION (repeatable)"],"changes_active_source":false,"overwrite":false},
         {"command":"catalog list/show","effect":"read_saved_metadata","database_connection":false},
         {"command":"sql format","effect":"format_sql_and_optional_output_file","database_connection":false},
         {"command":"query","effect":"execute_arbitrary_sql_and_optional_output_or_history","database_connection":true,"guards":["--expect-sql-sha256","--expect-target-fingerprint"],"read_only":"adapter session setting; not a SQL safety proof"},

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-10-23",
+  "base_commit": "120fb29f2981dfd1f58f0996798a24e1ec112169",
+  "workspace_tests": {
+    "passed": 533,
+    "failed": 0,
+    "ignored": 73
+  },
+  "checks": {
+    "workspace_clippy": "passed -D warnings",
+    "cargo_fmt": "passed",
+    "project_verifier": "passed",
+    "native_package": "passed",
+    "git_diff_check": "passed"
+  },
+  "native_environment": {
+    "platform": "macOS ARM64",
+    "bundle": "com.local.rust-database-ide.live-qa",
+    "source": "current local release build, synthetic owned SQLite data and loopback stalled TCP fixture only",
+    "binary_sha256": "311946cf8b140ca2247efd65ad950ba8a749f101580fa1c235821aba6c464c68"
+  },
+  "native_cases": [
+    {
+      "case": "SQLite browser basic traversal",
+      "result": "profile > main > demo > id INTEGER PK/name TEXT, structure columns, data action returns 2 rows"
+    },
+    {
+      "case": "tab focus",
+      "before": "click tab then type did not change editor",
+      "after": "click basic.sql then type -- tab-focus changes exact target; Cmd+S persists it"
+    },
+    {
+      "case": "save filename and feedback",
+      "result": "non-.sql rejected without file creation; valid .sql first and subsequent saves show SQL file saved"
+    },
+    {
+      "case": "error priority",
+      "result": "existing missing-file connect diagnostic retained; new Save As extension error visible first; dismiss reveals original connect diagnostic"
+    },
+    {
+      "case": "native connection cancellation",
+      "result": "Query > Cancel enabled during owned loopback handshake stall; click cancels attempt and reports SQL not submitted"
+    },
+    {
+      "case": "fresh selected profile",
+      "result": "fresh default console bound to exact saved SQLite profile; Connect and connect/run enabled; remains disconnected"
+    },
+    {
+      "case": "portable export",
+      "result": "GUI saved JSON with 4 profiles, font16, rows/page250, KO, recovery enabled; no history/password/SQL; SQLite relative components assets/fixture.sqlite"
+    },
+    {
+      "case": "portable restore",
+      "result": "GUI preview + selected moved root + fresh directory restore opens second window; profile SQLite path points to moved/assets/fixture.sqlite; actual SELECT returns two expected rows"
+    },
+    {
+      "case": "original window preservation",
+      "result": "Cmd+grave returns original basic.sql source, 2-row result and connected console; separate settings files preserved"
+    },
+    {
+      "case": "configuration alias reuse",
+      "result": "opening parent symlink alias of restored config returns existing connected result window rather than new default console"
+    },
+    {
+      "case": "multiwindow language",
+      "result": "restored window English menu; switching to original restores Korean native menu"
+    },
+    {
+      "case": "multiwindow quit",
+      "result": "one Cmd+Q exits process 0, original two-document recovery and restored one-document recovery both persisted separately"
+    },
+    {
+      "case": "accessibility",
+      "result": "final settings transfer heading, included/excluded scope, full paths and controls exposed in native AX"
+    }
+  ],
+  "screenshot": "outputs/configuration-transfer.png",
+  "limitations": [
+    "73 ignored live suites not rerun; owned cancellation fixture is a synthetic TCP stall, not a PostgreSQL server",
+    "No Windows/Linux native runtime verification",
+    "SQLite/MySQL rich index/DDL inspector still incomplete",
+    "GUI foreign absolute path mapping requires CLI --map",
+    "No project files, SQL buffers, history, credentials or physical DB files in bundle",
+    "Fresh-directory restore is completion-gated activation, not a multi-file filesystem transaction",
+    "GitHub CI remains inactive; no DataGrip feature or performance parity claim"
+  ]
+}

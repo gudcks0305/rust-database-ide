@@ -45,6 +45,19 @@ impl Workbench {
                     match label {
                         "Run current" => "현재 구문 실행",
                         "Connect & Run" => "연결 후 실행",
+                        "SQL file saved" => "SQL 파일 저장 완료",
+                        "Saved snapshot; newer edits remain unsaved" => {
+                            "저장 완료 · 이후 수정 내용은 아직 저장되지 않음"
+                        }
+                        "SQL formatted · Undo restores the original source" => {
+                            "SQL 서식 적용 완료 · 실행 취소로 원문 복원"
+                        }
+                        "Finish/Cancel or explicitly Disconnect this console before closing its tab." => {
+                            "실행을 끝내거나 취소한 뒤 닫으세요. 트랜잭션이 남았다면 먼저 연결을 해제하세요."
+                        }
+                        "Cancel or finish this tab's execution before closing it" => {
+                            "이 탭의 실행을 취소하거나 끝낸 뒤 닫으세요."
+                        }
                         "Remember password in Keychain on Save" => {
                             "저장할 때 Keychain에 비밀번호 기억"
                         }
@@ -200,6 +213,17 @@ impl Workbench {
             self.tx_label(session.transaction_state)
         )
     }
+    pub(super) fn operation_feedback_label(&self) -> String {
+        format!(
+            "{}: {}",
+            if self.locale == Locale::Ko {
+                "최근 작업"
+            } else {
+                "Last activity"
+            },
+            self.ui_label(&self.status)
+        )
+    }
     pub(super) fn recovery_status_label(&self) -> String {
         let ko = self.locale == Locale::Ko;
         match self.recovery.status.as_str() {
@@ -335,6 +359,9 @@ impl Workbench {
         if let Some(panel) = &self.paged_query {
             panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }
+        if let Some(panel) = &self.settings_transfer {
+            panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
+        }
         if let Some(panel) = &self.object_finder {
             panel.update(cx, |panel, cx| panel.set_locale(settings.locale, cx));
         }
@@ -390,6 +417,11 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.settings_transfer.is_some() {
+            self.stream_export_visible = false;
+            cx.notify();
+            return;
+        }
         self.stream_export_visible = false;
         let panel =
             cx.new(|cx| dbide_preferences_ui::PreferencesPanel::new(self.locale, window, cx));
@@ -404,6 +436,10 @@ impl Workbench {
                 use dbide_preferences_ui::PreferencesEvent as E;
                 use dbide_settings::SettingsChange as C;
                 let change = match event {
+                    E::TransferRequested => {
+                        s.open_settings_transfer(w, cx);
+                        return;
+                    }
                     E::LocaleChosen(locale) => C::Locale(*locale),
                     E::FontSizeChosen(size) => C::EditorFontSize(*size),
                     E::TabWidthChosen(width) => C::EditorTabWidth(*width),

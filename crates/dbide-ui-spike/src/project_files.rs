@@ -14,6 +14,11 @@ pub fn save_file(
     baseline: &str,
     known_roots: &[PathBuf],
 ) -> Result<SavedFile, String> {
+    if !crate::sql_files::is_sql_path(path) {
+        return Err(
+            "Choose a file name ending in .sql, then save again. No file was written.".into(),
+        );
+    }
     if sql.len() > dbide_project::MAX_SQL_BYTES {
         return Err("SQL file exceeds64KiB".into());
     }
@@ -81,6 +86,34 @@ pub fn save_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn rejected_save_extensions_never_create_or_replace_files() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["query", "query.txt"] {
+            let path = dir.path().join(name);
+            let error = save_file(&path, "SELECT 1;", None, "", &[]).unwrap_err();
+            assert!(error.contains("ending in .sql"));
+            assert!(!path.exists());
+            std::fs::write(&path, "existing content").unwrap();
+            assert!(save_file(&path, "SELECT 2;", None, "", &[]).is_err());
+            assert_eq!(std::fs::read_to_string(path).unwrap(), "existing content");
+        }
+    }
+    #[test]
+    fn uppercase_sql_save_as_remains_saveable_after_editing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("query.SQL");
+        let saved = save_file(&path, "SELECT 1;", None, "", &[]).unwrap();
+        save_file(
+            &saved.path,
+            "SELECT 2;",
+            Some(&saved.path),
+            "SELECT 1;",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "SELECT 2;");
+    }
     #[test]
     fn save_as_to_inactive_project_stays_create_only_and_keeps_owner() {
         let dir = tempfile::tempdir().unwrap();

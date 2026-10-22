@@ -30,7 +30,7 @@ cargo build -p dbide-cli --release
 ./target/release/dbide --config ./tmp/cli-demo/profiles.json schema --profile demo
 ```
 
-`--config PATH`는 모든 위치에서 사용할 수 있는 global option. 생략하면 GUI와
+`--config PATH` (`--profiles PATH`도 같은 옵션)는 모든 위치에서 사용할 수 있는 global option. 생략하면 GUI와
 동일한 platform 기본 파일을 사용한다. macOS는
 `~/Library/Application Support/RustDatabaseIDE/profiles.json`, Windows는
 `%APPDATA%/RustDatabaseIDE/profiles.json`, Unix는
@@ -88,6 +88,42 @@ edit의 boolean은 `--read-only=false`, `--sqlite-create=false`로 끌 수 있�
 원본을 덮어쓰지 않는다. GUI와 CLI는 공통 `ProfileStore::update`와 sibling lock file로
 최신 설정의 read/modify/write를 직렬화한다. 같은 profile ID를 동시에 편집하면 마지막
 writer가 해당 profile의 내용을 결정하며, 서로 다른 profile이나 설정은 유지한다.
+
+## Portable 설정 JSON
+
+```sh
+# 명시한 원본 설정에서 새 portable JSON 생성. 기존 파일 덮어쓰기 없음.
+dbide --profiles /old/config/profiles.json config export \
+  --base-dir /old/project --output ./portable.json
+# 원본 profiles나 DB를 열지 않고 bounded JSON 검증/요약.
+dbide config inspect --file ./portable.json
+# 상대 경로를 새 root에 명시적으로 매핑. 새 설정 디렉터리만 생성.
+dbide config import --file ./portable.json \
+  --path-root /new/project --destination /new/config-copy
+# base 밖의 절대 경로는 원문 전체를 명시해 개별 매핑 가능. --map 반복 가능.
+dbide config import --file ./portable.json \
+  --path-root /new/project --destination /new/config-mapped \
+  --map 'C:\old\outside.db=/new/data/outside.db'
+# import는 현재 설정을 선택하지 않는다. 반환된 profile_path를 명시해서 사용.
+dbide --profiles /new/config-copy/profiles.json profiles list
+```
+
+공통 `dbide-portable` 서비스가 profiles, selected profile ID, typed app settings,
+SQL recovery 활성화 여부만 저장한다. History, SQL recovery buffers, credentials,
+Keychain, DB 데이터, settings의 임의 추가 필드는 포함하지 않는다. DB나 인증에 접근하지 않는다.
+
+`--base-dir` 안의 SQLite/CA 경로는 상대 경로로 저장한다. Import의 필수 `--path-root`가
+그 상대 경로를 해석할 새 위치다. 파일 자체는 복사하지 않는다. 외부 절대 경로는 유지하며
+누락 경로는 warning으로 보고한다. 다른 OS의 외부 절대 경로는 정확한 `--map`이 없으면 거절한다.
+`--map ORIGINAL=DESTINATION`은 원문 전체와 절대 목적지의 명시적 대응이며 basename 추측은 하지 않는다.
+`--base-dir`, `--path-root`, `--destination`, `--map`의 목적지는 `..` 없는 절대 경로를 사용한다.
+기존 destination 디렉터리는 비어 있어도 거절하며, 현재 profiles source·선택·설정은 바꾸지 않는다.
+
+세 명령의 성공 stdout은 `schema_version: 1`, `ok: true` JSON이다. Export/inspect는
+`inspection`, import는 `report`를 반환한다. Import report에는 새 `directory`, `profile_path`,
+`profile_count`, `warnings`가 들어간다. 검증·경로·기존 destination 오류는 stderr 진단과 exit 2.
+Inspect는 설정 디렉터리나 lock 파일을 만들지 않는다.
+Portable JSON은 2 MiB 상한과 공통 schema/profile validator를 적용한다.
 remove는 프로필·선택·해당 프로필 history를 제거하지만 Keychain entry는 삭제하지 않는다.
 복구하려면 backup JSON을 원래 설정 경로로 명시적으로 복사한다.
 

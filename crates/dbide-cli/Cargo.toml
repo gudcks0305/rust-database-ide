@@ -17,6 +17,7 @@ dbide-credentials = { path = "../dbide-credentials" }
 dbide-data = { path = "../dbide-data" }
 dbide-driver-api = { path = "../dbide-driver-api" }
 dbide-profiles = { path = "../dbide-profiles" }
+dbide-portable = { path = "../dbide-portable" }
 dbide-project = { path = "../dbide-project" }
 dbide-settings = { path = "../dbide-settings" }
 dbide-sql = { path = "../dbide-sql" }

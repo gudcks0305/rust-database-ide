@@ -14,6 +14,7 @@ pub enum PreferencesEvent {
     TabWidthChosen(u8),
     PageSizeChosen(u16),
     RecoveryChosen(bool),
+    TransferRequested,
 }
 impl EventEmitter<PreferencesEvent> for PreferencesPanel {}
 
@@ -25,14 +26,16 @@ enum Section {
     Recovery,
     Language,
     Keyboard,
+    Transfer,
 }
 impl Section {
-    const ALL: [Self; 5] = [
+    const ALL: [Self; 6] = [
         Self::Editor,
         Self::Results,
         Self::Recovery,
         Self::Language,
         Self::Keyboard,
+        Self::Transfer,
     ];
     fn title(self, locale: Locale) -> &'static str {
         match self {
@@ -41,6 +44,7 @@ impl Section {
             Self::Recovery => text(locale, "SQL 복구", "SQL recovery"),
             Self::Language => tr(locale, Message::Language),
             Self::Keyboard => text(locale, "키보드 단축키", "Keyboard shortcuts"),
+            Self::Transfer => text(locale, "설정 이동", "Settings transfer"),
         }
     }
 }
@@ -158,6 +162,12 @@ impl PreferencesPanel {
                 })))
                 .child(note(tr(locale, Message::LanguageExplanation)))
                 .child(note(tr(locale, Message::OriginalDataPreserved))),
+            Section::Transfer => group(text(locale, "설정 내보내기·가져오기", "Export / import settings"))
+                .child(note(text(locale, "연결 프로필·화면 설정·SQL 복구 사용 여부를 JSON 파일로 옮깁니다.", "Transfer connection profiles, appearance settings, and SQL recovery preference in a JSON file.")))
+                .child(note(text(locale, "비밀번호·Keychain·쿼리 기록·SQL 초안·실제 DB 파일은 포함되지 않습니다.", "Passwords, Keychain entries, query history, SQL drafts, and database files are excluded.")))
+                .child(Button::new("preferences-transfer").small().label(text(locale, "설정 이동 열기…", "Open settings transfer…"))
+                    .on_click(cx.listener(|s, _, _, cx| s.emit(PreferencesEvent::TransferRequested, cx))))
+                .child(note(text(locale, "가져오기는 새 설정 폴더와 새 창을 사용합니다. 기존 설정을 덮어쓰거나 DB에 자동 연결하지 않습니다.", "Import uses a new settings folder and window. Existing settings are preserved; databases are not automatically connected."))),
             Section::Keyboard => group(text(locale, "키보드 단축키", "Keyboard shortcuts"))
                 .children([
                     ("⌘ ,", tr(locale, Message::Preferences)),

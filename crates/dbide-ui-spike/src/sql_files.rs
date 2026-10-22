@@ -13,6 +13,13 @@ use std::{
 pub const MAX_SQL_FILES_PER_BATCH: usize = 16;
 pub const MAX_SQL_FILE_BYTES: usize = 64 * 1024;
 
+/// The same supported filename boundary applies to opening and saving SQL.
+pub fn is_sql_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("sql"))
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OpenedSqlFile {
     /// Canonical identity for deduplication against already open documents.
@@ -87,9 +94,7 @@ pub fn load_sql_files(paths: Vec<PathBuf>) -> Vec<Result<OpenedSqlFile, FileOpen
                     format!("Open at most {MAX_SQL_FILES_PER_BATCH} SQL files at once; this path was not opened"),
                 ));
             }
-            if !path.extension().and_then(|extension| extension.to_str())
-                .is_some_and(|extension| extension.eq_ignore_ascii_case("sql"))
-            {
+            if !is_sql_path(&path) {
                 return Err(fail(
                     FileOpenErrorKind::UnsupportedExtension,
                     "Only .sql files can be opened (extension is case-insensitive)".into(),

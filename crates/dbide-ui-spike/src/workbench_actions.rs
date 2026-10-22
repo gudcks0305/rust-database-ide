@@ -3,7 +3,8 @@ use dbide_credentials::CredentialStore;
 
 impl Workbench {
     pub(super) fn sql_view_active(&self) -> bool {
-        !self.paged_query_visible
+        self.settings_transfer.is_none()
+            && !self.paged_query_visible
             && completion_model::sql_view_active(
                 self.active_table_tab.is_some(),
                 self.tools.is_some(),
@@ -1145,14 +1146,8 @@ impl Workbench {
 }
 
 impl Workbench {
-    pub(super) fn quit_action(&mut self, _: &Quit, window: &mut Window, cx: &mut Context<Self>) {
-        self.quit_after_close = true;
-        if self.request_window_close(window, cx) {
-            cx.quit();
-        } else if !self.close_prompt_open && !self.recovery.close_after && !self.close_after_streams
-        {
-            self.quit_after_close = false;
-        }
+    pub(super) fn quit_action(&mut self, _: &Quit, _: &mut Window, cx: &mut Context<Self>) {
+        configuration_windows::request_quit(cx);
     }
     pub(super) fn finish_window_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let wait_csv = self.defer_close_for_stream_export(cx);
@@ -1162,7 +1157,7 @@ impl Workbench {
             return;
         }
         self.abort_table_open("Window closed before table reading.".into(), true, cx);
-        if self.quit_after_close {
+        if self.quit_after_close && cx.windows().len() == 1 {
             cx.quit();
         } else {
             window.remove_window();
@@ -1173,6 +1168,13 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
+        if self.settings_transfer_busy(cx)
+            || self.settings_busy
+            || !self.settings_pending.is_empty()
+        {
+            self.close_when_streams_settle(window, cx);
+            return false;
+        }
         let wait_csv = self.defer_close_for_stream_export(cx);
         let wait_pages = self.defer_close_for_paged_query(cx);
         if wait_csv || wait_pages {
@@ -1410,6 +1412,11 @@ impl Workbench {
         w: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if let Some(panel) = &self.settings_transfer {
+            panel.update(cx, |p, cx| p.request_close(cx));
+            cx.notify();
+            return;
+        }
         if self.preferences.take().is_some() {
             cx.notify();
             return;
