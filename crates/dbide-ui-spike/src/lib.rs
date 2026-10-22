@@ -5,6 +5,7 @@ pub mod history_model;
 pub mod navigator;
 pub mod object_finder_model;
 pub mod recovery_model;
+pub mod result_find_model;
 pub mod selection_execution;
 pub mod session_credentials;
 pub mod table_open_model;

@@ -7,6 +7,12 @@ The [42 feature groups](FEATURE-MATRIX.md) remain the full backlog.
 session correctness gaps are being addressed before wider integration. PostgreSQL row Apply remains disabled because namespace
 rebinding acceptance has not passed; model/batch tests do not override that blocker.
 
+## UI refinement and retained-result search
+
+The result toolbar now opens a local text finder (`Cmd+Option+F`, or `Cmd+F` with the query grid focused). Enter searches the retained page off the UI thread; subsequent Enter/Shift+Enter and arrows move between matching cells. Searches never fetch from the database. Limits:100,000 cells,8MiB original text,64KiB per cell and1,000 matches; clipped scans are explicitly partial. SQL NULL is excluded from text search, while literal `NULL` is searchable. Case-insensitive matching uses Unicode lowercase, not normalization/full case folding. Changing the result page invalidates the search, and callbacks check exact page identity before selecting.
+
+Open-tab overview includes dirty markers and connection/database targets. Right-side inspectors share a draggable, session-local width; narrower panels retain the central editor. Value/history/object finder rows use shorter labels with full detail in tooltips, the query grid shares workspace colors, and repeated result counts are removed. Full captured result provenance remains in the result heading tooltip. Persistent settings/CLI contracts are unchanged.
+
 ## Latest DataGrip workflow comparison
 
 The [2026-10-22 gap audit](DATAGRIP-GAPS-2026-10-22.md) adds saved-metadata object search (`Cmd+Shift+O`), searchable/filterable query history (`Cmd+Shift+H`), explicit selected SQL (`Cmd+Alt+Enter`), read-only value/record inspectors, and loaded-result TSV range copy. These are bounded partial implementations; parameter binding, FK row navigation, keepalive/startup scripts, introspection levels and broader session controls remain tracked. Verification for this batch is recorded in `evidence/datagrip-features-qa.json`.

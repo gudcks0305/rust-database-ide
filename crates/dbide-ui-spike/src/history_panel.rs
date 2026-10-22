@@ -7,6 +7,7 @@ use gpui_component::{
     button::Button,
     input::{self, Input, InputEvent, InputState},
     menu::{DropdownMenu, PopupMenuItem},
+    tooltip::Tooltip,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -218,6 +219,8 @@ impl Render for HistoryPanel {
                     .row_count
                     .map(|n| n.to_string())
                     .unwrap_or_else(|| "?".into());
+                let target = format!("{profile} / {database}");
+                let target_tooltip = target.clone();
                 div()
                     .id(("history-entry", index))
                     .role(Role::Button)
@@ -243,44 +246,205 @@ impl Render for HistoryPanel {
                     .child(
                         div()
                             .flex()
-                            .justify_between()
-                            .gap_3()
+                            .items_center()
+                            .gap_2()
                             .text_size(px(11.))
                             .text_color(rgb(0x9aa9bd))
-                            .child(format!("{profile} / {database}"))
-                            .child(format!(
-                                "{} · {} · {count} {}",
-                                timestamp(entry.executed_at_unix_ms),
-                                entry.outcome,
-                                text(locale, "행(보관)", "retained rows")
-                            )),
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .text_ellipsis()
+                                    .child(timestamp(entry.executed_at_unix_ms)),
+                            )
+                            .child(div().flex_shrink_0().child(entry.outcome.clone())),
+                    )
+                    .child(
+                        div()
+                            .id(("history-target", index))
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .text_size(px(11.))
+                            .text_color(rgb(0x9aa9bd))
+                            .tooltip(move |_, cx| {
+                                cx.new(|_| Tooltip::new(target_tooltip.clone())).into()
+                            })
+                            .child(div().min_w_0().flex_1().text_ellipsis().child(target))
+                            .child(div().flex_shrink_0().child(format!(
+                                "{count} {}",
+                                text(locale, "보관 행", "retained rows")
+                            ))),
                     )
                     .child(
                         div()
                             .text_size(px(12.))
-                            .overflow_hidden()
+                            .text_ellipsis()
                             .child(sql_excerpt(&entry.sql, 160).replace(['\n', '\r'], " ")),
                     )
             })
             .collect::<Vec<_>>();
-        div().id("query-history-panel").track_focus(&self.focus).key_context("Input").capture_action(cx.listener(|s, _: &input::MoveUp, w, cx| s.capture("up", w, cx)))
+        div()
+            .id("query-history-panel")
+            .track_focus(&self.focus)
+            .key_context("Input")
+            .capture_action(cx.listener(|s, _: &input::MoveUp, w, cx| s.capture("up", w, cx)))
             .capture_action(cx.listener(|s, _: &input::MoveDown, w, cx| s.capture("down", w, cx)))
-            .capture_action(cx.listener(|s, a: &input::Enter, w, cx| { if !a.secondary && !a.shift { s.capture("enter", w, cx); } }))
-            .capture_action(cx.listener(|s, _: &input::Escape, w, cx| s.capture("escape", w, cx))).flex().flex_col().size_full().min_h_0().gap_2()
-            .child(div().flex().items_center().gap_2().px_3().pt_2()
-                .child(div().font_weight(FontWeight::SEMIBOLD).child(text(locale, "쿼리 기록", "Query history")))
-                .child(div().flex_1())
-                .child(Button::new("history-close").label(text(locale, "닫기", "Close")).small().on_click(cx.listener(|_, _, _, cx| cx.emit(HistoryPanelEvent::Close)))))
-            .child(div().flex().items_center().gap_2().px_3()
-                .child(div().text_size(px(11.)).text_color(rgb(0x9aa9bd)).child(text(locale, "검색", "Search")))
-                .child(div().flex_1().child(Input::new(&self.search).small().aria_label(text(locale, "SQL · 프로필 · 데이터베이스 검색", "Search SQL, profile or database"))))
-                .child(profile_filter).child(outcome_filter))
-            .child(div().px_3().text_size(px(11.)).text_color(rgb(0x9aa9bd)).child(format!("{} / {} · {}", self.model.visible.len(), self.model.entries.len(), text(locale, "최신순 · ↑↓ 선택 · Enter 초안 열기", "Newest first · ↑↓ select · Enter opens draft"))))
-            .child(div().id("history-results").track_scroll(&self.scroll).flex_1().min_h_0().overflow_y_scroll().children(rows)
-                .when(self.model.visible.is_empty(), |list| list.child(div().p_4().text_color(rgb(0x9aa9bd)).child(if self.model.entries.is_empty() { text(locale, "아직 실행 기록이 없습니다.", "No query history yet.") } else { text(locale, "검색 조건과 일치하는 기록이 없습니다.", "No history matches these filters.") }))))
-            .when_some(self.model.selected(), |panel, entry| panel.child(div().px_3().py_2().border_t_1().border_color(rgb(0x2a3644)).child(div().text_size(px(11.)).text_color(rgb(0x9aa9bd)).child(text(locale, "선택한 SQL 미리보기 · 읽기 전용", "Selected SQL preview · read only"))).child(div().text_size(px(12.)).max_h(px(100.)).overflow_hidden().child(sql_excerpt(&entry.sql, 2000)))))
-            .child(div().flex().items_center().justify_between().px_3().pb_2().gap_2()
-                .child(div().text_size(px(11.)).text_color(rgb(0x9aa9bd)).child(text(locale, "초안을 열면 SQL 원문과 기록된 대상을 복원합니다. 실행은 별도입니다.", "Open restores the original SQL and captured target. Execute separately.")))
-                .child(Button::new("history-open").small().label(text(locale, "SQL 초안 열기", "Open SQL draft")).disabled(self.model.selected().is_none()).on_click(cx.listener(|s, _, _, cx| s.open(cx)))))
+            .capture_action(cx.listener(|s, a: &input::Enter, w, cx| {
+                if !a.secondary && !a.shift {
+                    s.capture("enter", w, cx);
+                }
+            }))
+            .capture_action(cx.listener(|s, _: &input::Escape, w, cx| s.capture("escape", w, cx)))
+            .flex()
+            .flex_col()
+            .size_full()
+            .min_w_0()
+            .min_h_0()
+            .gap_2()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .px_3()
+                    .pt_2()
+                    .child(div().font_weight(FontWeight::SEMIBOLD).child(text(
+                        locale,
+                        "쿼리 기록",
+                        "Query history",
+                    )))
+                    .child(div().flex_1())
+                    .child(
+                        Button::new("history-close")
+                            .label(text(locale, "닫기", "Close"))
+                            .small()
+                            .on_click(cx.listener(|_, _, _, cx| cx.emit(HistoryPanelEvent::Close))),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .px_3()
+                    .child(
+                        div()
+                            .text_size(px(11.))
+                            .text_color(rgb(0x9aa9bd))
+                            .child(text(locale, "검색", "Search")),
+                    )
+                    .child(div().flex_1().min_w_0().child(
+                        Input::new(&self.search).small().aria_label(text(
+                            locale,
+                            "SQL · 프로필 · 데이터베이스 검색",
+                            "Search SQL, profile or database",
+                        )),
+                    )),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .gap_2()
+                    .px_3()
+                    .child(profile_filter)
+                    .child(outcome_filter),
+            )
+            .child(
+                div()
+                    .px_3()
+                    .text_size(px(11.))
+                    .text_color(rgb(0x9aa9bd))
+                    .child(format!(
+                        "{} / {} · {}",
+                        self.model.visible.len(),
+                        self.model.entries.len(),
+                        text(
+                            locale,
+                            "최신순 · ↑↓ 선택 · Enter 초안 열기",
+                            "Newest first · ↑↓ select · Enter opens draft"
+                        )
+                    )),
+            )
+            .child(
+                div()
+                    .id("history-results")
+                    .track_scroll(&self.scroll)
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .children(rows)
+                    .when(self.model.visible.is_empty(), |list| {
+                        list.child(div().p_4().text_color(rgb(0x9aa9bd)).child(
+                            if self.model.entries.is_empty() {
+                                text(
+                                    locale,
+                                    "아직 실행 기록이 없습니다.",
+                                    "No query history yet.",
+                                )
+                            } else {
+                                text(
+                                    locale,
+                                    "검색 조건과 일치하는 기록이 없습니다.",
+                                    "No history matches these filters.",
+                                )
+                            },
+                        ))
+                    }),
+            )
+            .when_some(self.model.selected(), |panel, entry| {
+                panel.child(
+                    div()
+                        .px_3()
+                        .py_2()
+                        .border_t_1()
+                        .border_color(rgb(0x2a3644))
+                        .child(
+                            div()
+                                .text_size(px(11.))
+                                .text_color(rgb(0x9aa9bd))
+                                .child(text(
+                                    locale,
+                                    "선택한 SQL 미리보기 · 읽기 전용",
+                                    "Selected SQL preview · read only",
+                                )),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(12.))
+                                .max_h(px(100.))
+                                .overflow_hidden()
+                                .child(sql_excerpt(&entry.sql, 2000)),
+                        ),
+                )
+            })
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .px_3()
+                    .pb_2()
+                    .gap_2()
+                    .child(
+                        div()
+                            .text_size(px(11.))
+                            .text_color(rgb(0x9aa9bd))
+                            .child(text(
+                                locale,
+                                "SQL과 기록된 대상을 초안으로 복원 · 자동 실행 안 함",
+                                "Restore SQL and captured target as draft · no automatic execution",
+                            )),
+                    )
+                    .child(
+                        div().flex().justify_end().child(
+                            Button::new("history-open")
+                                .small()
+                                .label(text(locale, "SQL 초안 열기", "Open SQL draft"))
+                                .disabled(self.model.selected().is_none())
+                                .on_click(cx.listener(|s, _, _, cx| s.open(cx))),
+                        ),
+                    ),
+            )
     }
 }

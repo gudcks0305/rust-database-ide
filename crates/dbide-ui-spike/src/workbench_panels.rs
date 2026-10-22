@@ -97,8 +97,80 @@ impl Workbench {
                                 s.new_document(String::new(), "untitled.sql".into(), true, w, cx)
                             })),
                     )
+                    .child(self.open_tabs_menu(cx))
                     .child(self.file_command_menu()),
             )
+    }
+    fn open_tabs_menu(&self, cx: &mut Context<Self>) -> AnyElement {
+        let ko = self.locale == Locale::Ko;
+        let active = self
+            .active_table_tab
+            .map(|id| (true, id))
+            .unwrap_or((false, self.active_document));
+        let mut entries: Vec<(bool, u64, String)> = self
+            .documents
+            .iter()
+            .map(|d| {
+                let dirty = if d.model.dirty(&d.editor.read(cx).value()) {
+                    " ●"
+                } else {
+                    ""
+                };
+                let target = d
+                    .session
+                    .target()
+                    .map(|p| format!("{} / {}", p.name, p.database))
+                    .unwrap_or_else(|| if ko { "연결 없음" } else { "Unbound" }.into());
+                (
+                    false,
+                    d.model.id,
+                    format!("{}{} · {}", d.model.title, dirty, target),
+                )
+            })
+            .collect();
+        entries.extend(self.table_tabs.iter().map(|t| {
+            (
+                true,
+                t.id,
+                format!(
+                    "{}.{} · {} / {}",
+                    t.relation.schema, t.relation.name, t.request.profile.name, t.key.database
+                ),
+            )
+        }));
+        let view = cx.weak_entity();
+        Button::new("open-tab-list")
+            .small()
+            .ghost()
+            .label(format!("{} ▾", entries.len()))
+            .accessibility_label(if ko { "열린 탭 목록" } else { "Open tabs" })
+            .tooltip(if ko {
+                "열린 SQL·테이블 탭으로 이동"
+            } else {
+                "Switch to an open SQL or table tab"
+            })
+            .dropdown_menu(move |mut menu, _, _| {
+                for (table, id, title) in &entries {
+                    let (table, id) = (*table, *id);
+                    let view = view.clone();
+                    menu = menu.item(
+                        PopupMenuItem::new(title.clone())
+                            .checked(active == (table, id))
+                            .on_click(move |_, w, cx| {
+                                let _ = view.update(cx, |s, cx| {
+                                    if table {
+                                        s.show_table_tab(id, w, cx);
+                                    } else {
+                                        s.switch_document(id, cx);
+                                        s.editor.update(cx, |e, cx| e.focus(w, cx));
+                                    }
+                                });
+                            }),
+                    );
+                }
+                menu
+            })
+            .into_any_element()
     }
     pub(super) fn query_toolbar(&self, cx: &mut Context<Self>) -> Div {
         let session = self.console();

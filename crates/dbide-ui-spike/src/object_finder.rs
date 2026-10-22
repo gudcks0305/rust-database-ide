@@ -9,6 +9,7 @@ use gpui_component::{
     Disableable, Sizable,
     button::Button,
     input::{Input, InputEvent, InputState},
+    tooltip::Tooltip,
 };
 use std::{
     path::PathBuf,
@@ -323,6 +324,8 @@ impl Render for ObjectFinder {
             .flex_col()
             .gap_3()
             .size_full()
+            .min_w_0()
+            .min_h_0()
             .p_4()
             .bg(rgb(0x18212b))
             .text_color(rgb(0xdce1e9))
@@ -354,7 +357,11 @@ impl Render for ObjectFinder {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(self.tr("데이터베이스 객체 찾기", "Find database object"))
+                    .child(
+                        div()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(self.tr("객체 찾기", "Find object")),
+                    )
                     .child(
                         Button::new("close-object-finder")
                             .small()
@@ -380,6 +387,8 @@ impl Render for ObjectFinder {
                 div()
                     .id("object-finder-status")
                     .role(Role::Label)
+                    .text_size(px(11.))
+                    .text_color(rgb(0x8b95a5))
                     .aria_label(self.status())
                     .child(self.status()),
             )
@@ -401,10 +410,12 @@ impl Render for ObjectFinder {
                             found.profile.engine,
                             dbide_ui_spike::history_model::timestamp(found.captured_unix_ms)
                         );
+                        let tooltip = label.clone();
                         div()
                             .id(("object-finder-result", index))
                             .role(Role::Button)
                             .aria_label(label.clone())
+                            .aria_selected(self.model.selected == index)
                             .p_2()
                             .rounded_md()
                             .bg(rgb(if self.model.selected == index {
@@ -414,7 +425,56 @@ impl Render for ObjectFinder {
                             }))
                             .cursor_pointer()
                             .hover(|style| style.bg(rgb(0x25334b)))
-                            .child(label)
+                            .tooltip(move |_, cx| cx.new(|_| Tooltip::new(tooltip.clone())).into())
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .min_w_0()
+                                            .text_ellipsis()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .child(format!(
+                                                "{}.{}",
+                                                found.relation.schema, found.relation.name
+                                            )),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_shrink_0()
+                                            .text_size(px(11.))
+                                            .text_color(rgb(0x8b95a5))
+                                            .child(found.relation.kind.clone()),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .text_ellipsis()
+                                    .text_size(px(11.))
+                                    .text_color(rgb(0x8b95a5))
+                                    .child(format!(
+                                        "{} / {} · {}",
+                                        found.profile.profile_name,
+                                        found.database,
+                                        found.profile.engine
+                                    )),
+                            )
+                            .child(
+                                div()
+                                    .text_ellipsis()
+                                    .text_size(px(11.))
+                                    .text_color(rgb(0x8b95a5))
+                                    .child(format!(
+                                        "{} · {}",
+                                        self.tr("저장", "Saved"),
+                                        dbide_ui_spike::history_model::timestamp(
+                                            found.captured_unix_ms
+                                        )
+                                    )),
+                            )
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 if this.model.generation == rendered_generation
                                     && !this.model.searching
@@ -427,18 +487,25 @@ impl Render for ObjectFinder {
             .child(
                 div()
                     .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(self.tr(
-                        "↑↓ 선택 · Enter 구조 보기 · Esc 닫기",
-                        "↑↓ select · Enter view structure · Esc close",
-                    ))
+                    .flex_col()
+                    .gap_2()
                     .child(
-                        Button::new("open-found-object")
-                            .small()
-                            .label(self.tr("구조 보기", "View structure"))
-                            .disabled(self.model.selection().is_none())
-                            .on_click(cx.listener(|this, _, _, cx| this.choose(cx))),
+                        div()
+                            .text_size(px(11.))
+                            .text_color(rgb(0x8b95a5))
+                            .child(self.tr(
+                                "↑↓ 선택 · Enter 구조 보기 · Esc 닫기",
+                                "↑↓ select · Enter view structure · Esc close",
+                            )),
+                    )
+                    .child(
+                        div().flex().justify_end().child(
+                            Button::new("open-found-object")
+                                .small()
+                                .label(self.tr("구조 보기", "View structure"))
+                                .disabled(self.model.selection().is_none())
+                                .on_click(cx.listener(|this, _, _, cx| this.choose(cx))),
+                        ),
                     ),
             )
     }

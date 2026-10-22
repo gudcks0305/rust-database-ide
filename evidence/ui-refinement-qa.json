@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "base_commit": "3873063f5275efd03cb3ca0f0a60aa59e1a0aca7",
+  "scope": "Retained result search, open-tab overview, resizable detail panels, UI clutter cleanup. No driver or row Apply changes.",
+  "selected_issues": [
+    "Active tab clipped after panel width change used prior-frame scroll bounds.",
+    "Fixed570px panels and long repeated labels crowded editor.",
+    "No generic query result text search or open-tab overview.",
+    "Result header duplicated retained/affected counts.",
+    "Repeated panel openings appended subscriptions indefinitely.",
+    "Grid component palette differed from workspace colors."
+  ],
+  "changes": [
+    "Scroll active tab on next frame after geometry update.",
+    "Open-tab menu lists SQL/table tabs with connection/database target and dirty marker.",
+    "Session-local draggable detail width390px default,280..720px constrained by available space.",
+    "Shorter value/history/finder hierarchy and full metadata tooltips.",
+    "Result find operates on immutable Arc page, cancellation and identity guard; page replacement removes old search.",
+    "Search limits100k cells/8MiB/64KiB percell/1000matches; partial status; no DB calls.",
+    "Replaced per-open subscription append with dedicated replaceable subscriptions.",
+    "Theme::update synchronizes solid colors and paint tokens; selection overlay keeps alpha so text stays visible."
+  ],
+  "checks": {
+    "workspace_tests": {
+      "passed": 414,
+      "failed": 0,
+      "ignored": 62
+    },
+    "ui_tests": {
+      "passed": 106,
+      "failed": 0,
+      "ignored": 3
+    },
+    "workspace_clippy": "passed before final theme adjustment",
+    "final_ui_all_targets_clippy": "passed",
+    "fmt": "passed",
+    "release_package": "passed",
+    "project_verifier": "passed",
+    "independent_review": "Read-only review identified locale update and find-close focus restoration; both fixed. Native render caught opaque selection overlay; corrected and recaptured."
+  },
+  "native_runs": [
+    {
+      "binary_sha256": "714ee5ff238661a6baff139d888e24065466a10b1030bb291efe3fdac52665d0",
+      "passed": [
+        "Case-insensitive item found5of12cells; next selected Korean Item3; Esc thenCmdC copied exact value into unexecuted draft, restored withundo.",
+        "Detail panel dragged390→310px; active history.sql remained visible.",
+        "Tab overview switched to SQLite main without autoquery and retained SQL.",
+        "History layout fit narrower panel."
+      ]
+    },
+    {
+      "binary_sha256": "5bdd9fb7a0f4c8cf3d02976f58abf30d1a47e1f2cb724a9457c0e3dabebc55a9",
+      "passed": [
+        "Korean text search returned5matches across12cells, excludesSQLNULL.",
+        "Final selected-cell text remained visible over translucent highlight.",
+        "Final palette, active tab and compact inspector visually inspected."
+      ]
+    }
+  ],
+  "additional_native_checks_before_final_alpha_only_change": [
+    "ShiftEnter wrapped1/5→5/5.",
+    "Aa case-sensitive item produced0/0 against Item values.",
+    "Switching to SQLite console removed old find bar; returning startednewsearch.",
+    "CmdOptionF opened find bar after resultready."
+  ],
+  "screenshot": {
+    "local_path": "outputs/ui-refinement-2026-10-22/workspace.png",
+    "sha256": "9cb1a04dd2f3824e16cc40bf27e40912ef238aa7ac18c3cabebfb00b0eca6530"
+  },
+  "limits": [
+    "Owned loopback fixtures only; no user profiles or database data.",
+    "62 integration tests ignored, not counted as live passes.",
+    "Search only retained page, not whole database; Unicode lowercase is not full casefold/normalization.",
+    "Right detail width session-local; no settings migration.",
+    "No full accessibility/IME/all viewport claim.",
+    "Row Apply remains disabled; CI workflow inactive."
+  ]
+}

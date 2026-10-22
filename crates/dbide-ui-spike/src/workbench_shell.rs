@@ -5,7 +5,66 @@ pub(super) fn editor_panel_height(preferred: u16, viewport_height: f32) -> u16 {
     preferred.min((viewport_height - 450.).clamp(120., 720.) as u16)
 }
 
+pub(super) fn inspector_panel_width(preferred: f32, viewport: f32, sidebar: f32) -> f32 {
+    preferred.clamp(280., (viewport - sidebar - 370.).clamp(280., 720.))
+}
+
 impl Workbench {
+    pub(super) fn inspector_frame(
+        &self,
+        panel: AnyElement,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        let sidebar = if self.catalog_collapsed {
+            0.
+        } else {
+            self.app_settings.sidebar_width as f32 + 5.
+        };
+        let width = inspector_panel_width(
+            self.inspector_width,
+            window.viewport_size().width.into(),
+            sidebar,
+        );
+        div()
+            .flex()
+            .flex_shrink_0()
+            .min_h_0()
+            .child(
+                div()
+                    .id("inspector-divider")
+                    .w(px(5.))
+                    .h_full()
+                    .flex_shrink_0()
+                    .role(Role::GenericContainer)
+                    .aria_label(if self.locale == Locale::Ko {
+                        "상세 패널 너비 조절"
+                    } else {
+                        "Resize detail panel"
+                    })
+                    .bg(rgb(BORDER))
+                    .cursor(CursorStyle::ResizeLeftRight)
+                    .hover(|el| el.bg(rgb(ACCENT)))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |s, e: &MouseDownEvent, w, cx| {
+                            s.inspector_drag = Some((e.position.x, width));
+                            w.prevent_default();
+                            cx.stop_propagation();
+                        }),
+                    ),
+            )
+            .child(
+                div()
+                    .w(px(width))
+                    .min_w_0()
+                    .min_h_0()
+                    .h_full()
+                    .overflow_hidden()
+                    .child(panel),
+            )
+    }
+
     pub(super) fn result_more_menu(&self, cx: &mut Context<Self>) -> AnyElement {
         let import_view = cx.weak_entity();
         let json_view = import_view.clone();
@@ -37,6 +96,16 @@ impl Workbench {
                 let json_view = json_view.clone();
                 let csv_view = csv_view.clone();
                 menu.item(
+                    PopupMenuItem::new(if locale == Locale::Ko {
+                        "결과에서 찾기…"
+                    } else {
+                        "Find in result…"
+                    })
+                    .disabled(!rows)
+                    .action(Box::new(FindResults)),
+                )
+                .separator()
+                .item(
                     PopupMenuItem::new(if locale == Locale::Ko {
                         "값 상세 보기"
                     } else {
@@ -166,6 +235,24 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if let Some((origin, initial)) = self.inspector_drag {
+            if event.pressed_button != Some(MouseButton::Left) {
+                self.inspector_drag = None;
+                return;
+            }
+            let sidebar = if self.catalog_collapsed {
+                0.
+            } else {
+                self.app_settings.sidebar_width as f32 + 5.
+            };
+            self.inspector_width = inspector_panel_width(
+                initial - f32::from(event.position.x - origin),
+                window.viewport_size().width.into(),
+                sidebar,
+            );
+            cx.notify();
+            return;
+        }
         let Some((horizontal, origin, initial)) = self.resize_drag else {
             return;
         };
@@ -189,6 +276,7 @@ impl Workbench {
         cx.notify();
     }
     pub(super) fn resize_end(&mut self, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
+        self.inspector_drag = None;
         self.finish_resize(cx);
     }
     fn finish_resize(&mut self, cx: &mut Context<Self>) {

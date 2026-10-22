@@ -27,7 +27,7 @@
 | F19 | 결과 grid·paging/limit·가상화·결과 탭 | M1 | 양축 가상화, row/byte limit, multi-result별 상태 | D07 | experimental |
 | F20 | JSON/tree/text/transpose·LOB/value editor | M2 | 타입 구분, lazy 큰 값, 표시 제한 | D07 | partial — read-only value/record·lossless JSON display·loaded range copy; tree/transpose/LOB lazy editing 남음 |
 | F21 | grid CRUD·paste·NULL/default·clone | M2 | key 기반 edit, optimistic conflict, generated column | D07 | partial — PG typed CRUD/batch 실검증; UI 통합 중 |
-| F22 | filter/sort/search·서버/로컬 구분 | M2 | fetched subset 정렬과 전체 DB 정렬 구별 | D07 | partial — PG table viewer typed AND server filters/raw-column sort/page sizes와 loaded-page Find; generic query result server filter/sort와 전체 결과 검색 남음 |
+| F22 | filter/sort/search·서버/로컬 구분 | M2 | fetched subset 정렬과 전체 DB 정렬 구별 | D07 | partial — PG table viewer typed AND server filters/raw-column sort/page sizes와 loaded-page Find, generic query retained-page text find; generic query result server filter/sort와 전체 결과 검색 남음 |
 | F23 | staged/submitted/committed·revert | M2 | Auto/Manual commit에 맞는 실제 DB 상태 반영 | D04,D07 | partial — PG transaction/savepoint batch; staged UI 통합 중 |
 | F24 | CSV/TSV/JSON 및 후속 XML/Markdown/XLSX export | M2–M4 | streaming·escaping·encoding·취소·partial 파일 표시 | D08 | partial — CSV/TSV/JSON snapshot; 전체 streaming export 남음 |
 | F25 | import·column/type mapping·preview·batch | M2–M4 | 타입 손실/중단 처리 범위·transaction 정책 검증 | D08 | partial — preview/mapping core; DB import 적용 남음 |

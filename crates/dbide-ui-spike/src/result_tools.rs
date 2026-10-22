@@ -66,16 +66,15 @@ impl Workbench {
             Ok(snapshot) => {
                 let panel =
                     cx.new(|cx| value_inspector::ValueInspector::new(snapshot, self.locale, w, cx));
-                self._subscriptions
-                    .push(cx.subscribe(&panel, |s, source, _, cx| {
-                        if s.value_inspector
-                            .as_ref()
-                            .is_some_and(|v| v.entity_id() == source.entity_id())
-                        {
-                            s.value_inspector = None;
-                            cx.notify();
-                        }
-                    }));
+                self.inspector_subscription = Some(cx.subscribe(&panel, |s, source, _, cx| {
+                    if s.value_inspector
+                        .as_ref()
+                        .is_some_and(|v| v.entity_id() == source.entity_id())
+                    {
+                        s.value_inspector = None;
+                        cx.notify();
+                    }
+                }));
                 self.preferences = None;
                 self.form = None;
                 self.cancel_object_reveal();
@@ -234,7 +233,7 @@ impl Workbench {
         } else {
             ["First row", "Last row", "First column", "Last column"]
         };
-        div().w(px(370.)).max_w(relative(0.5)).flex_shrink_0().bg(rgb(PANEL)).border_l_1().border_color(rgb(BORDER)).p_4().flex().flex_col().gap_3()
+        div().size_full().flex_shrink_0().bg(rgb(PANEL)).border_l_1().border_color(rgb(BORDER)).p_4().flex().flex_col().gap_3()
             .child(div().flex().justify_between().child(if ko{"범위 복사"}else{"Copy range"}).child(self.button("close-range-copy","Close").on_click(cx.listener(|s,_,_,cx|{s.range_copy=None;cx.notify();}))))
             .child(div().text_size(px(11.)).text_color(rgb(MUTED)).child(draft.source.clone()))
             .child(format!("{} × {} · {}",draft.page.rows.len(),draft.page.columns.len(),if ko{"보관된 결과 · 끝 번호 포함"}else{"Loaded snapshot · inclusive bounds"}))

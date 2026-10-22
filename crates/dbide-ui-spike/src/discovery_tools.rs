@@ -74,24 +74,21 @@ impl Workbench {
             .collect();
         let panel =
             cx.new(|cx| object_finder::ObjectFinder::new(root, profiles, self.locale, w, cx));
-        self._subscriptions
-            .push(cx.subscribe_in(&panel, w, |s, source, event, w, cx| {
-                if s.object_finder
-                    .as_ref()
-                    .is_none_or(|p| p.entity_id() != source.entity_id())
-                {
-                    return;
+        self.finder_subscription = Some(cx.subscribe_in(&panel, w, |s, source, event, w, cx| {
+            if s.object_finder
+                .as_ref()
+                .is_none_or(|p| p.entity_id() != source.entity_id())
+            {
+                return;
+            }
+            match event {
+                object_finder::FinderEvent::Close => {
+                    s.object_finder = None;
+                    cx.notify();
                 }
-                match event {
-                    object_finder::FinderEvent::Close => {
-                        s.object_finder = None;
-                        cx.notify();
-                    }
-                    object_finder::FinderEvent::Selected(found) => {
-                        s.reveal_found_object(found, w, cx)
-                    }
-                }
-            }));
+                object_finder::FinderEvent::Selected(found) => s.reveal_found_object(found, w, cx),
+            }
+        }));
         self.object_finder = Some(panel);
         self.preferences = None;
         self.value_inspector = None;
@@ -231,24 +228,21 @@ impl Workbench {
                 cx,
             )
         });
-        self._subscriptions
-            .push(cx.subscribe_in(&panel, w, |s, source, event, w, cx| {
-                if s.history_panel
-                    .as_ref()
-                    .is_none_or(|p| p.entity_id() != source.entity_id())
-                {
-                    return;
+        self.history_subscription = Some(cx.subscribe_in(&panel, w, |s, source, event, w, cx| {
+            if s.history_panel
+                .as_ref()
+                .is_none_or(|p| p.entity_id() != source.entity_id())
+            {
+                return;
+            }
+            match event {
+                history_panel::HistoryPanelEvent::Close => {
+                    s.show_history = false;
+                    cx.notify();
                 }
-                match event {
-                    history_panel::HistoryPanelEvent::Close => {
-                        s.show_history = false;
-                        cx.notify();
-                    }
-                    history_panel::HistoryPanelEvent::Open(entry) => {
-                        s.open_history_entry(entry, w, cx)
-                    }
-                }
-            }));
+                history_panel::HistoryPanelEvent::Open(entry) => s.open_history_entry(entry, w, cx),
+            }
+        }));
         self.history_panel = Some(panel);
         self.show_history = true;
         self.preferences = None;
@@ -323,8 +317,7 @@ impl Workbench {
     }
     pub(super) fn history_view(&self, cx: &mut Context<Self>) -> Div {
         let mut view = div()
-            .w(px(470.))
-            .max_w(relative(0.55))
+            .size_full()
             .min_h_0()
             .flex_shrink_0()
             .bg(rgb(PANEL))

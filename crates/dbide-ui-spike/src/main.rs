@@ -5,6 +5,8 @@ mod history_panel;
 mod native_menus;
 mod object_finder;
 mod preferences;
+mod result_find;
+mod result_search;
 mod result_tools;
 mod table_tabs;
 mod value_inspector;
@@ -67,6 +69,7 @@ actions!(
         RunQuery,
         RunCurrent,
         RunSelection,
+        FindResults,
         InspectValue,
         InspectRecord,
         CopyResultRow,
@@ -395,7 +398,7 @@ struct Workbench {
     active_document: u64,
     tab_scroll: ScrollHandle,
     last_visible_tab: Option<(bool, u64)>,
-    last_tab_space: Option<(u16, u16, bool, u8, bool)>,
+    last_tab_space: Option<(u16, u16, u16, bool, u8, bool)>,
     next_document: u64,
     pending_owner: Option<ResultOwner>,
     result_owner: Option<ResultOwner>,
@@ -422,6 +425,8 @@ struct Workbench {
     settings_pending: VecDeque<dbide_settings::SettingsChange>,
     app_settings: dbide_settings::AppSettings,
     resize_drag: Option<(bool, Point<Pixels>, f32)>,
+    inspector_width: f32,
+    inspector_drag: Option<(Pixels, f32)>,
     results_collapsed: bool,
     catalog_collapsed: bool,
     settings_error: Option<String>,
@@ -451,6 +456,11 @@ struct Workbench {
     schema_operation: Option<dbide_bridge::OperationId>,
     show_history: bool,
     history_panel: Option<Entity<history_panel::HistoryPanel>>,
+    history_subscription: Option<Subscription>,
+    inspector_subscription: Option<Subscription>,
+    finder_subscription: Option<Subscription>,
+    result_find: Option<Entity<result_find::ResultFind>>,
+    result_find_subscription: Option<Subscription>,
     value_inspector: Option<Entity<value_inspector::ValueInspector>>,
     range_copy: Option<result_tools::RangeCopyDraft>,
     object_finder: Option<Entity<object_finder::ObjectFinder>>,
@@ -658,6 +668,8 @@ impl Workbench {
             settings_pending: VecDeque::new(),
             app_settings: dbide_settings::AppSettings::default(),
             resize_drag: None,
+            inspector_width: 390.,
+            inspector_drag: None,
             results_collapsed: false,
             catalog_collapsed: false,
             settings_error: None,
@@ -693,6 +705,11 @@ impl Workbench {
             schema_operation: None,
             show_history: false,
             history_panel: None,
+            history_subscription: None,
+            inspector_subscription: None,
+            finder_subscription: None,
+            result_find: None,
+            result_find_subscription: None,
             value_inspector: None,
             range_copy: None,
             object_finder: None,
@@ -777,6 +794,8 @@ impl Workbench {
         this
     }
     fn install_source(&mut self, source: GridSource, cx: &mut Context<Self>) {
+        self.result_find = None;
+        self.result_find_subscription = None;
         self.grid.update(cx, |grid, cx| {
             *grid.delegate_mut() = ResultGrid::new(source);
             grid.clear_selection(cx);
@@ -1654,6 +1673,7 @@ impl Render for Workbench {
         let tab_space = (
             f32::from(window.viewport_size().width) as u16,
             self.app_settings.sidebar_width,
+            self.inspector_width as u16,
             self.preferences.is_some(),
             if self.object_finder.is_some()
                 || self.value_inspector.is_some()
@@ -1682,7 +1702,12 @@ impl Render for Workbench {
                 self.documents.iter().position(|d| d.model.id == visible.1)
             };
             if let Some(index) = index {
-                self.tab_scroll.scroll_to_item(index);
+                let scroll = self.tab_scroll.clone();
+                let view = cx.weak_entity();
+                window.on_next_frame(move |_, cx| {
+                    scroll.scroll_to_item(index);
+                    let _ = view.update(cx, |_, cx| cx.notify());
+                });
             }
             self.last_visible_tab = Some(visible);
             self.last_tab_space = Some(tab_space);
@@ -1749,7 +1774,7 @@ impl Render for Workbench {
                 rendered_columns.end
             )
         };
-        let mut result_label = if self.logical_mode {
+        let result_label = if self.logical_mode {
             "Logical grid · 1,000,000 × 200".into()
         } else if let Some(page) = self.pages.get(self.selected_page) {
             format!(
@@ -1772,6 +1797,7 @@ impl Render for Workbench {
                     }
                 },
                 page.affected_rows
+                    .filter(|_| page.command_only)
                     .map(|n| if self.locale == Locale::Ko {
                         format!(" · 행 수 {n}")
                     } else {
@@ -1782,9 +1808,16 @@ impl Render for Workbench {
         } else {
             self.ui_label("Query results").to_string()
         };
-        if let Some(owner) = &self.result_owner {
-            result_label = format!("{} · {}", result_label, owner.label());
-        }
+        let result_label = self
+            .result_owner
+            .as_ref()
+            .map(|owner| format!("{result_label} · {}", owner.target))
+            .unwrap_or(result_label);
+        let result_target = self
+            .result_owner
+            .as_ref()
+            .map(|owner| owner.label())
+            .unwrap_or_default();
         let command_only = !self.logical_mode
             && self
                 .pages
@@ -1975,7 +2008,14 @@ impl Render for Workbench {
                             .overflow_hidden()
                             .text_ellipsis()
                             .font_weight(FontWeight::MEDIUM)
-                            .child(result_label),
+                            .id("result-summary")
+                            .child(result_label)
+                            .when(!result_target.is_empty(), |el| {
+                                use gpui_component::tooltip::Tooltip;
+                                let target = result_target.clone();
+                                el.aria_label(target.clone())
+                                    .tooltip(move |w, cx| Tooltip::new(target.clone()).build(w, cx))
+                            }),
                     )
                     .child(
                         div()
@@ -2030,10 +2070,33 @@ impl Render for Workbench {
                                     cx.listener(|s, _, w, cx| s.copy_cell(&CopyCell, w, cx)),
                                 ))
                             })
+                            .child(
+                                Button::new("find-result")
+                                    .small()
+                                    .ghost()
+                                    .icon(gpui_component::IconName::Search)
+                                    .accessibility_label(if self.locale == Locale::Ko {
+                                        "결과에서 찾기"
+                                    } else {
+                                        "Find in result"
+                                    })
+                                    .tooltip(if self.locale == Locale::Ko {
+                                        "결과에서 찾기 · ⌘⌥F"
+                                    } else {
+                                        "Find in result · ⌘⌥F"
+                                    })
+                                    .disabled(!self.result_has_rows(cx))
+                                    .on_click(cx.listener(|s, _, w, cx| {
+                                        s.open_result_find(&FindResults, w, cx)
+                                    })),
+                            )
                             .child(self.result_more_menu(cx)),
                     ),
             )
-            .when(!self.results_collapsed, |el| el.child(result_body));
+            .when(!self.results_collapsed, |el| {
+                el.when_some(self.result_find.as_ref(), |el, find| el.child(find.clone()))
+                    .child(result_body)
+            });
         if self.console().diagnostic.is_some()
             && !self.fixture_smoke
             && !self
@@ -2176,66 +2239,54 @@ impl Render for Workbench {
         } else if self.form.is_some() {
             body = body.child(self.connection_form_panel(cx));
         } else if let Some(finder) = &self.object_finder {
-            body = body.child(
-                div()
-                    .w(px(570.))
-                    .max_w(relative(0.65))
-                    .flex_shrink_0()
-                    .min_h_0()
-                    .child(finder.clone()),
-            );
+            body = body.child(self.inspector_frame(finder.clone().into_any_element(), window, cx));
         } else if self.pending_object_reveal.is_some() {
             body = body.child(self.object_reveal_panel(cx));
         } else if let Some(inspector) = &self.value_inspector {
-            body = body.child(
-                div()
-                    .w(px(570.))
-                    .max_w(relative(0.65))
-                    .flex_shrink_0()
-                    .min_h_0()
-                    .child(inspector.clone()),
-            );
+            body =
+                body.child(self.inspector_frame(inspector.clone().into_any_element(), window, cx));
         } else if self.range_copy.is_some() {
-            body = body.child(self.range_copy_panel(cx));
+            let panel = self.range_copy_panel(cx).into_any_element();
+            body = body.child(self.inspector_frame(panel, window, cx));
         } else if let Some(inspector) = &self.structure {
-            body = body.child(
-                div()
-                    .w(px(760.))
-                    .max_w(relative(0.58))
-                    .flex_shrink_0()
-                    .flex()
-                    .flex_col()
-                    .bg(rgb(PANEL))
-                    .border_l_1()
-                    .border_color(rgb(BORDER))
-                    .child(
-                        div()
-                            .px_3()
-                            .py_2()
-                            .flex()
-                            .justify_between()
-                            .items_center()
-                            .child(if self.locale == Locale::Ko {
-                                "테이블 구조"
-                            } else {
-                                "Object structure"
-                            })
-                            .child(
-                                self.button("close-structure", "Close")
-                                    .on_click(cx.listener(|s, _, _, cx| {
-                                        s.structure = None;
-                                        cx.notify();
-                                    })),
-                            ),
-                    )
-                    .child(div().flex_1().min_h_0().child(inspector.clone())),
-            );
+            let panel = div()
+                .size_full()
+                .flex_shrink_0()
+                .flex()
+                .flex_col()
+                .bg(rgb(PANEL))
+                .border_l_1()
+                .border_color(rgb(BORDER))
+                .child(
+                    div()
+                        .px_3()
+                        .py_2()
+                        .flex()
+                        .justify_between()
+                        .items_center()
+                        .child(if self.locale == Locale::Ko {
+                            "테이블 구조"
+                        } else {
+                            "Object structure"
+                        })
+                        .child(
+                            self.button("close-structure", "Close")
+                                .on_click(cx.listener(|s, _, _, cx| {
+                                    s.structure = None;
+                                    cx.notify();
+                                })),
+                        ),
+                )
+                .child(div().flex_1().min_h_0().child(inspector.clone()))
+                .into_any_element();
+            body = body.child(self.inspector_frame(panel, window, cx));
         } else if let Some(preview) = &self.transfer_preview {
             body = body.child(self.transfer_panel(preview, cx));
         } else if self.show_sql_tools {
             body = body.child(self.sql_tools_panel(cx));
         } else if self.show_history {
-            body = body.child(self.history_view(cx));
+            let panel = self.history_view(cx).into_any_element();
+            body = body.child(self.inspector_frame(panel, window, cx));
         }
         div()
             .size_full()
@@ -2259,6 +2310,7 @@ impl Render for Workbench {
             .on_action(cx.listener(Self::cancel_query_action))
             .on_action(cx.listener(Self::run_current_action))
             .on_action(cx.listener(Self::run_selection_action))
+            .on_action(cx.listener(Self::open_result_find))
             .on_action(cx.listener(Self::copy_cell))
             .on_action(cx.listener(Self::inspect_value_action))
             .on_action(cx.listener(Self::inspect_record_action))
@@ -2344,6 +2396,15 @@ fn main() {
     application.run(move |cx: &mut App| {
         gpui_component::init(cx);
         Theme::change(ThemeMode::Dark, None, cx);
+        Theme::update(cx, |theme| {
+            theme.table = rgb(BG).into();
+            theme.table_head = rgb(PANEL).into();
+            theme.table_row_border = rgb(BORDER).into();
+            theme.table_hover = rgb(0x1c2b38).into();
+            // Cell selection is painted over text by the table component.
+            theme.table_active = rgba(0x6ea9e930).into();
+            theme.table_active_border = rgb(ACCENT).into();
+        });
         cx.on_action(|_: &Quit, cx| {
             if cx.windows().is_empty() {
                 cx.quit();
@@ -2351,6 +2412,8 @@ fn main() {
         });
         cx.bind_keys([
             KeyBinding::new("cmd-q", Quit, None),
+            KeyBinding::new("cmd-f", FindResults, Some("FixtureGrid")),
+            KeyBinding::new("cmd-alt-f", FindResults, None),
             KeyBinding::new("cmd-alt-enter", RunSelection, None),
             KeyBinding::new("cmd-alt-enter", RunSelection, Some("Input")),
             KeyBinding::new("cmd-shift-o", FindDatabaseObject, None),
@@ -2447,6 +2510,7 @@ fn open_workbench(cx: &mut App, started: Instant, fixture_smoke: bool, smoke_sec
                 fallback_action!(RunQuery, run_query, true);
                 fallback_action!(RunCurrent, run_current_action, true);
                 fallback_action!(RunSelection, run_selection_action, true);
+                fallback_action!(FindResults, open_result_find, true);
                 fallback_action!(InspectValue, inspect_value_action, false);
                 fallback_action!(InspectRecord, inspect_record_action, false);
                 fallback_action!(CopyResultRow, copy_result_row, false);
